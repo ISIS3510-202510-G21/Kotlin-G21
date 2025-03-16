@@ -5,6 +5,7 @@ import android.content.SharedPreferences
 
 private const val PREFS_NAME = "auth_prefs"
 private const val KEY_IS_LOGGED_IN = "is_user_logged_in"
+private const val KEY_USER_ROLE = "user_role"
 
 /**
  * Clase para gestionar la preferencia local que indica si el usuario
@@ -21,5 +22,12 @@ class AuthPreferences(context: Context) {
 
     fun isUserLoggedIn(): Boolean {
         return sharedPrefs.getBoolean(KEY_IS_LOGGED_IN, false)
+    }
+    fun setUserRole(role: String) {
+        sharedPrefs.edit().putString(KEY_USER_ROLE, role).apply()
+    }
+
+    fun getUserRole(): String? {
+        return sharedPrefs.getString(KEY_USER_ROLE, null)
     }
 }

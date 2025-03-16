@@ -51,6 +51,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = _uiState.value.copy(confirmPassword = newConfirm)
     }
 
+    fun onUserRoleChange(newRole: String) {
+        _uiState.value = _uiState.value.copy(userRole = newRole)
+        authPrefs.setUserRole(newRole)
+    }
+
+
     fun loginUser(onLoginSuccess: () -> Unit) {
         val state = _uiState.value
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
@@ -61,10 +67,38 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 state.password.trim()
             ).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Marca en las preferencias que el usuario está logueado
-                    authPrefs.setUserLoggedIn(true)
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    onLoginSuccess()
+                    val userId = task.result?.user?.uid ?: ""
+
+                    // Recuperar el rol del usuario desde Firestore
+                    firestore.collection("users").document(userId).get()
+                        .addOnSuccessListener { document ->
+                            if (document.exists()) {
+                                val userRole = document.getString("userType") ?: "Attendee" // Rol por defecto
+
+                                // Guardamos el rol y el estado de sesión en AuthPreferences
+                                authPrefs.setUserRole(userRole)
+                                authPrefs.setUserLoggedIn(true)
+
+                                // Actualizamos el estado de la UI
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    userRole = userRole
+                                )
+
+                                onLoginSuccess()
+                            } else {
+                                _uiState.value = _uiState.value.copy(
+                                    isLoading = false,
+                                    errorMessage = "User data not found"
+                                )
+                            }
+                        }
+                        .addOnFailureListener { e ->
+                            _uiState.value = _uiState.value.copy(
+                                isLoading = false,
+                                errorMessage = e.message
+                            )
+                        }
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -75,13 +109,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Crear un usuario en Firebase Auth y guardarlo en Firestore.
-     */
+    //crear Ua¿suario en firebase
+
     fun registerUser(onRegisterSuccess: () -> Unit) {
         val state = _uiState.value
 
-        // 1) Verificar que las contraseñas coincidan
         if (state.password != state.confirmPassword) {
             _uiState.value = state.copy(
                 errorMessage = "Passwords do not match.",
@@ -90,7 +122,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             return
         }
 
-        // 2) Iniciar registro
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
 
         viewModelScope.launch {
@@ -99,23 +130,23 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 state.password.trim()
             ).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    // Actualizamos prefs
-                    authPrefs.setUserLoggedIn(true)
-
                     val userId = task.result?.user?.uid ?: ""
-                    // 3) Crear objeto AppUser con los datos
+                    val selectedRole = state.userRole ?: "Attendee" // Asegurar un rol
+
                     val newUser = AppUser(
                         email = state.email.trim(),
                         name = state.name,
-                        userType = "host", // por defecto
-                        username = ""      // opcional
+                        userType = selectedRole,
+                        username = ""  // Opcional
                     )
 
-                    // 4) Guardarlo en la colección "users" con el UID
                     firestore.collection("users")
                         .document(userId)
                         .set(newUser)
                         .addOnSuccessListener {
+                            authPrefs.setUserLoggedIn(true)
+                            authPrefs.setUserRole(selectedRole)
+
                             _uiState.value = _uiState.value.copy(isLoading = false)
                             onRegisterSuccess()
                         }
