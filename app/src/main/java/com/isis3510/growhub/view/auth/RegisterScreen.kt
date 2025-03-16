@@ -81,6 +81,51 @@ fun RegisterScreen(
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
         )
+        // User Type
+
+        var expanded by remember { mutableStateOf(false) }
+        val selectedRole = uiState.userRole ?: "Select a role"
+
+
+        val roles = listOf("Host", "Attendee") // Opciones del menú
+
+        // Estado para manejar el error de selección del rol
+        var roleError by remember { mutableStateOf(false) }
+
+        // Menú desplegable para seleccionar el rol del usuario
+        ExposedDropdownMenuBox(
+            expanded = expanded,
+            onExpandedChange = { expanded = !expanded }
+        ) {
+            OutlinedTextField(
+                value = selectedRole,
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("User Role") },
+                trailingIcon = {
+                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                },
+                isError = roleError,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .menuAnchor()
+            )
+            ExposedDropdownMenu(
+                expanded = expanded,
+                onDismissRequest = { expanded = false }
+            ) {
+                roles.forEach { role ->
+                    DropdownMenuItem(
+                        text = { Text(role) },
+                        onClick = {
+                            viewModel.onUserRoleChange(role)
+                            roleError = false
+                            expanded = false
+                        }
+                    )
+                }
+            }
+        }
 
         // Password
         OutlinedTextField(
@@ -129,53 +174,6 @@ fun RegisterScreen(
                 .fillMaxWidth()
                 .padding(bottom = 20.dp)
         )
-
-        // User Type
-
-        var expanded by remember { mutableStateOf(false) }
-        val selectedRole = uiState.userRole ?: "Select a role"
-
-
-        val roles = listOf("Host", "Attendee") // Opciones del menú
-
-        // Estado para manejar el error de selección del rol
-        var roleError by remember { mutableStateOf(false) }
-
-        // Menú desplegable para seleccionar el rol del usuario
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
-            OutlinedTextField(
-                value = selectedRole,
-                onValueChange = {},
-                readOnly = true,
-                label = { Text("User Role") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
-                isError = roleError,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
-            )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
-            ) {
-                roles.forEach { role ->
-                    DropdownMenuItem(
-                        text = { Text(role) },
-                        onClick = {
-                            viewModel.onUserRoleChange(role)
-                            roleError = false
-                            expanded = false
-                        }
-                    )
-                }
-            }
-        }
-
 
 
         // Loading indicator
