@@ -27,17 +27,15 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -46,24 +44,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
-import com.isis3510.growhub.FakeApplication
 import com.isis3510.growhub.R
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.ProfileViewModel
-
+import com.isis3510.growhub.viewmodel.Profile
 
 /**
  * Created by: Juan Manuel Jáuregui
  */
 
 @Composable
-fun ProfileView(
-    viewModel: ProfileViewModel = viewModel(),
-    onNavigateBack: () -> Unit,
-    modifier: Modifier = Modifier
-) {
+fun MainView(viewModel: ProfileViewModel = viewModel()) {
+    ProfileView(profile = Profile())
+}
 
-    val profile by viewModel.profile.collectAsState()
+@Composable
+fun ProfileView(profile: Profile?) {
 
     // Base Column Widget
     Column(
@@ -79,7 +75,7 @@ fun ProfileView(
         Row (modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically){
             IconButton(
-                onClick = { onNavigateBack() },
+                onClick = { /* Handle back button click */ },
             ) {
                 Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
             }
@@ -94,7 +90,7 @@ fun ProfileView(
         // Profile Image
         if (profile?.profilePictureUrl?.isNotEmpty() == true) {
             Image(
-                painter = rememberAsyncImagePainter(profile!!.profilePictureUrl),
+                painter = rememberAsyncImagePainter(profile.profilePictureUrl),
                 contentDescription = "Profile Picture",
                 modifier = Modifier
                     .size(120.dp)
@@ -122,7 +118,7 @@ fun ProfileView(
         // Name
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
-                text = profile?.name ?: "Loading...",
+                text = if (profile?.name.isNullOrEmpty()) "Loading..." else profile?.name!!,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -291,6 +287,19 @@ fun InterestChip(text: String, backgroundColor: Color) {
 
         // Chip Text
         Text(text = text, color = Color.White, fontSize = 14.sp)
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+fun ProfileViewPreview() {
+    GrowhubTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            MainView()
+        }
     }
 }
 

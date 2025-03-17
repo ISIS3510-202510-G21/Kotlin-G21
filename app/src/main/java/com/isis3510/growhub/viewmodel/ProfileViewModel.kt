@@ -1,31 +1,32 @@
 package com.isis3510.growhub.viewmodel
 
-import android.app.Application
-import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.ViewModel
+import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.viewModelScope
-import com.isis3510.growhub.model.objects.Profile
-import com.isis3510.growhub.data.ProfileRepository
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
-class ProfileViewModel(application: Application) : AndroidViewModel(application) {
+data class Profile (
+    val name: String = "",
+    val following: Int = 0,
+    val followers: Int = 0,
+    val aboutMe: String = "",
+    val interests: List<String> = listOf(),
+    val profilePictureUrl: String = ""
+)
 
-    private val repository = ProfileRepository()
-
-    // Expose a StateFlow to observe in the UI
-    private val _profile = MutableStateFlow<Profile?>(null)
-    val profile: StateFlow<Profile?> = _profile
+class ProfileViewModel : ViewModel() {
+    private val profile = mutableStateListOf<Profile>()
 
     init {
-        loadProfile()
+        loadMockProfile()
     }
 
-    fun loadProfile() {
+    private fun loadMockProfile() {
         viewModelScope.launch {
-            repository.getCurrentUserProfile { fetchedProfile ->
-                _profile.value = fetchedProfile
-            }
+            val mockData = listOf(
+                Profile("Camilo Smith", 320, 325, "I like to code", listOf("Android", "Kotlin"), "https://example.com/profile")
+            )
+            profile.addAll(mockData.take(1))
         }
     }
 }
