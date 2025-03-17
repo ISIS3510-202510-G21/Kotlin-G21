@@ -2,7 +2,9 @@ package com.isis3510.growhub.view.home
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -24,55 +26,157 @@ import com.isis3510.growhub.viewmodel.HomeViewModel
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import com.isis3510.growhub.utils.advancedShadow
 import androidx.compose.ui.tooling.preview.Preview
 import com.isis3510.growhub.viewmodel.Event
 
 @Composable
 fun MainView(viewModel: HomeViewModel = viewModel()) {
-    Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
-        Text(
-            text = "Upcoming Events",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF191D17),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        LazyRow {
-            items(viewModel.upcomingEvents) { event ->
-                EventCard(event)
-            }
-        }
+    TopBoxRenderer()
+}
 
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "Nearby Events",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF191D17),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        LazyRow {
-            items(viewModel.nearbyEvents) { event ->
-                EventCard(event)
+@Composable
+fun TopBoxRenderer(viewModel: HomeViewModel = viewModel()) {
+    // This is the whole screen renderer
+    Box(
+        contentAlignment = Alignment.TopStart,
+        modifier = Modifier
+            .background(Color(0xffffffff))
+            .size(412.dp, 917.dp)
+            .clipToBounds(),
+    ) {
+        // This is the top thing renderer
+        Box(
+            contentAlignment = Alignment.TopStart,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .offset(x = 0.dp, y = -48.dp)
+                .size(412.dp, 228.dp),
+        ) {
+            // This makes it be rounded at the bottom left and right
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .background(Color(0xff4a43ec), RoundedCornerShape(36.dp))
+                    .size(412.dp, 228.dp),
+            )
+            // This is used to hide the upper bound
+            Box(
+                contentAlignment = Alignment.TopStart,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 0.dp, y = 75.dp)
+                    .size(394.dp, 55.dp),
+            ) {
+                // Component that holds the Current Location
+                Box(
+                    contentAlignment = Alignment.TopStart,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 158.dp, y = 14.dp)
+                        .size(105.dp, 16.dp),
+                ) {
+                    // Here goes the arrow (REPLACE WITH MUI)
+                    /*
+                    Image(
+                        painter = painterResource(id = R.drawable.image_30944103),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(x = 97.dp, y = 6.dp)
+                            .size(8.dp, 5.dp),
+                    )
+                    */
+                    // Text for Current Location
+                    Text(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .wrapContentSize(),
+                        text = "Current Location",
+                        color = Color(0xffffffff),
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    // Text for Bogota, Colombia (REPLACED WITH SENSOR)
+                    Text(
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .wrapContentSize()
+                            .offset(x = 3.dp, y = 16.dp),
+                        text = "Bogota, Colombia",
+                        color = Color(0xffffffff),
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Center,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                // Here goes the account symbol (REPLACE WITH MUI)
+                /*
+                // Image-3094:4107-account_circle
+                Image(
+                    painter = painterResource(id = R.drawable.image2_30944107),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 370.dp, y = 16.dp)
+                        .size(24.dp, 24.dp),
+                )
+                */
             }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-        Text(
-            text = "You might like",
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color(0xFF191D17),
-            modifier = Modifier.padding(bottom = 8.dp)
-        )
-        LazyColumn(modifier = Modifier.weight(1f)) {
-            items(viewModel.recommendedEvents) { event ->
-                EventCard(event)
+            // This renders the search bar embedded in the blue box
+            Box(
+                contentAlignment = Alignment.TopStart,
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .offset(x = 22.dp, y = 140.dp)
+                    .size(259.dp, 45.dp),
+            ) {
+                // This is the search icon (REPLACED WITH MUI)
+                /*
+                // Image-3094:4109-search
+                Image(
+                    painter = painterResource(id = R.drawable.image_30944109),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 9.dp, y = 10.dp)
+                        .size(24.dp, 24.dp),
+                )*/
+                // This renders the Search text in the bar
+                Text(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .offset(x = 35.479.dp, y = 13.dp)
+                        .size(86.4.dp, 19.286.dp),
+                    text = "Search",
+                    color = Color(0xffffffff),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Normal,
+                    textAlign = TextAlign.Left,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                // This renders the Search field
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopStart)
+                        .background(Color(0x00d9d9d9), RoundedCornerShape(10.dp))
+                        .size(259.dp, 45.dp)
+                        .border(2.dp, Color(0xffffffff), RoundedCornerShape(10.dp)),
+                )
             }
         }
     }
 }
+
 
 @Composable
 fun EventCard(event: Event) {
