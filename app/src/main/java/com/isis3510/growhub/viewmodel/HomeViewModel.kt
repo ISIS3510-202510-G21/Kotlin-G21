@@ -5,7 +5,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.launch
 
-// Modelo de datos
+// Data model for the Event Class
 data class Event(
     val id: String,
     val title: String,
@@ -33,8 +33,8 @@ class HomeViewModel : ViewModel() {
                 Event("4", "XXIV Jornadas C...", "Bogotá, Colombia", "February 25, 2025", "Science", "mock_image")
             )
             upcomingEvents.addAll(mockData.take(2))
-            nearbyEvents.addAll(mockData.drop(2))
-            recommendedEvents.addAll(mockData)
+            recommendedEvents.addAll(mockData.drop(1))
+            nearbyEvents.addAll(mockData)
         }
     }
 }
