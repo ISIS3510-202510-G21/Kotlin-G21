@@ -13,6 +13,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
+import com.google.firebase.FirebaseApp
 import com.isis3510.growhub.view.navigation.AppNavGraph
 import com.isis3510.growhub.view.navigation.Destinations
 import com.isis3510.growhub.viewmodel.AuthViewModel
@@ -24,7 +25,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-
+        FirebaseApp.initializeApp(this)
         enableEdgeToEdge()
 
         setContent {
