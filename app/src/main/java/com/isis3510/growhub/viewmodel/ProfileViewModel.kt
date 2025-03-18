@@ -15,7 +15,7 @@ data class Profile (
 )
 
 class ProfileViewModel : ViewModel() {
-    private val profile = mutableStateListOf<Profile>()
+    val profile = mutableStateListOf<Profile>()
 
     init {
         loadMockProfile()

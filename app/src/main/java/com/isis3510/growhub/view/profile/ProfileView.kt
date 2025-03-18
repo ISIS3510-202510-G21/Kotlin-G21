@@ -47,19 +47,23 @@ import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.ProfileViewModel
-import com.isis3510.growhub.viewmodel.Profile
 
 /**
  * Created by: Juan Manuel Jáuregui
  */
 
 @Composable
-fun MainView(viewModel: ProfileViewModel = viewModel()) {
-    ProfileView(profile = Profile())
+fun MainView() {
+    ProfileView()
 }
 
 @Composable
-fun ProfileView(profile: Profile?) {
+fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
+
+    val profileList = viewModel.profile
+
+    if (profileList.isNotEmpty()) {
+        val profile = profileList[0]
 
     // Base Column Widget
     Column(
@@ -72,8 +76,10 @@ fun ProfileView(profile: Profile?) {
         Spacer(modifier = Modifier.height(32.dp))
 
         // Arrow Back
-        Row (modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically){
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(
                 onClick = { /* Handle back button click */ },
             ) {
@@ -88,7 +94,7 @@ fun ProfileView(profile: Profile?) {
         Spacer(modifier = Modifier.height(32.dp))
 
         // Profile Image
-        if (profile?.profilePictureUrl?.isNotEmpty() == true) {
+        if (profile.profilePictureUrl.isNotEmpty()) {
             Image(
                 painter = rememberAsyncImagePainter(profile.profilePictureUrl),
                 contentDescription = "Profile Picture",
@@ -118,7 +124,7 @@ fun ProfileView(profile: Profile?) {
         // Name
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
             Text(
-                text = if (profile?.name.isNullOrEmpty()) "Loading..." else profile?.name!!,
+                text = profile.name.ifEmpty { "Loading..." },
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold
             )
@@ -133,7 +139,7 @@ fun ProfileView(profile: Profile?) {
             horizontalArrangement = Arrangement.SpaceEvenly
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "${profile?.following ?: 0}", fontWeight = FontWeight.Bold)
+                Text(text = "${profile.following}", fontWeight = FontWeight.Bold)
                 Text(text = "Following")
             }
             VerticalDivider(
@@ -143,7 +149,7 @@ fun ProfileView(profile: Profile?) {
                     .width(1.dp)
             )
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "${profile?.followers ?: 0}", fontWeight = FontWeight.Bold)
+                Text(text = "${profile.followers}", fontWeight = FontWeight.Bold)
                 Text(text = "Followers")
             }
         }
@@ -155,19 +161,21 @@ fun ProfileView(profile: Profile?) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
 
             // Button
-            OutlinedButton(onClick = { /* Handle edit profile */ }
-                ,modifier = Modifier
+            OutlinedButton(onClick = { /* Handle edit profile */ },
+                modifier = Modifier
                     .fillMaxWidth(0.5f)
-                    .height(48.dp)
-                ,shape = RoundedCornerShape(16.dp)
-                ,border = BorderStroke(2.dp, Color(0xFF5669FF))
-                ,colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))) {
+                    .height(48.dp),
+                shape = RoundedCornerShape(16.dp),
+                border = BorderStroke(2.dp, Color(0xFF5669FF)),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))) {
 
                 // Row for Icon and Text
-                Row (verticalAlignment = Alignment.CenterVertically) {
-                    Icon(painter = painterResource(id = R.drawable.ic_edit)
-                        ,contentDescription = "Edit Profile"
-                        ,tint = Color(0xFF5669FF))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_edit),
+                        contentDescription = "Edit Profile",
+                        tint = Color(0xFF5669FF)
+                    )
 
                     // Space between Icon and Text
                     Spacer(modifier = Modifier.width(8.dp))
@@ -186,10 +194,15 @@ fun ProfileView(profile: Profile?) {
         Spacer(modifier = Modifier.height(32.dp))
 
         // About Me
-        Text(text = "About Me", fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Left)
+        Text(
+            text = "About Me",
+            fontWeight = FontWeight.Bold,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Left
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = profile?.aboutMe ?: "No information available",
+            text = profile.aboutMe,
             textAlign = TextAlign.Justify
         )
 
@@ -197,7 +210,8 @@ fun ProfileView(profile: Profile?) {
         Spacer(modifier = Modifier.height(16.dp))
 
         // Interests
-        InterestsSection(profile?.interests ?: listOf())
+        InterestsSection(profile.interests)
+    }
     }
 }
 
