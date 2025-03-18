@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "847744610885",
+    "firebase_url": "https://growhub-50aa2-default-rtdb.firebaseio.com",
+    "project_id": "growhub-50aa2",
+    "storage_bucket": "growhub-50aa2.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:847744610885:android:7995a01f8d4afe66aba92c",
+        "android_client_info": {
+          "package_name": "com.app.Growhub"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmyetLYqf2Klq7zyNMmSjaBVUNDaxu-jU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
