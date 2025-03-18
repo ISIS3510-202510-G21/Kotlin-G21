@@ -3,6 +3,7 @@ package com.isis3510.growhub.view.home
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.lazy.LazyColumn
@@ -43,6 +44,7 @@ import androidx.navigation.compose.rememberNavController
 import com.isis3510.growhub.viewmodel.Event
 import com.isis3510.growhub.view.BottomNavBar
 import com.isis3510.growhub.view.navigation.AppNavHost
+import com.isis3510.growhub.viewmodel.Category
 
 @Composable
 fun MainView() {
@@ -213,120 +215,63 @@ fun TopBoxRenderer(viewModel: HomeViewModel = viewModel()) {
 }
 
 @Composable
-fun CategoryColorButtons() {
-    // Rendering of the box that contains the slider of buttons for categories
+fun CategoryColorButtons(homeViewModel: HomeViewModel = viewModel()) {
+    val categories = homeViewModel.categories
+
+    val categoryColors = listOf(
+        Color(0xffef635a), Color(0xfff59762), Color(0xff29d697),
+        Color(0xff3b5998), Color(0xff8e44ad), Color(0xff2c3e50),
+        Color(0xff16a085), Color(0xfff39c12)
+    )
+
     Box(
         contentAlignment = Alignment.TopStart,
         modifier = Modifier
             .offset(x = 11.dp, y = 194.dp)
-            .size(438.dp, 41.dp),
+            .fillMaxWidth()
+            .height(41.dp)
     ) {
-        // Column-3094:4119-Button
-        Column(
-            verticalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .background(Color(0xffef635a), RoundedCornerShape(16.dp))
-                .size(138.dp, 41.dp)
-                .clip(RoundedCornerShape(16.dp)),
+        LazyRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.fillMaxWidth()
         ) {
-            // Row-I3094:4119;53923:27634-state-layer
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .fillMaxSize()
-                    .padding(start = 0.dp, end = 0.dp, top = 0.dp, bottom = 0.dp)
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
-            ) {
-                // Text-I3094:4119;53923:27635-label-text
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .wrapContentSize(),
-                    text = "Programming",
-                    color = Color(0xffffffff),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        // Column-3094:4120-Button
-        Column(
-            verticalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 150.dp, y = 0.dp)
-                .background(Color(0xfff59762), RoundedCornerShape(16.dp))
-                .size(138.dp, 41.dp)
-                .clip(RoundedCornerShape(16.dp)),
-        ) {
-            // Row-I3094:4120;53923:27634-state-layer
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .fillMaxSize()
-                    .padding(start = 0.dp, end = 0.dp, top = 0.dp, bottom = 0.dp)
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
-            ) {
-                // Text-I3094:4120;53923:27635-label-text
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .wrapContentSize(),
-                    text = "Entrepreneurship",
-                    color = Color(0xffffffff),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-        }
-        // Column-3094:4121-Button
-        Column(
-            verticalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterVertically),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 300.dp, y = 0.dp)
-                .background(Color(0xff29d697), RoundedCornerShape(16.dp))
-                .size(138.dp, 41.dp)
-                .clip(RoundedCornerShape(16.dp)),
-        ) {
-            // Row-I3094:4121;53923:27634-state-layer
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(space = 8.dp, alignment = Alignment.CenterHorizontally),
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier
-                    .align(Alignment.Start)
-                    .fillMaxSize()
-                    .padding(start = 0.dp, end = 0.dp, top = 0.dp, bottom = 0.dp)
-                    .padding(horizontal = 24.dp, vertical = 10.dp),
-            ) {
-                // Text-I3094:4121;53923:27635-label-text
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.CenterVertically)
-                        .wrapContentSize(),
-                    text = "UI/UX Design",
-                    color = Color(0xffffffff),
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
+            items(categories.size) { index ->
+                val category = categories[index]
+                val color = categoryColors[index % categoryColors.size]
+
+                CategoryButton(
+                    category = category,
+                    color = color,
+                    onClick = { }
                 )
             }
         }
     }
 }
+
+@Composable
+fun CategoryButton(category: Category, color: Color, onClick: () -> Unit) {
+    Column(
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        modifier = Modifier
+            .background(color, RoundedCornerShape(16.dp))
+            .size(138.dp, 41.dp)
+            .clip(RoundedCornerShape(16.dp))
+            .clickable { onClick() },
+    ) {
+        Text(
+            text = category.name,
+            color = Color.White,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Normal,
+            textAlign = TextAlign.Center,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+        )
+    }
+}
+
 
 @Composable
 fun EventSliders(viewModel: HomeViewModel = viewModel()) {

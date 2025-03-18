@@ -15,13 +15,27 @@ data class Event(
     val imageUrl: String
 )
 
+// Data model for the Category
+enum class Category {
+    Programming,
+    Interview,
+    Speaking,
+    Technology,
+    Science,
+    Law,
+    Environment,
+    Ethics
+}
+
 class HomeViewModel : ViewModel() {
     val upcomingEvents = mutableStateListOf<Event>()
     val nearbyEvents = mutableStateListOf<Event>()
     val recommendedEvents = mutableStateListOf<Event>()
+    val categories = mutableStateListOf<Category>()
 
     init {
         loadMockEvents()
+        loadMockCategories()
     }
 
     private fun loadMockEvents() {
@@ -35,6 +49,12 @@ class HomeViewModel : ViewModel() {
             upcomingEvents.addAll(mockData.take(2))
             recommendedEvents.addAll(mockData.drop(1))
             nearbyEvents.addAll(mockData)
+        }
+    }
+
+    private fun loadMockCategories() {
+        viewModelScope.launch {
+            categories.addAll(Category.entries.toTypedArray())
         }
     }
 }
