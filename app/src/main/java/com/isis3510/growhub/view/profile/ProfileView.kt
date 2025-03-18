@@ -52,166 +52,171 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
  * Created by: Juan Manuel Jáuregui
  */
 
+// Main View Function
 @Composable
 fun MainView() {
     ProfileView()
 }
 
+
+// Profile View Function
 @Composable
 fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
 
     val profileList = viewModel.profile
 
+    //val profile by remember { profileViewModel.profile }
+
     if (profileList.isNotEmpty()) {
         val profile = profileList[0]
 
-    // Base Column Widget
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(horizontal = 16.dp),
-    ) {
-
-        // Space between the Top and Arrow
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Arrow Back
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically
+        // Base Column Widget
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
         ) {
-            IconButton(
-                onClick = { /* Handle back button click */ },
+
+            // Space between the Top and Arrow
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Arrow Back
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                IconButton(
+                    onClick = { /* Handle back button click */ },
+                ) {
+                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                }
+
+                // Profile Title
+                Text(text = "Profile", fontSize = 24.sp)
             }
 
-            // Profile Title
-            Text(text = "Profile", fontSize = 24.sp)
-        }
+            // Space between Profile Title and Profile Image
+            Spacer(modifier = Modifier.height(32.dp))
 
-        // Space between Profile Title and Profile Image
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Profile Image
-        if (profile.profilePictureUrl.isNotEmpty()) {
-            Image(
-                painter = rememberAsyncImagePainter(profile.profilePictureUrl),
-                contentDescription = "Profile Picture",
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.Gray, CircleShape)
-                    .align(Alignment.CenterHorizontally),
-                contentScale = ContentScale.Crop
-            )
-        } else {
-            Image(
-                painter = painterResource(id = R.drawable.ic_growhub), // Default profile image
-                contentDescription = "Default Profile Picture",
-                modifier = Modifier
-                    .size(120.dp)
-                    .clip(CircleShape)
-                    .border(2.dp, Color.Gray, CircleShape)
-                    .align(Alignment.CenterHorizontally),
-                contentScale = ContentScale.Crop
-            )
-        }
-
-        // Space between Profile Picture and Name
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Name
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-            Text(
-                text = profile.name.ifEmpty { "Loading..." },
-                fontSize = 30.sp,
-                fontWeight = FontWeight.Bold
-            )
-        }
-
-        // Space between Name and Following / Followers
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // Following / Followers
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "${profile.following}", fontWeight = FontWeight.Bold)
-                Text(text = "Following")
+            // Profile Image
+            if (profile.profilePictureUrl.isNotEmpty()) {
+                Image(
+                    painter = rememberAsyncImagePainter(profile.profilePictureUrl),
+                    contentDescription = "Profile Picture",
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.Gray, CircleShape)
+                        .align(Alignment.CenterHorizontally),
+                    contentScale = ContentScale.Crop
+                )
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.ic_growhub), // Default profile image
+                    contentDescription = "Default Profile Picture",
+                    modifier = Modifier
+                        .size(120.dp)
+                        .clip(CircleShape)
+                        .border(2.dp, Color.Gray, CircleShape)
+                        .align(Alignment.CenterHorizontally),
+                    contentScale = ContentScale.Crop
+                )
             }
-            VerticalDivider(
-                color = Color.Gray,
-                modifier = Modifier
-                    .height(32.dp)
-                    .width(1.dp)
-            )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text(text = "${profile.followers}", fontWeight = FontWeight.Bold)
-                Text(text = "Followers")
+
+            // Space between Profile Picture and Name
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Name
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                Text(
+                    text = profile.name.ifEmpty { "Loading..." },
+                    fontSize = 30.sp,
+                    fontWeight = FontWeight.Bold
+                )
             }
-        }
 
-        // Space between Following / Followers and Edit Profile Button
-        Spacer(modifier = Modifier.height(32.dp))
+            // Space between Name and Following / Followers
+            Spacer(modifier = Modifier.height(32.dp))
 
-        // Edit Profile Button
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-
-            // Button
-            OutlinedButton(onClick = { /* Handle edit profile */ },
-                modifier = Modifier
-                    .fillMaxWidth(0.5f)
-                    .height(48.dp),
-                shape = RoundedCornerShape(16.dp),
-                border = BorderStroke(2.dp, Color(0xFF5669FF)),
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))) {
-
-                // Row for Icon and Text
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_edit),
-                        contentDescription = "Edit Profile",
-                        tint = Color(0xFF5669FF)
-                    )
-
-                    // Space between Icon and Text
-                    Spacer(modifier = Modifier.width(8.dp))
-
-                    // Text for Edit Profile
-                    Text(
-                        text = "Edit Profile",
-                        color = Color(0xFF5669FF),
-                        fontSize = 16.sp
-                    )
+            // Following / Followers
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly
+            ) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "${profile.following}", fontWeight = FontWeight.Bold)
+                    Text(text = "Following")
+                }
+                VerticalDivider(
+                    color = Color.Gray,
+                    modifier = Modifier
+                        .height(32.dp)
+                        .width(1.dp)
+                )
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text(text = "${profile.followers}", fontWeight = FontWeight.Bold)
+                    Text(text = "Followers")
                 }
             }
+
+            // Space between Following / Followers and Edit Profile Button
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // Edit Profile Button
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+
+                // Button
+                OutlinedButton(onClick = { /* Handle edit profile */ },
+                    modifier = Modifier
+                        .fillMaxWidth(0.5f)
+                        .height(48.dp),
+                    shape = RoundedCornerShape(16.dp),
+                    border = BorderStroke(2.dp, Color(0xFF5669FF)),
+                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))) {
+
+                    // Row for Icon and Text
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_edit),
+                            contentDescription = "Edit Profile",
+                            tint = Color(0xFF5669FF)
+                        )
+
+                        // Space between Icon and Text
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        // Text for Edit Profile
+                        Text(
+                            text = "Edit Profile",
+                            color = Color(0xFF5669FF),
+                            fontSize = 16.sp
+                        )
+                    }
+                }
+            }
+
+            // Space between Edit Profile and About Me
+            Spacer(modifier = Modifier.height(32.dp))
+
+            // About Me
+            Text(
+                text = "About Me",
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp,
+                textAlign = TextAlign.Left
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+            Text(
+                text = profile.aboutMe,
+                textAlign = TextAlign.Justify
+            )
+
+            // Space between About Me and Interests
+            Spacer(modifier = Modifier.height(16.dp))
+
+            // Interests
+            InterestsSection(profile.interests)
         }
-
-        // Space between Edit Profile and About Me
-        Spacer(modifier = Modifier.height(32.dp))
-
-        // About Me
-        Text(
-            text = "About Me",
-            fontWeight = FontWeight.Bold,
-            fontSize = 18.sp,
-            textAlign = TextAlign.Left
-        )
-        Spacer(modifier = Modifier.height(8.dp))
-        Text(
-            text = profile.aboutMe,
-            textAlign = TextAlign.Justify
-        )
-
-        // Space between About Me and Interests
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Interests
-        InterestsSection(profile.interests)
-    }
     }
 }
 
