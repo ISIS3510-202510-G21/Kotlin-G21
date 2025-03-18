@@ -68,7 +68,6 @@ dependencies {
     implementation(libs.androidx.ui)
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
-<<<<<<< Updated upstream
     implementation("androidx.compose.material3:material3:1.3.1")
 
     // Firebase (BoM, para manejar versiones automáticamente)
@@ -81,29 +80,13 @@ dependencies {
     implementation(libs.firebase.firestore.ktx)
 
     // Testing
-=======
-    implementation(libs.androidx.material3)
-
-    // Firebase
-    implementation(libs.firebase.auth.ktx)
-
-    // Navegación
-    implementation(libs.firebase.firestore.ktx)
-
-    // Test
->>>>>>> Stashed changes
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-<<<<<<< Updated upstream
-}
-
-=======
 
     // Image Loader
     implementation("io.coil-kt:coil-compose:2.2.2")
 }
->>>>>>> Stashed changes
