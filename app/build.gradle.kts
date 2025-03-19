@@ -1,7 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
-    alias(libs.plugins.kotlin.android)
-    alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.jetbrains.kotlin.android)
+    id("com.google.gms.google-services")
 }
 
 android {
@@ -9,13 +9,15 @@ android {
     compileSdk = 35
 
     defaultConfig {
-        applicationId = "com.isis3510.growhub"
+        applicationId = "com.app.Growhub"
         minSdk = 24
-        targetSdk = 35
+        targetSdk = 34
         versionCode = 1
         versionName = "1.0"
-
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        vectorDrawables {
+            useSupportLibrary = true
+        }
     }
 
     buildTypes {
@@ -31,7 +33,6 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
-
     }
 
     kotlinOptions {
@@ -69,9 +70,7 @@ dependencies {
     implementation(libs.androidx.ui.tooling.preview)
     implementation("androidx.compose.material3:material3:1.3.1")
 
-
-
-    // Firebase (Usar solo BoM, sin versiones manuales)
+    // Firebase (BoM, para manejar versiones automáticamente)
     implementation(platform("com.google.firebase:firebase-bom:32.2.3"))
     implementation("com.google.firebase:firebase-analytics")
     implementation("com.google.firebase:firebase-auth-ktx")
@@ -87,5 +86,7 @@ dependencies {
     androidTestImplementation(libs.androidx.ui.test.junit4)
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
-}
 
+    // Image Loader
+    implementation("io.coil-kt:coil-compose:2.2.2")
+}
