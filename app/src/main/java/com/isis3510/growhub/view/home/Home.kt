@@ -17,7 +17,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -43,7 +42,6 @@ import com.isis3510.growhub.utils.advancedShadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.isis3510.growhub.viewmodel.Event
-import com.isis3510.growhub.view.BottomNavBar
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.Category
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
@@ -51,9 +49,7 @@ import com.isis3510.growhub.view.navigation.BottomNavigationBar
 @Composable
 fun MainView(onLogout: () -> Unit) {
     Scaffold(
-        topBar = {
-            TopBoxRenderer(onLogout = onLogout)
-        },
+        topBar = { TopBoxRenderer(onLogout = onLogout) },
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -71,20 +67,17 @@ fun MainView(onLogout: () -> Unit) {
                 .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // This is the whole screen renderer
-            Box(
-                contentAlignment = Alignment.TopStart,
-                modifier = Modifier
-                    .background(Color(0xffffffff))
-                    .size(412.dp, 917.dp)
-                    .clipToBounds(),
-            ) {
-                CategoryColorButtons()
-                EventSliders()
+            // CategoryColorButtons always in the superior part
+            CategoryColorButtons(modifier = Modifier.fillMaxWidth())
+
+            // In landscape, we force the sliders to whole screen
+            Box(modifier = Modifier.fillMaxSize()) {
+                EventSliders(modifier = Modifier.fillMaxSize())
             }
         }
     }
 }
+
 
 @Composable
 fun TopBoxRenderer(
@@ -179,7 +172,7 @@ fun TopBoxRenderer(
 
 
 @Composable
-fun CategoryColorButtons(homeViewModel: HomeViewModel = viewModel()) {
+fun CategoryColorButtons(modifier: Modifier = Modifier, homeViewModel: HomeViewModel = viewModel()) {
     val categories = homeViewModel.categories
 
     val categoryColors = listOf(
@@ -190,7 +183,7 @@ fun CategoryColorButtons(homeViewModel: HomeViewModel = viewModel()) {
 
     Box(
         contentAlignment = Alignment.TopStart,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .height(52.dp)
     ) {
@@ -239,14 +232,14 @@ fun CategoryButton(category: Category, color: Color, onClick: () -> Unit) {
 
 
 @Composable
-fun EventSliders(viewModel: HomeViewModel = viewModel()) {
+fun EventSliders(modifier: Modifier = Modifier, viewModel: HomeViewModel = viewModel()) {
     val upcomingEvents = viewModel.upcomingEvents
     val nearbyEvents = viewModel.nearbyEvents
     val recommendedEvents = viewModel.recommendedEvents
 
     LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
+        modifier = modifier
+            .fillMaxWidth()
             .padding(top = 52.dp),
         contentPadding = PaddingValues(bottom = 40.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp)
@@ -295,7 +288,8 @@ fun EventBox(event: Event) {
     Box(
         contentAlignment = Alignment.TopStart,
         modifier = Modifier
-            .size(237.dp, 188.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
     ) {
         Box(
             modifier = Modifier
