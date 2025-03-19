@@ -3,14 +3,13 @@ package com.isis3510.growhub.view.auth
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowBack
-import com.isis3510.growhub.R
-import androidx.compose.ui.res.painterResource
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
@@ -19,6 +18,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isis3510.growhub.FakeApplication
+import com.isis3510.growhub.R
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
 
@@ -32,16 +32,32 @@ fun RegisterScreen(
     val uiState by viewModel.uiState.collectAsState()
     val primaryBlue = Color(0xFF5669FF)
 
+    // Para mostrar/ocultar contraseñas
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
+    // --------------------------
+    // ERRORES LOCALES POR CAMPO
+    // --------------------------
+    var nameError by remember { mutableStateOf<String?>(null) }
+    var emailError by remember { mutableStateOf<String?>(null) }
+    var roleError by remember { mutableStateOf<String?>(null) }
+    var passwordError by remember { mutableStateOf<String?>(null) }
+    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+
+    // Para el menú desplegable
+    var expanded by remember { mutableStateOf(false) }
+    val selectedRole = uiState.userRole ?: "Select a role"
+    val roles = listOf("Host", "Attendee")
+
+    // UI
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        // Flecha de regreso más grande
+        // Flecha de regreso
         IconButton(
             onClick = { onNavigateBack() },
             modifier = Modifier
@@ -49,13 +65,13 @@ fun RegisterScreen(
                 .padding(top = 16.dp)
         ) {
             Icon(
-                imageVector = Icons.Default.ArrowBack,
+                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                 contentDescription = "Go back",
                 tint = Color.Black
             )
         }
 
-        // Título "Sign up" alineado a la izquierda
+        // Título "Sign up"
         Text(
             text = "Sign up",
             style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
@@ -65,34 +81,48 @@ fun RegisterScreen(
         // Full Name
         OutlinedTextField(
             value = uiState.name,
-            onValueChange = { viewModel.onNameChange(it) },
+            onValueChange = {
+                viewModel.onNameChange(it)
+                nameError = null // Limpiar error si el usuario empieza a escribir
+            },
             label = { Text("Full name") },
+            isError = (nameError != null), // mostrar borde rojo si hay error
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
         )
+        // Mensaje de error de "Full name"
+        nameError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
 
         // Email
         OutlinedTextField(
             value = uiState.email,
-            onValueChange = { viewModel.onEmailChange(it) },
+            onValueChange = {
+                viewModel.onEmailChange(it)
+                emailError = null
+            },
             label = { Text("Email") },
+            isError = (emailError != null),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
         )
+        // Mensaje de error de "Email"
+        emailError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
+
         // User Type
-
-        var expanded by remember { mutableStateOf(false) }
-        val selectedRole = uiState.userRole ?: "Select a role"
-
-
-        val roles = listOf("Host", "Attendee") // Opciones del menú
-
-        // Estado para manejar el error de selección del rol
-        var roleError by remember { mutableStateOf(false) }
-
-        // Menú desplegable para seleccionar el rol del usuario
         ExposedDropdownMenuBox(
             expanded = expanded,
             onExpandedChange = { expanded = !expanded }
@@ -105,7 +135,7 @@ fun RegisterScreen(
                 trailingIcon = {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 },
-                isError = roleError,
+                isError = (roleError != null),
                 modifier = Modifier
                     .fillMaxWidth()
                     .menuAnchor()
@@ -119,18 +149,30 @@ fun RegisterScreen(
                         text = { Text(role) },
                         onClick = {
                             viewModel.onUserRoleChange(role)
-                            roleError = false
+                            roleError = null
                             expanded = false
                         }
                     )
                 }
             }
         }
+        // Error de rol
+        roleError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
 
         // Password
         OutlinedTextField(
             value = uiState.password,
-            onValueChange = { viewModel.onPasswordChange(it) },
+            onValueChange = {
+                viewModel.onPasswordChange(it)
+                passwordError = null
+            },
             label = { Text("Your password") },
             visualTransformation = if (passwordVisible)
                 VisualTransformation.None else PasswordVisualTransformation(),
@@ -146,15 +188,27 @@ fun RegisterScreen(
                 }
             },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+            isError = (passwordError != null),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 12.dp)
         )
+        // Error de password
+        passwordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
 
         // Confirm Password
         OutlinedTextField(
             value = uiState.confirmPassword,
-            onValueChange = { viewModel.onConfirmPasswordChange(it) },
+            onValueChange = {
+                viewModel.onConfirmPasswordChange(it)
+                confirmPasswordError = null
+            },
             label = { Text("Confirm password") },
             visualTransformation = if (confirmPasswordVisible)
                 VisualTransformation.None else PasswordVisualTransformation(),
@@ -162,19 +216,29 @@ fun RegisterScreen(
                 IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                     Icon(
                         painter = painterResource(
-                            id = if (passwordVisible) R.drawable.ic_eye_closed
+                            id = if (confirmPasswordVisible) R.drawable.ic_eye_closed
                             else R.drawable.ic_eye_open
                         ),
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
                     )
                 }
             },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+            isError = (confirmPasswordError != null),
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(bottom = 20.dp)
         )
+        // Error de confirm password
+        confirmPasswordError?.let {
+            Text(
+                text = it,
+                color = MaterialTheme.colorScheme.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+            )
+        }
 
+        Spacer(modifier = Modifier.height(20.dp))
 
         // Loading indicator
         if (uiState.isLoading) {
@@ -182,7 +246,7 @@ fun RegisterScreen(
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Error message
+        // Error global de Firebase o de la lógica en ViewModel
         uiState.errorMessage?.let { error ->
             Text(
                 text = error,
@@ -194,10 +258,41 @@ fun RegisterScreen(
         // Botón "Sign Up"
         Button(
             onClick = {
+                // 1) Validar campos vacíos
+                var hasError = false
+
+                if (uiState.name.isBlank()) {
+                    nameError = "Please enter your full name."
+                    hasError = true
+                }
+                if (uiState.email.isBlank()) {
+                    emailError = "Please enter your email."
+                    hasError = true
+                } else if (!uiState.email.contains("@") || !uiState.email.endsWith(".com")) {
+                    emailError = "Please enter a valid email address"
+                    hasError = true
+                }
                 if (uiState.userRole.isNullOrEmpty()) {
-                    roleError = true // ✅ Activa el error si el usuario no selecciona un rol
-                } else {
-                    viewModel.registerUser { onRegisterSuccess() }
+                    roleError = "Please select a user role."
+                    hasError = true
+                }
+                if (uiState.password.isBlank()) {
+                    passwordError = "Please enter a password."
+                    hasError = true
+                }
+                if (uiState.confirmPassword.isBlank()) {
+                    confirmPasswordError = "Please confirm your password."
+                    hasError = true
+                }
+
+                // 2) Si no hay errores "vacíos", checamos contraseñas
+                if (!hasError) {
+                    if (uiState.password != uiState.confirmPassword) {
+                        confirmPasswordError = "Passwords do not match."
+                    } else {
+                        // 3) Si todo está bien, registramos al usuario
+                        viewModel.registerUser { onRegisterSuccess() }
+                    }
                 }
             },
             modifier = Modifier
@@ -211,7 +306,7 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Texto "Already have an account?" alineado correctamente
+        // Texto "Already have an account?"
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
