@@ -1,16 +1,27 @@
 package com.isis3510.growhub.view.auth
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.*
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.tooling.preview.Preview
@@ -32,32 +43,26 @@ fun RegisterScreen(
     val uiState by viewModel.uiState.collectAsState()
     val primaryBlue = Color(0xFF5669FF)
 
-    // Para mostrar/ocultar contraseñas
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
 
-    // --------------------------
-    // ERRORES LOCALES POR CAMPO
-    // --------------------------
     var nameError by remember { mutableStateOf<String?>(null) }
     var emailError by remember { mutableStateOf<String?>(null) }
     var roleError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
 
-    // Para el menú desplegable
-    var expanded by remember { mutableStateOf(false) }
+    // Para menú básico (sin ExposedDropdownMenu)
+    var roleMenuExpanded by remember { mutableStateOf(false) }
     val selectedRole = uiState.userRole ?: "Select a role"
     val roles = listOf("Host", "Attendee")
 
-    // UI
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.Start
     ) {
-        // Flecha de regreso
         IconButton(
             onClick = { onNavigateBack() },
             modifier = Modifier
@@ -71,7 +76,6 @@ fun RegisterScreen(
             )
         }
 
-        // Título "Sign up"
         Text(
             text = "Sign up",
             style = MaterialTheme.typography.headlineMedium.copy(fontSize = 30.sp),
@@ -83,14 +87,18 @@ fun RegisterScreen(
             value = uiState.name,
             onValueChange = {
                 viewModel.onNameChange(it)
-                nameError = null // Limpiar error si el usuario empieza a escribir
+                nameError = null
             },
             label = { Text("Full name") },
-            isError = (nameError != null), // mostrar borde rojo si hay error
-            modifier = Modifier
-                .fillMaxWidth()
+            isError = (nameError != null),
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.image_30113480),
+                    contentDescription = "User Icon"
+                )
+            }
         )
-        // Mensaje de error de "Full name"
         nameError?.let {
             Text(
                 text = it,
@@ -109,10 +117,14 @@ fun RegisterScreen(
             },
             label = { Text("Email") },
             isError = (emailError != null),
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.image_30113480),
+                    contentDescription = "Email Icon"
+                )
+            }
         )
-        // Mensaje de error de "Email"
         emailError?.let {
             Text(
                 text = it,
@@ -122,27 +134,35 @@ fun RegisterScreen(
             )
         }
 
-        // User Type
-        ExposedDropdownMenuBox(
-            expanded = expanded,
-            onExpandedChange = { expanded = !expanded }
-        ) {
+        // User Role (DropdownMenu SIN ExposedDropdownMenu)
+        Box {
             OutlinedTextField(
                 value = selectedRole,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("User Role") },
-                trailingIcon = {
-                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                },
                 isError = (roleError != null),
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .menuAnchor()
+                    .fillMaxWidth(),
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.image_30113480),
+                        contentDescription = "Role Icon"
+                    )
+                },
+                trailingIcon = {
+                    IconButton(onClick = { roleMenuExpanded = !roleMenuExpanded }) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.arrow_drop_down),
+                            contentDescription = "Expand or Collapse"
+                        )
+                    }
+                }
             )
-            ExposedDropdownMenu(
-                expanded = expanded,
-                onDismissRequest = { expanded = false }
+            DropdownMenu(
+                expanded = roleMenuExpanded,
+                onDismissRequest = { roleMenuExpanded = false },
+                modifier = Modifier.fillMaxWidth()
             ) {
                 roles.forEach { role ->
                     DropdownMenuItem(
@@ -150,13 +170,12 @@ fun RegisterScreen(
                         onClick = {
                             viewModel.onUserRoleChange(role)
                             roleError = null
-                            expanded = false
+                            roleMenuExpanded = false
                         }
                     )
                 }
             }
         }
-        // Error de rol
         roleError?.let {
             Text(
                 text = it,
@@ -174,8 +193,8 @@ fun RegisterScreen(
                 passwordError = null
             },
             label = { Text("Your password") },
-            visualTransformation = if (passwordVisible)
-                VisualTransformation.None else PasswordVisualTransformation(),
+            visualTransformation =
+            if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 IconButton(onClick = { passwordVisible = !passwordVisible }) {
                     Icon(
@@ -187,12 +206,15 @@ fun RegisterScreen(
                     )
                 }
             },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             isError = (passwordError != null),
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.image_3147576),
+                    contentDescription = "Lock Icon"
+                )
+            }
         )
-        // Error de password
         passwordError?.let {
             Text(
                 text = it,
@@ -210,8 +232,8 @@ fun RegisterScreen(
                 confirmPasswordError = null
             },
             label = { Text("Confirm password") },
-            visualTransformation = if (confirmPasswordVisible)
-                VisualTransformation.None else PasswordVisualTransformation(),
+            visualTransformation =
+            if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
                 IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
                     Icon(
@@ -219,16 +241,20 @@ fun RegisterScreen(
                             id = if (confirmPasswordVisible) R.drawable.ic_eye_closed
                             else R.drawable.ic_eye_open
                         ),
-                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password"
+                        contentDescription =
+                        if (confirmPasswordVisible) "Hide password" else "Show password"
                     )
                 }
             },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             isError = (confirmPasswordError != null),
-            modifier = Modifier
-                .fillMaxWidth()
+            modifier = Modifier.fillMaxWidth(),
+            leadingIcon = {
+                Icon(
+                    painter = painterResource(id = R.drawable.image_3147576),
+                    contentDescription = "Lock Icon"
+                )
+            }
         )
-        // Error de confirm password
         confirmPasswordError?.let {
             Text(
                 text = it,
@@ -240,13 +266,11 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // Loading indicator
         if (uiState.isLoading) {
             CircularProgressIndicator()
             Spacer(modifier = Modifier.height(16.dp))
         }
 
-        // Error global de Firebase o de la lógica en ViewModel
         uiState.errorMessage?.let { error ->
             Text(
                 text = error,
@@ -255,12 +279,9 @@ fun RegisterScreen(
             )
         }
 
-        // Botón "Sign Up"
         Button(
             onClick = {
-                // 1) Validar campos vacíos
                 var hasError = false
-
                 if (uiState.name.isBlank()) {
                     nameError = "Please enter your full name."
                     hasError = true
@@ -284,13 +305,10 @@ fun RegisterScreen(
                     confirmPasswordError = "Please confirm your password."
                     hasError = true
                 }
-
-                // 2) Si no hay errores "vacíos", checamos contraseñas
                 if (!hasError) {
                     if (uiState.password != uiState.confirmPassword) {
                         confirmPasswordError = "Passwords do not match."
                     } else {
-                        // 3) Si todo está bien, registramos al usuario
                         viewModel.registerUser { onRegisterSuccess() }
                     }
                 }
@@ -306,7 +324,6 @@ fun RegisterScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // Texto "Already have an account?"
         Row(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
@@ -331,7 +348,6 @@ fun RegisterScreenPreview() {
         onConfirmPasswordChange("password")
         onUserRoleChange("Host")
     }
-
     GrowhubTheme {
         RegisterScreen(
             viewModel = previewViewModel,
