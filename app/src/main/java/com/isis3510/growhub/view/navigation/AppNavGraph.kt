@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.isis3510.growhub.view.HomeScreen
 import com.isis3510.growhub.view.auth.LoginScreen
+import com.isis3510.growhub.view.home.MainView
 //import com.isis3510.growhub.view.auth.RegisterScreen
 
 object Destinations {
@@ -42,7 +43,7 @@ fun AppNavGraph(
 
         //composable(Destinations.REGISTER)
         composable(Destinations.HOME) {
-            HomeScreen(
+            MainView(
                 onLogout = {
                     // Regresa a login
                     navController.navigate(Destinations.LOGIN) {
