@@ -52,16 +52,12 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
  * Created by: Juan Manuel Jáuregui
  */
 
-// Main View Function
-@Composable
-fun MainView() {
-    ProfileView()
-}
-
-
 // Profile View Function
 @Composable
-fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
+fun ProfileView(
+    viewModel: ProfileViewModel = viewModel(),
+    onNavigateBack: () -> Unit = {},
+    onNavigateToEditProfile: () -> Unit = {}) {
 
     val profileList = viewModel.profile
 
@@ -86,7 +82,7 @@ fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 IconButton(
-                    onClick = { /* Handle back button click */ },
+                    onClick = { onNavigateBack() }
                 ) {
                     Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                 }
@@ -112,7 +108,7 @@ fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
                 )
             } else {
                 Image(
-                    painter = painterResource(id = R.drawable.ic_growhub), // Default profile image
+                    painter = painterResource(id = R.drawable.ic_growhub),
                     contentDescription = "Default Profile Picture",
                     modifier = Modifier
                         .size(120.dp)
@@ -166,7 +162,7 @@ fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
 
                 // Button
-                OutlinedButton(onClick = { /* Handle edit profile */ },
+                OutlinedButton(onClick = { onNavigateToEditProfile() },
                     modifier = Modifier
                         .fillMaxWidth(0.5f)
                         .height(48.dp),
@@ -215,7 +211,7 @@ fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
             Spacer(modifier = Modifier.height(16.dp))
 
             // Interests
-            InterestsSection(profile.interests)
+            InterestsSection(profile.interests, onNavigateToEditProfile)
         }
     }
 }
@@ -223,7 +219,7 @@ fun ProfileView(viewModel: ProfileViewModel = viewModel()) {
 // Interests Section Function
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun InterestsSection(interests: List<String>) {
+fun InterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Unit) {
     val colors = listOf(
         Color(0xFF6B7AED),  // Violet
         Color(0xFFEE544A),  // Red
@@ -247,7 +243,7 @@ fun InterestsSection(interests: List<String>) {
             )
 
             OutlinedButton(
-                onClick = { /* Handle change action */ },
+                onClick = { onNavigateToEditProfile() },
                 shape = RoundedCornerShape(50),
                 modifier = Modifier
                     .height(30.dp)
@@ -317,7 +313,7 @@ fun ProfileViewPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            MainView()
+            ProfileView()
         }
     }
 }
