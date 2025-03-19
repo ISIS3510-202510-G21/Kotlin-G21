@@ -19,6 +19,7 @@ import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.R
 import androidx.compose.ui.graphics.Color
 
+
 @Composable
 fun LoginScreen(
     viewModel: AuthViewModel = viewModel(),

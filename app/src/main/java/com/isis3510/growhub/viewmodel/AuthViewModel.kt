@@ -137,7 +137,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                         email = state.email.trim(),
                         name = state.name,
                         userType = selectedRole,
-                        username = ""  // Opcional
                     )
 
                     firestore.collection("users")
