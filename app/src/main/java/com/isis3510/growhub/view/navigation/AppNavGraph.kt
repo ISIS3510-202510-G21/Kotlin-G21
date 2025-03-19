@@ -71,6 +71,7 @@ fun AppNavGraph(
 
         composable(Destinations.PROFILE) {
             ProfileView(
+                navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.PROFILE) { inclusive = true }

@@ -27,6 +27,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
@@ -43,8 +44,11 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
+import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
@@ -57,169 +61,166 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
 fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
-    onNavigateToEditProfile: () -> Unit = {}) {
+    onNavigateToEditProfile: () -> Unit = {},
+    navController: NavController
+) {
+    Scaffold(
+        topBar = { ProfileHeader(onNavigateBack) },
+        bottomBar = {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+            ) {
+                BottomNavigationBar(navController = navController)
+            }
+        },
+        containerColor = Color.White
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+        ) {
+            ProfileContent(viewModel, onNavigateToEditProfile)
+        }
+    }
+}
 
+@Composable
+fun ProfileContent(
+    viewModel: ProfileViewModel,
+    onNavigateToEditProfile: () -> Unit
+) {
     val profileList = viewModel.profile
-
-    //val profile by remember { profileViewModel.profile }
-
     if (profileList.isNotEmpty()) {
         val profile = profileList[0]
-
-        // Base Column Widget
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(horizontal = 16.dp),
         ) {
-
-            // Space between the Top and Arrow
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Arrow Back
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = { onNavigateBack() }
-                ) {
-                    Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                }
-
-                // Profile Title
-                Text(text = "Profile", fontSize = 24.sp)
-            }
-
-            // Space between Profile Title and Profile Image
+            ProfileImage(profile.profilePictureUrl)
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Profile Image
-            if (profile.profilePictureUrl.isNotEmpty()) {
-                Image(
-                    painter = rememberAsyncImagePainter(profile.profilePictureUrl),
-                    contentDescription = "Profile Picture",
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Color.Gray, CircleShape)
-                        .align(Alignment.CenterHorizontally),
-                    contentScale = ContentScale.Crop
-                )
-            } else {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_growhub),
-                    contentDescription = "Default Profile Picture",
-                    modifier = Modifier
-                        .size(120.dp)
-                        .clip(CircleShape)
-                        .border(2.dp, Color.Gray, CircleShape)
-                        .align(Alignment.CenterHorizontally),
-                    contentScale = ContentScale.Crop
-                )
-            }
-
-            // Space between Profile Picture and Name
+            ProfileName(profile.name)
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Name
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-                Text(
-                    text = profile.name.ifEmpty { "Loading..." },
-                    fontSize = 30.sp,
-                    fontWeight = FontWeight.Bold
-                )
-            }
-
-            // Space between Name and Following / Followers
+            ProfileStats(profile.following, profile.followers)
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Following / Followers
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${profile.following}", fontWeight = FontWeight.Bold)
-                    Text(text = "Following")
-                }
-                VerticalDivider(
-                    color = Color.Gray,
-                    modifier = Modifier
-                        .height(32.dp)
-                        .width(1.dp)
-                )
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text(text = "${profile.followers}", fontWeight = FontWeight.Bold)
-                    Text(text = "Followers")
-                }
-            }
-
-            // Space between Following / Followers and Edit Profile Button
+            EditProfileButton(onNavigateToEditProfile)
             Spacer(modifier = Modifier.height(32.dp))
-
-            // Edit Profile Button
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-
-                // Button
-                OutlinedButton(onClick = { onNavigateToEditProfile() },
-                    modifier = Modifier
-                        .fillMaxWidth(0.5f)
-                        .height(48.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    border = BorderStroke(2.dp, Color(0xFF5669FF)),
-                    colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))) {
-
-                    // Row for Icon and Text
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(
-                            painter = painterResource(id = R.drawable.ic_edit),
-                            contentDescription = "Edit Profile",
-                            tint = Color(0xFF5669FF)
-                        )
-
-                        // Space between Icon and Text
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        // Text for Edit Profile
-                        Text(
-                            text = "Edit Profile",
-                            color = Color(0xFF5669FF),
-                            fontSize = 16.sp
-                        )
-                    }
-                }
-            }
-
-            // Space between Edit Profile and About Me
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // About Me
-            Text(
-                text = "About Me",
-                fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                textAlign = TextAlign.Left
-            )
-            Spacer(modifier = Modifier.height(8.dp))
-            Text(
-                text = profile.aboutMe,
-                textAlign = TextAlign.Justify
-            )
-
-            // Space between About Me and Interests
+            ProfileAbout(profile.aboutMe)
             Spacer(modifier = Modifier.height(16.dp))
-
-            // Interests
-            InterestsSection(profile.interests, onNavigateToEditProfile)
+            ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
         }
     }
+}
+
+@Composable
+fun ProfileHeader(onNavigateBack: () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = onNavigateBack) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        }
+        Text(text = "Profile", fontSize = 24.sp)
+    }
+}
+
+@Composable
+fun ProfileImage(profilePictureUrl: String) {
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        if (profilePictureUrl.isNotEmpty()) {
+            Image(
+                painter = rememberAsyncImagePainter(profilePictureUrl),
+                contentDescription = "Profile Picture",
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.Gray, CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        } else {
+            Image(
+                painter = painterResource(id = R.drawable.ic_growhub),
+                contentDescription = "Default Profile Picture",
+                modifier = Modifier
+                    .size(120.dp)
+                    .clip(CircleShape)
+                    .border(2.dp, Color.Gray, CircleShape),
+                contentScale = ContentScale.Crop
+            )
+        }
+    }
+}
+
+@Composable
+fun ProfileName(name: String) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        Text(text = name.ifEmpty { "Loading..." }, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+fun ProfileStats(following: Int, followers: Int) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "$following", fontWeight = FontWeight.Bold)
+            Text(text = "Following")
+        }
+        VerticalDivider(
+            color = Color.Gray,
+            modifier = Modifier.height(32.dp).width(1.dp)
+        )
+        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+            Text(text = "$followers", fontWeight = FontWeight.Bold)
+            Text(text = "Followers")
+        }
+    }
+}
+
+@Composable
+fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+        OutlinedButton(
+            onClick = onNavigateToEditProfile,
+            modifier = Modifier.fillMaxWidth(0.5f).height(48.dp),
+            shape = RoundedCornerShape(16.dp),
+            border = BorderStroke(2.dp, Color(0xFF5669FF)),
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))
+        ) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_edit),
+                    contentDescription = "Edit Profile",
+                    tint = Color(0xFF5669FF)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(text = "Edit Profile", color = Color(0xFF5669FF), fontSize = 16.sp)
+            }
+        }
+    }
+}
+
+@Composable
+fun ProfileAbout(aboutMe: String) {
+    Text(text = "About Me", fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Left)
+    Spacer(modifier = Modifier.height(8.dp))
+    Text(text = aboutMe, textAlign = TextAlign.Justify)
 }
 
 // Interests Section Function
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun InterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Unit) {
+fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Unit) {
     val colors = listOf(
         Color(0xFF6B7AED),  // Violet
         Color(0xFFEE544A),  // Red
@@ -280,7 +281,7 @@ fun InterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Uni
             interests.forEachIndexed { index, interest ->
                 val color = colors[index % colors.size] // Assign colors cyclically
 
-                InterestChip(text = interest, backgroundColor = color)
+                ProfileInterestChip(text = interest, backgroundColor = color)
 
                 Spacer(modifier = Modifier.width(8.dp))
             }
@@ -290,7 +291,7 @@ fun InterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Uni
 
 // Interest Chip Function
 @Composable
-fun InterestChip(text: String, backgroundColor: Color) {
+fun ProfileInterestChip(text: String, backgroundColor: Color) {
 
     // Chip Box
     Box(
@@ -308,12 +309,15 @@ fun InterestChip(text: String, backgroundColor: Color) {
 @Preview(showBackground = true)
 @Composable
 fun ProfileViewPreview() {
+
+    val navController = rememberNavController()
+
     GrowhubTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            ProfileView()
+            ProfileView(navController = navController, onNavigateBack = {}, onNavigateToEditProfile = {})
         }
     }
 }
