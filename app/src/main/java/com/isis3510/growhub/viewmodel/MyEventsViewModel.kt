@@ -3,26 +3,18 @@ package com.isis3510.growhub.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.viewModelScope
-import com.isis3510.growhub.R
 import kotlinx.coroutines.launch
+import com.isis3510.growhub.model.objects.Event
 
-// Event Data Class (meanwhile)
-data class Event(
-    val id: String = "",
-    val imageRes: Int = 0,
-    val date: String = "",
-    val title: String = "",
-    var isPaid: Boolean = true
-)
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
 
-// My Events View Model
 class MyEventsViewModel : ViewModel() {
 
-    // Events list
     val upcomingEvents = mutableStateListOf<Event>()
     val previousEvents = mutableStateListOf<Event>()
 
-    // Connection to Firebase
     //private val auth = FirebaseAuth.getInstance()
     //private val db = FirebaseFirestore.getInstance()
 
@@ -33,10 +25,10 @@ class MyEventsViewModel : ViewModel() {
     private fun loadEvents() {
         viewModelScope.launch {
             val mockData = listOf(
-                Event("1", R.drawable.event1, "Wed, Apr 28 - 5:30 PM", "A Virtual Evening of Smooth Jazz", true),
-                Event("2", R.drawable.event2, "Wed, Apr 28 - 5:30 PM", "A Virtual Evening of Smooth Jazz", false),
-                Event("3", R.drawable.event3, "Thu, Mar 6 - 1:30 PM", "International Gala Music Festival", true),
-                Event("4", R.drawable.event4, "Wed, Feb 25 - 3:30 PM", "Women Leadership Conference", true),
+                Event("1", "El Riqué (México) 5to Cir...", "Bogotá, Colombia", "February 26, 2025", "Music", "mock_image", 100.0),
+                Event("2", "IEEE Zona Centro", "Bogotá, Colombia", "March 1, 2025", "Technology", "mock_image", 0.0),
+                Event("3", "Taller Entrevista", "Bogotá, Colombia", "March 4, 2025", "Business", "mock_image", 10.0),
+                Event("4", "XXIV Jornadas C...", "Bogotá, Colombia", "February 25, 2025", "Science", "mock_image", 50.0)
             )
             upcomingEvents.addAll(mockData.take(2))
             previousEvents.addAll(mockData.takeLast(2))
@@ -49,7 +41,7 @@ class MyEventsViewModel : ViewModel() {
             viewModelScope.launch {
                 try {
                     val snapshot = db.collection("events")
-                        .whereArrayContains("attendees", user.uid) // Fetch events where user is an attendee
+                        .whereArrayContains("attendees", user.uid)
                         .get()
                         .await()
 
@@ -84,7 +76,6 @@ class MyEventsViewModel : ViewModel() {
             }
         }
 
-        // Helper function to parse Firestore date string
         private fun parseDate(dateString: String): Date? {
             return try {
                 val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())

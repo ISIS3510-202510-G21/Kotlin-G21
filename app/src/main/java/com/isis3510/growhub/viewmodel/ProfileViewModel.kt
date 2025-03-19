@@ -3,25 +3,17 @@ package com.isis3510.growhub.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.viewModelScope
+import com.isis3510.growhub.model.objects.Profile
 import kotlinx.coroutines.launch
 
-// Profile Data Class (meanwhile)
-data class Profile (
-    val name: String = "",
-    val following: Int = 0,
-    val followers: Int = 0,
-    val aboutMe: String = "",
-    val interests: List<String> = listOf(),
-    val profilePictureUrl: String = ""
-)
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
 
-// Profile View Model
 class ProfileViewModel : ViewModel() {
 
-    // Profile List
     val profile = mutableStateListOf<Profile>()
 
-    // Connection to Firebase
     //private val auth = FirebaseAuth.getInstance()
     //private val db = FirebaseFirestore.getInstance()
 
@@ -29,7 +21,6 @@ class ProfileViewModel : ViewModel() {
         loadMockProfile()
     }
 
-    // Load Mock Profile
     private fun loadMockProfile() {
         viewModelScope.launch {
             val mockData = listOf(
@@ -44,7 +35,6 @@ class ProfileViewModel : ViewModel() {
 //        if (user != null) {
 //            viewModelScope.launch {
 //                try {
-//                    // Query the Firestore collection where the user ID matches
 //                    val snapshot = db.collection("profiles")
 //                        .whereEqualTo("user_ref", user.uid)
 //                        .limit(1)

@@ -8,6 +8,7 @@ import androidx.navigation.compose.composable
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
+import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.profile.ProfileView
 
 //import com.isis3510.growhub.view.auth.RegisterScreen
@@ -66,7 +67,14 @@ fun AppNavGraph(
         }
 
         composable(Destinations.MY_EVENTS) {
-            PlaceholderScreen("MY_EVENTS")
+            MyEventsView(
+                navController = navController,
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.MY_EVENTS) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Destinations.PROFILE) {
