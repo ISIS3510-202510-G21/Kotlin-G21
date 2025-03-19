@@ -25,24 +25,31 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavController
 import com.isis3510.growhub.R
 
 
 // Bottom Navigation Bar
 @Composable
-fun BottomNavigationBar() {
-    val navItems = listOf("Home", "Map", "Add", "My Events", "Profile")
-    var selectedItem by remember { mutableStateOf("Home") }
+fun BottomNavigationBar(navController: NavController) {
+    val navItems = listOf(
+        Destinations.HOME to "Home",
+        Destinations.MAP to "Map",
+        "Add" to "Add",
+        Destinations.MY_EVENTS to "My Events",
+        Destinations.PROFILE to "Profile"
+    )
+    var selectedItem by remember { mutableStateOf(Destinations.HOME) }
+
 
     NavigationBar(
         containerColor = Color.White,
-        modifier = Modifier
-            .fillMaxWidth()
+        modifier = Modifier.fillMaxWidth()
     ) {
-        navItems.forEach { item ->
+        navItems.forEach { (route, label) ->
             NavigationBarItem(
                 icon = {
-                    if (item == "Add") {
+                    if (route == "Add") {
                         Box(
                             modifier = Modifier
                                 .size(48.dp)
@@ -52,7 +59,7 @@ fun BottomNavigationBar() {
                         ) {
                             Icon(
                                 imageVector = Icons.Default.Add,
-                                contentDescription = "Add",
+                                contentDescription = "Create",
                                 tint = Color.White,
                                 modifier = Modifier.size(32.dp)
                             )
@@ -60,38 +67,42 @@ fun BottomNavigationBar() {
                     } else {
                         Icon(
                             painter = painterResource(
-                                id = when (item) {
-                                    "Home" -> R.drawable.home
-                                    "Map" -> R.drawable.map
-                                    "My Events" -> R.drawable.events
-                                    "Profile" -> R.drawable.profile
+                                id = when (route) {
+                                    Destinations.HOME -> R.drawable.home
+                                    Destinations.MAP -> R.drawable.map
+                                    Destinations.MY_EVENTS -> R.drawable.events
+                                    Destinations.PROFILE -> R.drawable.profile
                                     else -> R.drawable.home
                                 }
                             ),
-                            contentDescription = item,
-                            tint = if (selectedItem == item) Color(0xFF5669FF) else Color(0xFFDCD9D9),
+                            contentDescription = label,
+                            tint = if (selectedItem == route) Color(0xFF5669FF) else Color(0xFFDCD9D9),
                             modifier = Modifier.size(28.dp)
                         )
                     }
                 },
                 label = {
-                    if (item != "Add") {
+                    if (route != "Add") {
                         Text(
-                            text = item,
-                            color = if (selectedItem == item) Color(0xFF5669FF) else Color(0xFFDCD9D9)
+                            text = label,
+                            color = if (selectedItem == route) Color(0xFF5669FF) else Color(0xFFDCD9D9)
                         )
                     }
                 },
-                selected = selectedItem == item,
+                selected = selectedItem == route,
                 colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White),
-                onClick = { selectedItem = item }
+                onClick = {
+                    if (route == "Add") {
+                        navController.navigate(Destinations.CREATE)
+                    } else {
+                        selectedItem = route
+                        navController.navigate(route) {
+                            popUpTo(Destinations.HOME) { inclusive = false }
+                            launchSingleTop = true
+                        }
+                    }
+                }
             )
         }
     }
-}
-
-@Composable
-@Preview(showBackground = true)
-fun Preview() {
-    BottomNavigationBar()
 }

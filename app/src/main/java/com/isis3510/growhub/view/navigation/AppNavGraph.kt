@@ -5,15 +5,19 @@ import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import com.isis3510.growhub.view.HomeScreen
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.home.MainView
+import com.isis3510.growhub.view.dummy.PlaceholderScreen
 //import com.isis3510.growhub.view.auth.RegisterScreen
 
 object Destinations {
     const val LOGIN = "login"
-    const val REGISTER = "register"
     const val HOME = "home"
+    const val REGISTER = "register"
+    const val MAP = "map"
+    const val MY_EVENTS = "my_events"
+    const val PROFILE = "profile"
+    const val CREATE = "create"
 }
 
 @Composable
@@ -30,7 +34,7 @@ fun AppNavGraph(
         composable(Destinations.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Si el login es exitoso, navega al Home
+                    // Successful login will take us Home
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.LOGIN) { inclusive = true }
                     }
@@ -44,13 +48,30 @@ fun AppNavGraph(
         //composable(Destinations.REGISTER)
         composable(Destinations.HOME) {
             MainView(
+                navController = navController,
                 onLogout = {
-                    // Regresa a login
+                    // Returns us to login
                     navController.navigate(Destinations.LOGIN) {
                         popUpTo(Destinations.HOME) { inclusive = true }
                     }
                 }
             )
+        }
+
+        composable(Destinations.MAP) {
+            PlaceholderScreen("MAP")
+        }
+
+        composable(Destinations.MY_EVENTS) {
+            PlaceholderScreen("MY_EVENTS")
+        }
+
+        composable(Destinations.PROFILE) {
+            PlaceholderScreen("PROFILE")
+        }
+
+        composable(Destinations.CREATE) {
+            PlaceholderScreen("CREATE")
         }
     }
 }

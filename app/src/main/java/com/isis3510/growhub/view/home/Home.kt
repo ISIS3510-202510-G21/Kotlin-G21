@@ -33,13 +33,13 @@ import com.isis3510.growhub.viewmodel.HomeViewModel
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
-import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.isis3510.growhub.utils.advancedShadow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.isis3510.growhub.viewmodel.Event
 import com.isis3510.growhub.viewmodel.AuthViewModel
@@ -47,7 +47,7 @@ import com.isis3510.growhub.viewmodel.Category
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 
 @Composable
-fun MainView(onLogout: () -> Unit) {
+fun MainView(navController: NavHostController, onLogout: () -> Unit) {
     Scaffold(
         topBar = { TopBoxRenderer(onLogout = onLogout) },
         bottomBar = {
@@ -57,7 +57,7 @@ fun MainView(onLogout: () -> Unit) {
                     .background(Color.White)
                     .clipToBounds()
             ) {
-                BottomNavigationBar()
+                BottomNavigationBar(navController = navController)
             }
         },
         containerColor = Color.White
@@ -81,11 +81,9 @@ fun MainView(onLogout: () -> Unit) {
 
 @Composable
 fun TopBoxRenderer(
-    // viewModel: AuthViewModel = viewModel(),
+    viewModel: AuthViewModel = viewModel(),
     onLogout: () -> Unit
 ) {
-    // val uiState = viewModel.uiState.collectAsState().value
-
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -99,7 +97,7 @@ fun TopBoxRenderer(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Sección de ubicación y logout
+            // Logout and Location section
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -107,7 +105,7 @@ fun TopBoxRenderer(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                Spacer(modifier = Modifier.weight(1f)) // Empuja el texto al centro
+                Spacer(modifier = Modifier.weight(1f)) // Centers the text
 
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally
@@ -125,7 +123,7 @@ fun TopBoxRenderer(
                     )
                 }
 
-                Spacer(modifier = Modifier.weight(1f)) // Empuja el icono a la derecha
+                Spacer(modifier = Modifier.weight(1f)) // Pushes the icon left
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ExitToApp,
                     contentDescription = "Logout",
@@ -133,13 +131,13 @@ fun TopBoxRenderer(
                     modifier = Modifier
                         .size(24.dp)
                         .clickable {
-                            // viewModel.logoutUser() // 🔹 Se mantiene comentado
+                            viewModel.logoutUser()
                             onLogout()
                         }
                 )
             }
 
-            // Barra de búsqueda
+            // Search bar on top renderer
             Box(
                 modifier = Modifier
                     .fillMaxWidth(0.9f)
@@ -374,12 +372,14 @@ fun EventBox(event: Event) {
 @Preview(showBackground = true)
 @Composable
 fun MainViewPreview() {
+    val navController = rememberNavController()
+
     GrowhubTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            MainView(onLogout = {})
+            MainView(navController = navController, onLogout = {})
         }
     }
 }
