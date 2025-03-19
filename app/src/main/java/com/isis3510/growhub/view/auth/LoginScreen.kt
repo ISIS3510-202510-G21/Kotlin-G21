@@ -28,6 +28,8 @@ import com.isis3510.growhub.FakeApplication
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.R
+import androidx.compose.material3.Icon
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,7 +49,10 @@ fun LoginScreen(
             .padding(horizontal = 16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
+        ) {
             Image(
                 painter = painterResource(id = R.drawable.growhub_icon),
                 contentDescription = "GrowHub Icon",
@@ -76,9 +81,15 @@ fun LoginScreen(
                     emailError = null
                 },
                 label = { Text("Email") },
-                placeholder = { Text("example@email.com") },
+                placeholder = { Text("abc@email.com") },
                 isError = (emailError != null),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_email),
+                        contentDescription = "Email Icon"
+                    )
+                }
             )
             emailError?.let {
                 Text(
@@ -99,7 +110,13 @@ fun LoginScreen(
                 placeholder = { Text("Your password") },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
                 isError = (passwordError != null),
-                modifier = Modifier.fillMaxWidth()
+                modifier = Modifier.fillMaxWidth(),
+                leadingIcon = {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_lock),
+                        contentDescription = "Lock Icon"
+                    )
+                }
             )
             passwordError?.let {
                 Text(
@@ -169,7 +186,11 @@ fun LoginScreen(
                 Text("SIGN IN", color = Color.White)
             }
             Spacer(modifier = Modifier.height(24.dp))
-            Row(horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Row(
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.fillMaxWidth()
+            ) {
                 Text(text = "Don’t have an account?")
                 TextButton(onClick = { onNavigateToRegister() }) {
                     Text("Sign Up", color = primaryBlue)
