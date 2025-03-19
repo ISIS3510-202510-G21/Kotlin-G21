@@ -16,8 +16,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.ArrowDropDown
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -40,182 +39,138 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import com.isis3510.growhub.utils.advancedShadow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import com.isis3510.growhub.viewmodel.Event
-import com.isis3510.growhub.view.BottomNavBar
-import com.isis3510.growhub.view.navigation.AppNavHost
+import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.Category
+import com.isis3510.growhub.view.navigation.BottomNavigationBar
 
 @Composable
-fun MainView() {
-    // This is the whole screen renderer
-    Box(
-        contentAlignment = Alignment.TopStart,
-        modifier = Modifier
-            .background(Color(0xffffffff))
-            .size(412.dp, 917.dp)
-            .clipToBounds(),
-    ) {
-        TopBoxRenderer()
-        CategoryColorButtons()
-        EventSliders()
-    }
-}
-
-/*
-@Composable
-fun NavigationBar() {
-    val navController = rememberNavController()
+fun MainView(navController: NavHostController, onLogout: () -> Unit) {
     Scaffold(
+        topBar = { TopBoxRenderer(onLogout = onLogout) },
         bottomBar = {
-            BottomNavBar(navController = navController)
-        }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color.White)
+                    .clipToBounds()
+            ) {
+                BottomNavigationBar(navController = navController)
+            }
+        },
+        containerColor = Color.White
     ) { innerPadding ->
         Box(
             modifier = Modifier
+                .fillMaxSize()
                 .padding(innerPadding)
         ) {
-            // This is the whole screen renderer
-            Box(
-                contentAlignment = Alignment.TopStart,
-                modifier = Modifier
-                    .background(Color(0xffffffff))
-                    .size(412.dp, 917.dp)
-                    .clipToBounds(),
-            ) {
-                TopBoxRenderer()
-                CategoryColorButtons()
-                EventSliders()
+            // CategoryColorButtons always in the superior part
+            CategoryColorButtons(modifier = Modifier.fillMaxWidth())
+
+            // In landscape, we force the sliders to whole screen
+            Box(modifier = Modifier.fillMaxSize()) {
+                EventSliders(modifier = Modifier.fillMaxSize())
             }
         }
     }
 }
-*/
+
 
 @Composable
-fun TopBoxRenderer(viewModel: HomeViewModel = viewModel()) {
-    // This is the top thing renderer
+fun TopBoxRenderer(
+    viewModel: AuthViewModel = viewModel(),
+    onLogout: () -> Unit
+) {
     Box(
-        contentAlignment = Alignment.TopStart,
         modifier = Modifier
-            .offset(x = 0.dp, y = (-48).dp)
-            .size(412.dp, 228.dp),
+            .fillMaxWidth()
+            .padding(bottom = 11.dp)
+            .height(160.dp)
+            .clip(RoundedCornerShape(bottomStart = 36.dp, bottomEnd = 36.dp))
+            .background(Color(0xff4a43ec)),
+        contentAlignment = Alignment.Center
     ) {
-        // This makes it be rounded at the bottom left and right
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .background(Color(0xff4a43ec), RoundedCornerShape(36.dp))
-                .size(412.dp, 228.dp),
-        )
-        // This is used to hide the upper bound
-        Box(
-            contentAlignment = Alignment.TopStart,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 0.dp, y = 75.dp)
-                .size(394.dp, 55.dp),
+        Column(
+            modifier = Modifier.fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Component that holds the Current Location
-            Box(
-                contentAlignment = Alignment.TopStart,
+            // Logout and Location section
+            Row(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 158.dp, y = 14.dp)
-                    .size(105.dp, 20.dp),
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                // Icon for arrow (Material UI)
+                Spacer(modifier = Modifier.weight(1f)) // Centers the text
+
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Text(
+                        text = "Current Location",
+                        color = Color.White,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "Bogotá, Colombia",
+                        color = Color.White,
+                        fontSize = 11.sp
+                    )
+                }
+
+                Spacer(modifier = Modifier.weight(1f)) // Pushes the icon left
                 Icon(
-                    imageVector = Icons.Default.ArrowDropDown,
-                    contentDescription = "Dropdown Arrow",
+                    imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                    contentDescription = "Logout",
                     tint = Color.White,
                     modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .offset(x = 100.dp)
-                        .size(16.dp, 16.dp),
-                )
-                // Text for Current Location
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .wrapContentSize(),
-                    text = "Current Location",
-                    color = Color(0xffffffff),
-                    fontSize = 12.sp,
-                    fontWeight = FontWeight.Bold,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                // Text for Bogota, Colombia
-                Text(
-                    modifier = Modifier
-                        .align(Alignment.TopStart)
-                        .wrapContentSize()
-                        .offset(x = 3.dp, y = 16.dp),
-                    text = "Bogota, Colombia",
-                    color = Color(0xffffffff),
-                    fontSize = 11.sp,
-                    fontWeight = FontWeight.Normal,
-                    textAlign = TextAlign.Center,
-                    overflow = TextOverflow.Ellipsis,
+                        .size(24.dp)
+                        .clickable {
+                            viewModel.logoutUser()
+                            onLogout()
+                        }
                 )
             }
-            // Icon for Account (Material UI)
-            Icon(
-                imageVector = Icons.Default.AccountCircle,
-                contentDescription = "Account Icon",
-                tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 350.dp, y = 16.dp)
-                    .size(24.dp, 24.dp),
-            )
-        }
-        // This renders the search bar embedded in the blue box
-        Box(
-            contentAlignment = Alignment.TopStart,
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .offset(x = 22.dp, y = 140.dp)
-                .size(259.dp, 45.dp),
-        ) {
-            // Icon for Search (Material UI)
-            Icon(
-                imageVector = Icons.Default.Search,
-                contentDescription = "Search Icon",
-                tint = Color.White,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 9.dp, y = 10.dp)
-                    .size(24.dp, 24.dp),
-            )
-            // This renders the Search text in the bar
-            Text(
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(x = 35.479.dp, y = 13.dp)
-                    .size(86.4.dp, 19.286.dp),
-                text = "Search",
-                color = Color(0xffffffff),
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Normal,
-                textAlign = TextAlign.Left,
-                overflow = TextOverflow.Ellipsis,
-            )
-            // This renders the Search field
+
+            // Search bar on top renderer
             Box(
                 modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .background(Color(0x00d9d9d9), RoundedCornerShape(10.dp))
-                    .size(259.dp, 45.dp)
-                    .border(2.dp, Color(0xffffffff), RoundedCornerShape(10.dp)),
-            )
+                    .fillMaxWidth(0.9f)
+                    .height(45.dp)
+                    .background(Color.White, RoundedCornerShape(10.dp))
+                    .border(2.dp, Color.White, RoundedCornerShape(10.dp)),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Row(
+                    modifier = Modifier.padding(start = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Search,
+                        contentDescription = "Search Icon",
+                        tint = Color.Gray,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Text(
+                        text = "Search",
+                        color = Color.Gray,
+                        fontSize = 14.sp,
+                        modifier = Modifier.padding(start = 8.dp)
+                    )
+                }
+            }
         }
     }
 }
 
+
 @Composable
-fun CategoryColorButtons(homeViewModel: HomeViewModel = viewModel()) {
+fun CategoryColorButtons(modifier: Modifier = Modifier, homeViewModel: HomeViewModel = viewModel()) {
     val categories = homeViewModel.categories
 
     val categoryColors = listOf(
@@ -226,14 +181,15 @@ fun CategoryColorButtons(homeViewModel: HomeViewModel = viewModel()) {
 
     Box(
         contentAlignment = Alignment.TopStart,
-        modifier = Modifier
-            .offset(x = 11.dp, y = 194.dp)
+        modifier = modifier
             .fillMaxWidth()
-            .height(41.dp)
+            .height(52.dp)
     ) {
         LazyRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth(),
+            contentPadding = PaddingValues(start = 12.dp, end = 12.dp)
         ) {
             items(categories.size) { index ->
                 val category = categories[index]
@@ -274,17 +230,17 @@ fun CategoryButton(category: Category, color: Color, onClick: () -> Unit) {
 
 
 @Composable
-fun EventSliders(viewModel: HomeViewModel = viewModel()) {
+fun EventSliders(modifier: Modifier = Modifier, viewModel: HomeViewModel = viewModel()) {
     val upcomingEvents = viewModel.upcomingEvents
     val nearbyEvents = viewModel.nearbyEvents
     val recommendedEvents = viewModel.recommendedEvents
 
     LazyColumn(
-        modifier = Modifier
-            .offset(x = 19.dp, y = 250.dp)
+        modifier = modifier
             .fillMaxWidth()
-            .padding(bottom = 20.dp), // Space at the end to avoid problem with scroll
-        verticalArrangement = Arrangement.spacedBy(20.dp) // Space between sections
+            .padding(top = 52.dp),
+        contentPadding = PaddingValues(bottom = 40.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         item {
             EventSection(title = "Upcoming Events", events = upcomingEvents)
@@ -303,15 +259,20 @@ fun EventSection(title: String, events: List<Event>) {
     Column(
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(
-            text = title,
-            color = Color(0xff191d17),
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Normal
-        )
-
+        Box(
+            modifier = Modifier.padding(start = 19.dp)
+        ) {
+            Text(
+                text = title,
+                color = Color(0xff191d17),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Normal
+            )
+        }
         LazyRow(
-            horizontalArrangement = Arrangement.spacedBy(15.dp)
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(15.dp),
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp)
         ) {
             items(events) { event ->
                 EventBox(event)
@@ -325,8 +286,8 @@ fun EventBox(event: Event) {
     Box(
         contentAlignment = Alignment.TopStart,
         modifier = Modifier
-            .size(237.dp, 188.dp)
-            .offset(x = 5.dp, y = 0.dp)
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
     ) {
         Box(
             modifier = Modifier
@@ -411,12 +372,14 @@ fun EventBox(event: Event) {
 @Preview(showBackground = true)
 @Composable
 fun MainViewPreview() {
+    val navController = rememberNavController()
+
     GrowhubTheme {
         Surface(
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            MainView()
+            MainView(navController = navController, onLogout = {})
         }
     }
 }
