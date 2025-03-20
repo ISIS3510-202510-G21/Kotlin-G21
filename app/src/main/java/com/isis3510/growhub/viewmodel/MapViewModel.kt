@@ -29,7 +29,8 @@ class MapViewModel : ViewModel() {
         viewModelScope.launch {
             val mockEvents = listOf(
                 Event("5", "Festival de Jazz", "Medellín, Colombia", "April 10, 2025", "Music", "mock_image", 50.0),
-                Event("6", "Hackathon AI", "Bogotá, Colombia", "April 15, 2025", "Technology", "mock_image", 0.0)
+                Event("6", "Hackathon AI", "Bogotá, Colombia", "April 15, 2025", "Technology", "mock_image", 0.0),
+                Event("7", "Cuidemos el planeta", "Cali, Colombia", "April 17, 2025", "Environment", "mock_image", 10.0)
             )
             nearbyEvents.addAll(mockEvents)
         }

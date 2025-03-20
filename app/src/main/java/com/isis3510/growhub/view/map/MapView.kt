@@ -31,7 +31,6 @@ fun MapView(
 ) {
     Scaffold(
         topBar = { MapTopBar(onNavigateBack) },
-        bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = Color.White
     ) { paddingValues ->
         Column(
@@ -42,6 +41,10 @@ fun MapView(
         ) {
             MapPlaceholder()
             EventsList(viewModel.nearbyEvents)
+        }
+
+        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+            BottomNavigationBar(navController = navController)
         }
     }
 }
@@ -97,7 +100,8 @@ fun EventsList(events: List<Event>) {
     LazyColumn(
         modifier = Modifier
             .fillMaxSize()
-            .padding(horizontal = 16.dp)
+            .padding(horizontal = 16.dp),
+        contentPadding = PaddingValues(bottom = 40.dp)
     ) {
         items(events, key = { it.id }) { event ->
             EventCard(event)
