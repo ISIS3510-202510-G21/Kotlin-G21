@@ -21,10 +21,45 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val authPrefs: AuthPreferences by lazy { AuthPreferences(application) }
     private val firestore: FirebaseFirestore by lazy { FirebaseFirestore.getInstance() }
 
-    /**
-     * Checa si en Firebase hay un currentUser
-     * o si en local storage está marcado como logueado.
-     */
+    init {
+        val savedEmail = authPrefs.getSavedEmail()
+        val savedPass = authPrefs.getSavedPassword()
+        if (!savedEmail.isNullOrBlank() && !savedPass.isNullOrBlank()) {
+            _uiState.value = _uiState.value.copy(
+                email = savedEmail,
+                password = savedPass,
+                rememberMe = true
+            )
+        }
+    }
+
+    fun onEmailChange(newEmail: String) {
+        _uiState.value = _uiState.value.copy(email = newEmail)
+    }
+
+    fun onPasswordChange(newPassword: String) {
+        _uiState.value = _uiState.value.copy(password = newPassword)
+    }
+
+    fun onNameChange(newName: String) {
+        _uiState.value = _uiState.value.copy(name = newName)
+    }
+
+    fun onConfirmPasswordChange(newConfirm: String) {
+        _uiState.value = _uiState.value.copy(confirmPassword = newConfirm)
+    }
+
+    fun onUserRoleChange(newRole: String) {
+        _uiState.value = _uiState.value.copy(userRole = newRole)
+    }
+
+    fun onRememberMeChange(checked: Boolean) {
+        _uiState.value = _uiState.value.copy(rememberMe = checked)
+        if (!checked) {
+            authPrefs.clearCredentials()
+        }
+    }
+
     fun isUserLoggedIn(): Boolean {
         val firebaseLoggedIn = firebaseAuth.currentUser != null
         val localLoggedIn = authPrefs.isUserLoggedIn()
@@ -60,7 +95,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun loginUser(onLoginSuccess: () -> Unit) {
         val state = _uiState.value
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
-
         viewModelScope.launch {
             firebaseAuth.signInWithEmailAndPassword(
                 state.email.trim(),
@@ -109,11 +143,8 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    //crear Ua¿suario en firebase
-
     fun registerUser(onRegisterSuccess: () -> Unit) {
         val state = _uiState.value
-
         if (state.password != state.confirmPassword) {
             _uiState.value = state.copy(
                 errorMessage = "Passwords do not match.",
@@ -123,7 +154,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
 
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
-
         viewModelScope.launch {
             firebaseAuth.createUserWithEmailAndPassword(
                 state.email.trim(),
@@ -168,9 +198,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun logoutUser() {
         firebaseAuth.signOut()
         authPrefs.setUserLoggedIn(false)
-    }
-
-    fun onRememberMeChange(it: Boolean) {
-        // Mantener lógica si luego deseas guardar "Remember Me" en shared prefs
+        authPrefs.clearCredentials()
     }
 }
