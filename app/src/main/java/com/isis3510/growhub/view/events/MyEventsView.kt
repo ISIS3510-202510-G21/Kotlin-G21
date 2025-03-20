@@ -44,10 +44,13 @@ fun MyEventsView(
 ) {
     Scaffold(
         topBar = { MyEventsTopBar(onNavigateBack) },
-        bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = Color.White
     ) { paddingValues ->
         MyEventsContent(viewModel, paddingValues)
+
+        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+            BottomNavigationBar(navController = navController)
+        }
     }
 }
 

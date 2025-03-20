@@ -1,51 +1,64 @@
 package com.isis3510.growhub.view.home
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Text
-import androidx.compose.material3.Icon
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
-import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.isis3510.growhub.R
-import com.isis3510.growhub.viewmodel.HomeViewModel
-import com.isis3510.growhub.view.theme.GrowhubTheme
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Scaffold
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import com.isis3510.growhub.utils.advancedShadow
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.isis3510.growhub.model.objects.Event
-import com.isis3510.growhub.viewmodel.AuthViewModel
+import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Category
+import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.advancedShadow
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
+import com.isis3510.growhub.view.theme.GrowhubTheme
+import com.isis3510.growhub.viewmodel.AuthViewModel
+import com.isis3510.growhub.viewmodel.HomeViewModel
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainView(navController: NavHostController, onLogout: () -> Unit) {
     Scaffold(
@@ -169,6 +182,7 @@ fun TopBoxRenderer(
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun CategoryColorButtons(modifier: Modifier = Modifier, homeViewModel: HomeViewModel = viewModel()) {
     val categories = homeViewModel.categories
@@ -229,6 +243,7 @@ fun CategoryButton(category: Category, color: Color, onClick: () -> Unit) {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun EventSliders(modifier: Modifier = Modifier, viewModel: HomeViewModel = viewModel()) {
     val upcomingEvents = viewModel.upcomingEvents
@@ -298,7 +313,7 @@ fun EventBox(event: Event) {
         )
 
         Image(
-            painter = painterResource(id = R.drawable.mock_image),
+            painter = rememberAsyncImagePainter(event.imageUrl),
             contentDescription = null,
             contentScale = ContentScale.FillBounds,
             modifier = Modifier
@@ -310,7 +325,8 @@ fun EventBox(event: Event) {
         Text(
             modifier = Modifier
                 .align(Alignment.TopStart)
-                .offset(x = 11.dp, y = 115.dp),
+                .offset(x = 11.dp, y = 115.dp)
+                .width(200.dp),
             text = event.name,
             color = Color(0xff191d17),
             fontSize = 18.sp,
@@ -369,6 +385,7 @@ fun EventBox(event: Event) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun MainViewPreview() {

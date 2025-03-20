@@ -37,15 +37,25 @@ class MyEventsViewModel : ViewModel() {
         viewModelScope.launch {
             val userId = auth.currentUser?.uid ?: return@launch
 
-            val userDocRef = db.collection("users").document(userId)
-
             val querySnapshot = db.collection("events")
-                .whereEqualTo("user_ref", userDocRef)
                 .get()
                 .await()
 
-            for (document in querySnapshot.documents) {
-                val eventData = document.data ?: emptyMap()
+            val attendedEvents = mutableListOf<DocumentReference>()
+
+            for (eventDocument in querySnapshot.documents) {
+                val attendees = eventDocument.data?.get("attendees") as? List<DocumentReference>
+
+                // Check if the user is in the attendees list
+                if (attendees?.any { it.id == userId } == true) {
+                    val eventRef = eventDocument.reference
+                    attendedEvents.add(eventRef)
+                }
+            }
+
+            for (event in attendedEvents) {
+                val eventDocument = event.get().await()
+                val eventData = eventDocument.data ?: emptyMap()
 
                 val name = eventData["name"] as? String ?: ""
                 val imageUrl = eventData["image"] as? String ?: ""
@@ -62,11 +72,11 @@ class MyEventsViewModel : ViewModel() {
                     ""
                 }
 
-                // Extract the location name from the locations collection
-                val locationRef = eventData["location"] as? DocumentReference
+                // Extract the location address from the locations collection
+                val locationRef = eventData["location_id"] as? DocumentReference
                 val locationName = if (locationRef != null) {
                     val locationDoc = locationRef.get().await()
-                    locationDoc.getString("name") ?: ""
+                    locationDoc.getString("address") ?: ""
                 } else {
                     ""
                 }
@@ -85,6 +95,11 @@ class MyEventsViewModel : ViewModel() {
                 val startDateTime = startTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
                 val endDateTime = endTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
 
+                // Convert date into "dd/MM/yyyy" format
+                val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                val formattedStartDate = startDateTime?.format(dateFormatter)
+                val formattedEndDate = endDateTime?.format(dateFormatter)
+
                 // Get today's date in LocalDateTime format
                 val todayDateTime = LocalDateTime.now()
 
@@ -94,15 +109,19 @@ class MyEventsViewModel : ViewModel() {
                     description = description,
                     cost = cost,
                     attendees = attendeesNames,
-                    startDate = startDateTime.toString(),
-                    endDate = endDateTime.toString(),
+                    startDate = formattedStartDate.toString(),
+                    endDate = formattedEndDate.toString(),
                     category = categoryName,
                     location = locationName
                 )
 
+                upcomingEvents.clear()
+                previousEvents.clear()
+
                 // Add the event to the appropriate list based on the start date
                 if (startDateTime != null && startDateTime.isAfter(todayDateTime)) {
                     upcomingEvents.add(eventExtracted)
+                    println(upcomingEvents)
                 } else {
                     previousEvents.add(eventExtracted)
                 }
