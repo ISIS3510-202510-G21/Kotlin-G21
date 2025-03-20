@@ -100,7 +100,7 @@ fun ProfileContent(
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-            ProfileImage(profile.profilePictureUrl)
+            ProfileImage(profile.profilePicture)
             Spacer(modifier = Modifier.height(32.dp))
             ProfileName(profile.name)
             Spacer(modifier = Modifier.height(32.dp))
@@ -108,7 +108,7 @@ fun ProfileContent(
             Spacer(modifier = Modifier.height(32.dp))
             EditProfileButton(onNavigateToEditProfile)
             Spacer(modifier = Modifier.height(32.dp))
-            ProfileAbout(profile.aboutMe)
+            ProfileAbout(profile.description)
             Spacer(modifier = Modifier.height(16.dp))
             ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
         }
