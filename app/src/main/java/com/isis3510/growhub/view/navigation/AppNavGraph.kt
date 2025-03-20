@@ -9,6 +9,7 @@ import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
+import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
 
 //import com.isis3510.growhub.view.auth.RegisterScreen
@@ -63,7 +64,14 @@ fun AppNavGraph(
         }
 
         composable(Destinations.MAP) {
-            PlaceholderScreen("MAP")
+            MapView(
+                navController = navController,
+                onNavigateBack = {
+                    navController.navigate(Destinations.MAP) {
+                        popUpTo(Destinations.MAP) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Destinations.MY_EVENTS) {
