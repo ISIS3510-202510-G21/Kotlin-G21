@@ -21,10 +21,10 @@ class HomeViewModel : ViewModel() {
     private fun loadMockEvents() {
         viewModelScope.launch {
             val mockData = listOf(
-                Event("1", "El Riqué (México) 5to Cir...", "Bogotá, Colombia", "February 26, 2025", "Music", "mock_image", 100.0),
-                Event("2", "IEEE Zona Centro", "Bogotá, Colombia", "March 1, 2025", "Technology", "mock_image", 0.0),
-                Event("3", "Taller Entrevista", "Bogotá, Colombia", "March 4, 2025", "Business", "mock_image", 10.0),
-                Event("4", "XXIV Jornadas C...", "Bogotá, Colombia", "February 25, 2025", "Science", "mock_image", 50.0)
+                Event("1", "El Riqué (México) 5to Cir...", "Bogotá, Colombia", "February 26, 2025", "Music", "mock_image", "100.0", 100, listOf("Juan", "Pedro")),
+                Event("2", "IEEE Zona Centro", "Bogotá, Colombia", "March 1, 2025", "Technology", "mock_image", "0.0", 100, listOf("Juan", "Pedro")),
+                Event("3", "Taller Entrevista", "Bogotá, Colombia", "March 4, 2025", "Business", "mock_image", "10.0", 100, listOf("Juan", "Pedro")),
+                Event("4", "XXIV Jornadas C...", "Bogotá, Colombia", "February 25, 2025", "Science", "mock_image", "50.0", 100, listOf("Juan", "Pedro"))
             )
             upcomingEvents.addAll(mockData.take(2))
             recommendedEvents.addAll(mockData.drop(1))

@@ -311,7 +311,7 @@ fun EventBox(event: Event) {
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .offset(x = 11.dp, y = 115.dp),
-            text = event.title,
+            text = event.name,
             color = Color(0xff191d17),
             fontSize = 18.sp,
             fontWeight = FontWeight.Normal,
@@ -334,7 +334,7 @@ fun EventBox(event: Event) {
             )
             Spacer(modifier = Modifier.width(4.dp))
             Text(
-                text = event.date,
+                text = event.startDate,
                 color = Color(0xff838291),
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Normal,

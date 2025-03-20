@@ -1,87 +1,113 @@
 package com.isis3510.growhub.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateListOf
+import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import kotlinx.coroutines.launch
+import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.model.objects.Event
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
+import java.time.LocalDateTime
+import java.time.ZoneId
 
 /**
  * Created by: Juan Manuel Jáuregui
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 class MyEventsViewModel : ViewModel() {
 
     val upcomingEvents = mutableStateListOf<Event>()
     val previousEvents = mutableStateListOf<Event>()
 
-    //private val auth = FirebaseAuth.getInstance()
-    //private val db = FirebaseFirestore.getInstance()
+    private val auth = FirebaseAuth.getInstance()
+    private val db = FirebaseFirestore.getInstance()
 
     init {
-        loadEvents()
+        loadEventsFromFirebase()
     }
 
-    private fun loadEvents() {
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun loadEventsFromFirebase() {
         viewModelScope.launch {
-            val mockData = listOf(
-                Event("1", "El Riqué (México) 5to Cir...", "Bogotá, Colombia", "February 26, 2025", "Music", "mock_image", 100.0),
-                Event("2", "IEEE Zona Centro", "Bogotá, Colombia", "March 1, 2025", "Technology", "mock_image", 0.0),
-                Event("3", "Taller Entrevista", "Bogotá, Colombia", "March 4, 2025", "Business", "mock_image", 10.0),
-                Event("4", "XXIV Jornadas C...", "Bogotá, Colombia", "February 25, 2025", "Science", "mock_image", 50.0)
-            )
-            upcomingEvents.addAll(mockData.take(2))
-            previousEvents.addAll(mockData.takeLast(2))
-        }
-    }
+            val userId = auth.currentUser?.uid ?: return@launch
 
-    /*    private fun loadEvents() {
-            val user = auth.currentUser
+            val userDocRef = db.collection("users").document(userId)
 
-            viewModelScope.launch {
-                try {
-                    val snapshot = db.collection("events")
-                        .whereArrayContains("attendees", user.uid)
-                        .get()
-                        .await()
+            val querySnapshot = db.collection("events")
+                .whereEqualTo("user_ref", userDocRef)
+                .get()
+                .await()
 
-                    val eventList = snapshot.documents.mapNotNull { doc ->
-                        val startDateString = doc.getString("start_date") ?: return@mapNotNull null
-                        val startDate = parseDate(startDateString)
+            for (document in querySnapshot.documents) {
+                val eventData = document.data ?: emptyMap()
 
-                        Event(
-                            id = doc.id,
-                            imageUrl = doc.getString("image") ?: "",
-                            startDate = startDate,
-                            title = doc.getString("name") ?: "Untitled Event",
-                            isPaid = (doc.getDouble("cost") ?: 0.0) > 0
-                        )
-                    }
+                val name = eventData["name"] as? String ?: ""
+                val imageUrl = eventData["image"] as? String ?: ""
+                val description = eventData["description"] as? String ?: ""
+                val cost = (eventData["cost"] as? Number)?.toInt() ?: 0
+                val attendees = (eventData["attendees"] as? List<DocumentReference>) ?: emptyList()
 
-                    val now = Date()
-                    upcomingEvents.clear()
-                    previousEvents.clear()
+                // Extract the category name from the categories collection
+                val categoryRef = eventData["category"] as? DocumentReference
+                val categoryName = if (categoryRef != null) {
+                    val categoryDoc = categoryRef.get().await()
+                    categoryDoc.getString("name") ?: ""
+                } else {
+                    ""
+                }
 
-                    for (event in eventList) {
-                        if (event.startDate != null && event.startDate.after(now)) {
-                            upcomingEvents.add(event)
-                        } else {
-                            previousEvents.add(event)
-                        }
-                    }
+                // Extract the location name from the locations collection
+                val locationRef = eventData["location"] as? DocumentReference
+                val locationName = if (locationRef != null) {
+                    val locationDoc = locationRef.get().await()
+                    locationDoc.getString("name") ?: ""
+                } else {
+                    ""
+                }
 
-                } catch (e: Exception) {
-                    e.printStackTrace() // Handle errors
+                // Extract the attendees name from the users collection
+                val attendeesNames = attendees.mapNotNull { attendeeRef ->
+                    val attendeeDoc = attendeeRef.get().await()
+                    attendeeDoc.getString("name")
+                }
+
+                // Extract the start date and end date from the events collection
+                val startTimestamp = eventData["start_date"] as? Timestamp
+                val endTimestamp = eventData["end_date"] as? Timestamp
+
+                // Convert Firestore Timestamp to LocalDateTime
+                val startDateTime = startTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
+                val endDateTime = endTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
+
+                // Get today's date in LocalDateTime format
+                val todayDateTime = LocalDateTime.now()
+
+                val eventExtracted = Event(
+                    name = name,
+                    imageUrl = imageUrl,
+                    description = description,
+                    cost = cost,
+                    attendees = attendeesNames,
+                    startDate = startDateTime.toString(),
+                    endDate = endDateTime.toString(),
+                    category = categoryName,
+                    location = locationName
+                )
+
+                // Add the event to the appropriate list based on the start date
+                if (startDateTime != null && startDateTime.isAfter(todayDateTime)) {
+                    upcomingEvents.add(eventExtracted)
+                } else {
+                    previousEvents.add(eventExtracted)
                 }
             }
-        }
 
-        private fun parseDate(dateString: String): Date? {
-            return try {
-                val format = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.getDefault())
-                format.parse(dateString)
-            } catch (e: Exception) {
-                null
-            }
-        }*/
+        }
+    }
 }
