@@ -11,6 +11,7 @@ import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
+import com.isis3510.growhub.viewmodel.MapViewModel
 
 //import com.isis3510.growhub.view.auth.RegisterScreen
 
@@ -64,7 +65,9 @@ fun AppNavGraph(
         }
 
         composable(Destinations.MAP) {
+            val mapViewModel = MapViewModel()
             MapView(
+                mapViewModel = mapViewModel,
                 navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.MAP) {
