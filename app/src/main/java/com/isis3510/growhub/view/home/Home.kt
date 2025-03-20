@@ -41,9 +41,9 @@ import com.isis3510.growhub.utils.advancedShadow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
-import com.isis3510.growhub.viewmodel.Event
+import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.viewmodel.AuthViewModel
-import com.isis3510.growhub.viewmodel.Category
+import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 
 @Composable
@@ -266,7 +266,7 @@ fun EventSection(title: String, events: List<Event>) {
                 text = title,
                 color = Color(0xff191d17),
                 fontSize = 20.sp,
-                fontWeight = FontWeight.Normal
+                fontWeight = FontWeight.Bold
             )
         }
         LazyRow(

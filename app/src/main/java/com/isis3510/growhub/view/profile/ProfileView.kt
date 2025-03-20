@@ -56,7 +56,6 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
  * Created by: Juan Manuel Jáuregui
  */
 
-// Profile View Function
 @Composable
 fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
@@ -65,7 +64,7 @@ fun ProfileView(
     navController: NavController
 ) {
     Scaffold(
-        topBar = { ProfileHeader(onNavigateBack) },
+        topBar = { ProfileTopBar(onNavigateBack) },
         bottomBar = {
             Box(
                 modifier = Modifier
@@ -117,15 +116,28 @@ fun ProfileContent(
 }
 
 @Composable
-fun ProfileHeader(onNavigateBack: () -> Unit) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        verticalAlignment = Alignment.CenterVertically
+fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(Color.White)
+            .padding(16.dp)
     ) {
-        IconButton(onClick = onNavigateBack) {
-            Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { onNavigateBack() }) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "Back"
+                )
+            }
+            Text(
+                text = "Profile",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17),
+                modifier = Modifier.padding(start = 8.dp)
+            )
         }
-        Text(text = "Profile", fontSize = 24.sp)
     }
 }
 
@@ -162,7 +174,10 @@ fun ProfileImage(profilePictureUrl: String) {
 @Composable
 fun ProfileName(name: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        Text(text = name.ifEmpty { "Loading..." }, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text(text = name.ifEmpty { "Loading..." },
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xff191d17))
     }
 }
 
@@ -173,16 +188,22 @@ fun ProfileStats(following: Int, followers: Int) {
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$following", fontWeight = FontWeight.Bold)
-            Text(text = "Following")
+            Text(text = "$following",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17))
+            Text(text = "Following",
+                color = Color(0xff191d17))
         }
         VerticalDivider(
             color = Color.Gray,
             modifier = Modifier.height(32.dp).width(1.dp)
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$followers", fontWeight = FontWeight.Bold)
-            Text(text = "Followers")
+            Text(text = "$followers",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17))
+            Text(text = "Followers",
+                color = Color(0xff191d17))
         }
     }
 }
@@ -212,12 +233,17 @@ fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
 
 @Composable
 fun ProfileAbout(aboutMe: String) {
-    Text(text = "About Me", fontWeight = FontWeight.Bold, fontSize = 18.sp, textAlign = TextAlign.Left)
+    Text(text = "About Me",
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        textAlign = TextAlign.Left,
+        color = Color(0xff191d17))
     Spacer(modifier = Modifier.height(8.dp))
-    Text(text = aboutMe, textAlign = TextAlign.Justify)
+    Text(text = aboutMe,
+        textAlign = TextAlign.Justify,
+        color = Color(0xff191d17))
 }
 
-// Interests Section Function
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Unit) {
@@ -239,8 +265,9 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
             Text(
                 text = "Interests",
                 fontWeight = FontWeight.Bold,
-                fontSize = 18.sp,
-                textAlign = TextAlign.Left
+                fontSize = 20.sp,
+                textAlign = TextAlign.Left,
+                color = Color(0xff191d17)
             )
 
             OutlinedButton(
@@ -289,11 +316,8 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
     }
 }
 
-// Interest Chip Function
 @Composable
 fun ProfileInterestChip(text: String, backgroundColor: Color) {
-
-    // Chip Box
     Box(
         modifier = Modifier
             .clip(RoundedCornerShape(16.dp))
@@ -301,7 +325,6 @@ fun ProfileInterestChip(text: String, backgroundColor: Color) {
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
 
-        // Chip Text
         Text(text = text, color = Color.White, fontSize = 14.sp)
     }
 }
