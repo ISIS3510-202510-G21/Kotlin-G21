@@ -134,6 +134,7 @@ fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
                 text = "Profile",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17),
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
@@ -173,7 +174,10 @@ fun ProfileImage(profilePictureUrl: String) {
 @Composable
 fun ProfileName(name: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        Text(text = name.ifEmpty { "Loading..." }, fontSize = 30.sp, fontWeight = FontWeight.Bold)
+        Text(text = name.ifEmpty { "Loading..." },
+            fontSize = 30.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xff191d17))
     }
 }
 
@@ -184,16 +188,22 @@ fun ProfileStats(following: Int, followers: Int) {
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$following", fontWeight = FontWeight.Bold)
-            Text(text = "Following")
+            Text(text = "$following",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17))
+            Text(text = "Following",
+                color = Color(0xff191d17))
         }
         VerticalDivider(
             color = Color.Gray,
             modifier = Modifier.height(32.dp).width(1.dp)
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$followers", fontWeight = FontWeight.Bold)
-            Text(text = "Followers")
+            Text(text = "$followers",
+                fontWeight = FontWeight.Bold,
+                color = Color(0xff191d17))
+            Text(text = "Followers",
+                color = Color(0xff191d17))
         }
     }
 }
@@ -223,9 +233,15 @@ fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
 
 @Composable
 fun ProfileAbout(aboutMe: String) {
-    Text(text = "About Me", fontWeight = FontWeight.Bold, fontSize = 20.sp, textAlign = TextAlign.Left)
+    Text(text = "About Me",
+        fontWeight = FontWeight.Bold,
+        fontSize = 20.sp,
+        textAlign = TextAlign.Left,
+        color = Color(0xff191d17))
     Spacer(modifier = Modifier.height(8.dp))
-    Text(text = aboutMe, textAlign = TextAlign.Justify)
+    Text(text = aboutMe,
+        textAlign = TextAlign.Justify,
+        color = Color(0xff191d17))
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -250,7 +266,8 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 text = "Interests",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                textAlign = TextAlign.Left
+                textAlign = TextAlign.Left,
+                color = Color(0xff191d17)
             )
 
             OutlinedButton(

@@ -67,7 +67,8 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
                 text = "My Events",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.padding(start = 8.dp)
+                modifier = Modifier.padding(start = 8.dp),
+                color = Color(0xff191d17)
             )
         }
     }
@@ -101,7 +102,8 @@ fun MyEventsSectionTitle(title: String) {
         text = title,
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp)
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
+        color = Color(0xff191d17)
     )
 }
 
@@ -141,7 +143,8 @@ fun MyEventsCard(event: Event) {
                         text = event.title,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
-                        textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center,
+                        color = Color(0xff191d17)
                     )
                 }
             }
