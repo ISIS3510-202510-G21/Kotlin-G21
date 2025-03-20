@@ -5,9 +5,7 @@ import android.content.SharedPreferences
 
 private const val PREFS_NAME = "auth_prefs"
 private const val KEY_IS_LOGGED_IN = "is_user_logged_in"
-private const val KEY_USER_ROLE = "user_role"
 
-// 🔴 NUEVAS CONSTANTES PARA GUARDAR EMAIL Y PASSWORD
 private const val KEY_SAVED_EMAIL = "saved_email"
 private const val KEY_SAVED_PASSWORD = "saved_password"
 
@@ -25,7 +23,6 @@ class AuthPreferences(context: Context) {
         return sharedPrefs.getBoolean(KEY_IS_LOGGED_IN, false)
     }
 
-    // 🔴 NUEVAS FUNCIONES PARA GUARDAR/OBTENER/BORRAR EMAIL Y PASSWORD
     fun saveCredentials(email: String, password: String) {
         sharedPrefs.edit()
             .putString(KEY_SAVED_EMAIL, email)

@@ -66,32 +66,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return firebaseLoggedIn && localLoggedIn
     }
 
-    // Para actualizar el email en el uiState
-    fun onEmailChange(newEmail: String) {
-        _uiState.value = _uiState.value.copy(email = newEmail)
-    }
-
-    // Para actualizar la contraseña en el uiState
-    fun onPasswordChange(newPassword: String) {
-        _uiState.value = _uiState.value.copy(password = newPassword)
-    }
-
-    // Nuevo: para actualizar el nombre
-    fun onNameChange(newName: String) {
-        _uiState.value = _uiState.value.copy(name = newName)
-    }
-
-    // Nuevo: para actualizar la confirmación de contraseña
-    fun onConfirmPasswordChange(newConfirm: String) {
-        _uiState.value = _uiState.value.copy(confirmPassword = newConfirm)
-    }
-
-    fun onUserRoleChange(newRole: String) {
-        _uiState.value = _uiState.value.copy(userRole = newRole)
-        authPrefs.setUserRole(newRole)
-    }
-
-
     fun loginUser(onLoginSuccess: () -> Unit) {
         val state = _uiState.value
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
@@ -101,38 +75,12 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                 state.password.trim()
             ).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
-                    val userId = task.result?.user?.uid ?: ""
-
-                    // Recuperar el rol del usuario desde Firestore
-                    firestore.collection("users").document(userId).get()
-                        .addOnSuccessListener { document ->
-                            if (document.exists()) {
-                                val userRole = document.getString("userType") ?: "Attendee" // Rol por defecto
-
-                                // Guardamos el rol y el estado de sesión en AuthPreferences
-                                authPrefs.setUserRole(userRole)
-                                authPrefs.setUserLoggedIn(true)
-
-                                // Actualizamos el estado de la UI
-                                _uiState.value = _uiState.value.copy(
-                                    isLoading = false,
-                                    userRole = userRole
-                                )
-
-                                onLoginSuccess()
-                            } else {
-                                _uiState.value = _uiState.value.copy(
-                                    isLoading = false,
-                                    errorMessage = "User data not found"
-                                )
-                            }
-                        }
-                        .addOnFailureListener { e ->
-                            _uiState.value = _uiState.value.copy(
-                                isLoading = false,
-                                errorMessage = e.message
-                            )
-                        }
+                    _uiState.value = _uiState.value.copy(isLoading = false)
+                    if (_uiState.value.rememberMe) {
+                        authPrefs.saveCredentials(state.email.trim(), state.password.trim())
+                    }
+                    authPrefs.setUserLoggedIn(true)
+                    onLoginSuccess()
                 } else {
                     _uiState.value = _uiState.value.copy(
                         isLoading = false,
@@ -152,7 +100,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             )
             return
         }
-
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
         viewModelScope.launch {
             firebaseAuth.createUserWithEmailAndPassword(
@@ -161,21 +108,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
             ).addOnCompleteListener { task ->
                 if (task.isSuccessful) {
                     val userId = task.result?.user?.uid ?: ""
-                    val selectedRole = state.userRole ?: "Attendee" // Asegurar un rol
-
+                    val selectedRole = state.userRole ?: "Attendee"
                     val newUser = AppUser(
                         email = state.email.trim(),
                         name = state.name,
-                        userType = selectedRole,
+                        user_type = selectedRole
                     )
-
-                    firestore.collection("users")
-                        .document(userId)
-                        .set(newUser)
+                    firestore.collection("users").document(userId).set(newUser)
                         .addOnSuccessListener {
                             authPrefs.setUserLoggedIn(true)
-                            authPrefs.setUserRole(selectedRole)
-
                             _uiState.value = _uiState.value.copy(isLoading = false)
                             onRegisterSuccess()
                         }
