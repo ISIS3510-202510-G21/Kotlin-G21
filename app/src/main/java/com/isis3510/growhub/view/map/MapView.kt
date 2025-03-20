@@ -22,6 +22,8 @@ import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.viewmodel.MapViewModel
+import com.google.maps.android.compose.GoogleMap
+import com.google.maps.android.compose.GoogleMapComposable
 
 @Composable
 fun MapView(
@@ -78,19 +80,19 @@ fun MapTopBar(onNavigateBack: () -> Unit = {}) {
 
 @Composable
 fun MapPlaceholder() {
+    var isMapLoaded by remember { mutableStateOf(false) }
+
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .height(400.dp)
-            .background(Color(0xFF5669FF), shape = RoundedCornerShape(16.dp))
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
-        Text(
-            text = "Map Placeholder",
-            color = Color.White,
-            fontSize = 18.sp,
-            fontWeight = FontWeight.Bold
+        // Add GoogleMap here
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            onMapLoaded = { isMapLoaded = true }
         )
     }
 }
