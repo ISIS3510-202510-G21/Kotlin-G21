@@ -1,6 +1,8 @@
 package com.isis3510.growhub
 
+import android.annotation.SuppressLint
 import android.app.Application
+import android.content.pm.ActivityInfo
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -23,11 +25,12 @@ class MainActivity : ComponentActivity() {
 
     private val authViewModel: AuthViewModel by viewModels()
 
+    @SuppressLint("SourceLockedOrientationActivity")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
         enableEdgeToEdge()
-
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         setContent {
             GrowhubTheme {
                 // Decidimos cuál es la pantalla inicial:
