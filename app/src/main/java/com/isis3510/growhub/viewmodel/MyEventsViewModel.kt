@@ -115,9 +115,6 @@ class MyEventsViewModel : ViewModel() {
                     location = locationName
                 )
 
-                upcomingEvents.clear()
-                previousEvents.clear()
-
                 // Add the event to the appropriate list based on the start date
                 if (startDateTime != null && startDateTime.isAfter(todayDateTime)) {
                     upcomingEvents.add(eventExtracted)
@@ -126,7 +123,6 @@ class MyEventsViewModel : ViewModel() {
                     previousEvents.add(eventExtracted)
                 }
             }
-
         }
     }
 }

@@ -120,8 +120,6 @@ class HomeViewModel : ViewModel() {
                     upcomingEvents.add(eventExtracted)
                 }
             }
-
-            println("Upcoming Events: $upcomingEvents")
         }
     }
 
