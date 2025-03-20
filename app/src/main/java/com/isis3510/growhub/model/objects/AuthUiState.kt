@@ -7,5 +7,6 @@ data class AuthUiState(
     val confirmPassword: String = "",
     val isLoading: Boolean = false,
     val errorMessage: String? = null,
-    val rememberMe: Boolean = true
+    val rememberMe: Boolean = true,
+    val userRole: String = ""
 )
