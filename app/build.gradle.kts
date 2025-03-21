@@ -69,6 +69,11 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation("androidx.compose.material3:material3:1.3.1")
+    implementation ("androidx.compose.ui:ui")
+    implementation ("androidx.compose.ui:ui-tooling-preview")
+    implementation ("androidx.compose.material3:material3")
+    var composeBomVersion = "2023.08.00"
+    implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
 
     // Firebase (BoM, para manejar versiones automáticamente)
     implementation(platform("com.google.firebase:firebase-bom:32.2.3"))
