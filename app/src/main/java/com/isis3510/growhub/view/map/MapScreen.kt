@@ -1,7 +1,6 @@
 package com.isis3510.growhub.view.map
 
 import android.content.pm.PackageManager
-import android.util.Log
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,9 +25,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.google.android.gms.location.LocationServices
-import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.CameraPosition
-import com.google.maps.android.compose.MapUiSettings
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.isis3510.growhub.model.objects.Event
@@ -36,42 +33,22 @@ import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.viewmodel.MapViewModel
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.GoogleMapComposable
-import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
-import com.google.maps.android.compose.rememberCameraPositionState
-import com.isis3510.growhub.utils.AdvancedMarkersMapContent
-import com.isis3510.growhub.viewmodel.NearbyEventsViewModel
 
 @Composable
 fun MapView(
     mapViewModel: MapViewModel,
-    //mappedEventsViewModel: NearbyEventsViewModel,
     onNavigateBack: () -> Unit = {},
     navController: NavController
 ) {
-    // ============================================================
-    // VARIABLES AND OTHER NECESSARY DECLARATIONS
-    // ============================================================
+    // Initialize the camera position state, which controls the camera's position on the map
     val cameraPositionState = rememberCameraPositionState()
+    // Obtain the current context
     val context = LocalContext.current
-
-    // Observe user location from MapViewModel
-    val userLocation by mapViewModel.userLocation
-
-    // Observe events to map from NearbyEventsViewModel
-    //val mapEvents by mappedEventsViewModel.mapEvents.collectAsState()
-    //val isLoading by mappedEventsViewModel.isLoading.collectAsState()
-
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
-    val existingCoordinates = mutableSetOf<Pair<Double, Double>>() // Set to track used coordinates
-
-
-    // ============================================================
-    // PERMISSION HANDLING
-    // ============================================================
     // Handle permission requests for accessing fine location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
@@ -97,29 +74,6 @@ fun MapView(
         }
     }
 
-
-    // ============================================================
-    // INVOCATION TO FETCH CASCADE
-    // ============================================================
-    var isCameraMovedToUserLocation by remember { mutableStateOf(false) }
-
-    LaunchedEffect(userLocation) {
-        userLocation?.let { location ->
-            mapViewModel.fetchUserLocation(context, fusedLocationClient)
-
-            // Move the camera to user's location only once
-            if (!isCameraMovedToUserLocation) {
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(LatLng(location.latitude, location.longitude), 15f)
-                )
-                isCameraMovedToUserLocation = true
-            }
-        }
-    }
-
-    // ============================================================
-    // FRONTEND DESIGN
-    // ============================================================
     Scaffold(
         topBar = { MapTopBar(onNavigateBack) },
         containerColor = Color.White
@@ -130,15 +84,8 @@ fun MapView(
                 .padding(paddingValues)
                 .background(Color.White)
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(paddingValues)
-                    .background(Color.White)
-            ) {
-                MapContent(mapViewModel, cameraPositionState)
-                EventsList(mapViewModel.nearbyEvents)
-            }
+            MapContent(mapViewModel, cameraPositionState)
+            EventsList(mapViewModel.nearbyEvents)
         }
 
         Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
@@ -176,15 +123,10 @@ fun MapTopBar(onNavigateBack: () -> Unit = {}) {
 
 
 @Composable
-fun MapContent(
-        viewModel: MapViewModel,
-        //eventsVM: NearbyEventsViewModel,
-        //mapEvents: List<LatLng>,
-        cameraPositionState: CameraPositionState
-    ) {
-
+fun MapContent(viewModel: MapViewModel, cameraPositionState: CameraPositionState) {
+    // Observe the user's location from the ViewModel
     val userLocation by viewModel.userLocation
-
+    var isMapLoaded by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxWidth()
@@ -192,37 +134,22 @@ fun MapContent(
             .padding(16.dp),
         contentAlignment = Alignment.Center
     ) {
+        // Display the Google Map
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
-            properties = MapProperties(
-                isMyLocationEnabled = true
-            ),
-            uiSettings = MapUiSettings(
-                myLocationButtonEnabled = true
-            )
+            cameraPositionState = cameraPositionState
         ) {
-            // Si la ubicación del usuario está disponible, coloca su marker.
-            userLocation?.let { location ->
+            // If the user's location is available, place a marker on the map
+            userLocation?.let {
                 Marker(
-                    state = MarkerState(position = location),
-                    title = "Your Location",
-                    snippet = "This is where you are currently located."
+                    state = MarkerState(position = it), // Place the marker at the user's location
+                    title = "Your Location", // Set the title for the marker
+                    snippet = "This is where you are currently located." // Set the snippet for the marker
                 )
+                // Move the camera to the user's location with a zoom level of 10f
+                cameraPositionState.position = CameraPosition.fromLatLngZoom(it, 10f)
             }
-
-            /*
-            // Muestra los markers customizados de los eventos.
-            AdvancedMarkersMapContent(
-                events = viewModel.nearbyEvents,
-                //coordinates = mapEvents,
-                onEventClick = { marker ->
-                    // Acción al hacer click en un marker de evento.
-                    false
-                }
-            )*/
         }
-
     }
 }
 

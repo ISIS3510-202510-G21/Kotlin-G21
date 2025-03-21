@@ -73,8 +73,3 @@ class MapViewModel(manifestApiKey: String?): ViewModel() {
         )
     }
 }
-
-
-
-
-
