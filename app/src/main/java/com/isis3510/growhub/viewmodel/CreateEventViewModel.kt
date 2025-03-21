@@ -104,6 +104,7 @@ class CreateEventViewModel(
                 _isLoading.value = true
                 _errorMessage.value = null
 
+                val endDate = parseStartDateTime()
                 val startTimestamp = parseStartDateTime()
                 val eventCost = _cost.value.toDoubleOrNull() ?: 0.0
 
@@ -113,7 +114,7 @@ class CreateEventViewModel(
                     category = _category.value,
                     description = _description.value,
                     startDate = startTimestamp,
-                    endDate = _endDate.value,
+                    endDate = endDate,
                     locationId = _locationId.value,
                     imageUrl = _imageUrl.value,
                     address = _address.value,
