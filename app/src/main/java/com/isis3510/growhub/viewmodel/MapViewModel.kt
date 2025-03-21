@@ -14,16 +14,26 @@ import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.model.LatLng
 import com.isis3510.growhub.model.objects.Event
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import org.json.JSONObject
+import java.net.URLEncoder
+import java.util.concurrent.TimeUnit
 
-class MapViewModel: ViewModel() {
-    val nearbyEvents = mutableStateListOf<Event>()
+class MapViewModel(manifestApiKey: String?): ViewModel() {
+
+    private val _eventCoordinates = MutableStateFlow<List<LatLng>>(emptyList())
+    val eventCoordinates: StateFlow<List<LatLng>> = _eventCoordinates
 
     // State to hold the user's location as LatLng (latitude and longitude)
     private val _userLocation = mutableStateOf<LatLng?>(null)
     val userLocation: State<LatLng?> = _userLocation
-
 
     // Function to fetch the user's location and update the state
     fun fetchUserLocation(context: Context, fusedLocationClient: FusedLocationProviderClient) {
@@ -44,22 +54,6 @@ class MapViewModel: ViewModel() {
         } else {
             Log.e("MapViewModel", "Location permission is not granted.")
         }
-    }
-
-    init {
-        loadNearbyEvents()
-    }
-
-    private fun loadNearbyEvents() {
-        // Carga manualmente los eventos según los datos que proporcionaste
-        nearbyEvents.clear()
-        nearbyEvents.addAll(
-            listOf(
-                Event("5", "Festival de Jazz", "Medellín, Colombia", "April 10, 2025", "Music", "mock_image", 50.0),
-                Event("6", "Hackathon AI", "Bogotá, Colombia", "April 15, 2025", "Technology", "mock_image", 0.0),
-                Event("7", "Cuidemos el planeta", "Cali, Colombia", "April 17, 2025", "Environment", "mock_image", 10.0)
-            )
-        )
     }
 }
 
