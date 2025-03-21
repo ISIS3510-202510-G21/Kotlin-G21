@@ -1,5 +1,7 @@
 package com.isis3510.growhub.view.events
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -33,6 +35,7 @@ import com.isis3510.growhub.viewmodel.MyEventsViewModel
  * Created by: Juan Manuel Jáuregui
  */
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyEventsView(
     viewModel: MyEventsViewModel = viewModel(),
@@ -41,10 +44,13 @@ fun MyEventsView(
 ) {
     Scaffold(
         topBar = { MyEventsTopBar(onNavigateBack) },
-        bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = Color.White
     ) { paddingValues ->
         MyEventsContent(viewModel, paddingValues)
+
+        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+            BottomNavigationBar(navController = navController)
+        }
     }
 }
 
@@ -74,6 +80,7 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyEventsContent(viewModel: MyEventsViewModel, paddingValues: PaddingValues) {
     val upcomingEvents = viewModel.upcomingEvents
@@ -85,12 +92,12 @@ fun MyEventsContent(viewModel: MyEventsViewModel, paddingValues: PaddingValues) 
             .padding(paddingValues)
     ) {
         item { MyEventsSectionTitle("Upcoming Events") }
-        items(upcomingEvents, key = { it.id }) { event ->
+        items(upcomingEvents) { event ->
             MyEventsCard(event)
         }
 
         item { MyEventsSectionTitle("Previous Events") }
-        items(previousEvents, key = { it.id }) { event ->
+        items(previousEvents) { event ->
             MyEventsCard(event)
         }
     }
@@ -122,7 +129,7 @@ fun MyEventsCard(event: Event) {
                 Column(horizontalAlignment = Alignment.Start) {
                     Image(
                         painter = rememberAsyncImagePainter(event.imageUrl),
-                        contentDescription = event.title,
+                        contentDescription = event.name,
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(8.dp))
@@ -138,9 +145,9 @@ fun MyEventsCard(event: Event) {
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = event.date, fontSize = 18.sp, color = Color(0xFF5669FF))
+                    Text(text = event.startDate, fontSize = 18.sp, color = Color(0xFF5669FF))
                     Text(
-                        text = event.title,
+                        text = event.name,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
@@ -165,6 +172,7 @@ fun MyEventsCard(event: Event) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun MyEventsPreview() {

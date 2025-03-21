@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -65,15 +66,6 @@ fun ProfileView(
 ) {
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
-        bottomBar = {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color.White)
-            ) {
-                BottomNavigationBar(navController = navController)
-            }
-        },
         containerColor = Color.White
     ) { innerPadding ->
         Box(
@@ -82,6 +74,9 @@ fun ProfileView(
                 .padding(innerPadding),
         ) {
             ProfileContent(viewModel, onNavigateToEditProfile)
+        }
+        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+            BottomNavigationBar(navController = navController)
         }
     }
 }
@@ -100,7 +95,7 @@ fun ProfileContent(
                 .padding(horizontal = 16.dp),
         ) {
             Spacer(modifier = Modifier.height(32.dp))
-            ProfileImage(profile.profilePictureUrl)
+            ProfileImage(profile.profilePicture)
             Spacer(modifier = Modifier.height(32.dp))
             ProfileName(profile.name)
             Spacer(modifier = Modifier.height(32.dp))
@@ -108,7 +103,7 @@ fun ProfileContent(
             Spacer(modifier = Modifier.height(32.dp))
             EditProfileButton(onNavigateToEditProfile)
             Spacer(modifier = Modifier.height(32.dp))
-            ProfileAbout(profile.aboutMe)
+            ProfileAbout(profile.description)
             Spacer(modifier = Modifier.height(16.dp))
             ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
         }
