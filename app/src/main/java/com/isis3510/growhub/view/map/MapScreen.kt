@@ -161,9 +161,10 @@ fun EventsList(events: List<Event>) {
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(bottom = 40.dp)
     ) {
-        items(events, key = { it.id }) { event ->
+        items(events, key = { event -> "${event.name}-${event.startDate}" }) { event ->
             EventCard(event)
         }
+
     }
 }
 
@@ -184,7 +185,7 @@ fun EventCard(event: Event) {
             // Imagen del evento
             Image(
                 painter = rememberAsyncImagePainter(event.imageUrl),
-                contentDescription = event.title,
+                contentDescription = event.name,
                 modifier = Modifier
                     .size(80.dp)
                     .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
@@ -192,9 +193,9 @@ fun EventCard(event: Event) {
             Spacer(modifier = Modifier.width(12.dp))
             // Detalles del evento
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = event.date, fontSize = 16.sp, color = Color(0xFF5669FF))
+                Text(text = event.startDate, fontSize = 16.sp, color = Color(0xFF5669FF))
                 Text(
-                    text = event.title,
+                    text = event.name,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                     color = Color(0xff191d17)
