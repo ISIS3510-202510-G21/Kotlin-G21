@@ -1,8 +1,10 @@
 package com.isis3510.growhub.view.map
 
 import android.content.pm.PackageManager
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
@@ -37,12 +39,17 @@ import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MapView(
-    mapViewModel: MapViewModel,
+    manifestApiKey: String?,
+    mapViewModel: MapViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     navController: NavController
 ) {
+    // Embed the API Key in the ViewModel
+    mapViewModel.obtainApiKey(manifestApiKey)
+
     // Initialize the camera position state, which controls the camera's position on the map
     val cameraPositionState = rememberCameraPositionState()
     // Obtain the current context
@@ -122,6 +129,7 @@ fun MapTopBar(onNavigateBack: () -> Unit = {}) {
 }
 
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MapContent(viewModel: MapViewModel, cameraPositionState: CameraPositionState) {
     // Observe the user's location from the ViewModel

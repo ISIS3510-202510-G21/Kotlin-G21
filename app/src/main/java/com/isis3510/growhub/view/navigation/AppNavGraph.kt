@@ -82,11 +82,10 @@ fun AppNavGraph(
         }
 
         composable(Destinations.MAP) {
-            val mapViewModel = MapViewModel(manifestApiKey)
-            val mappedEventsViewModel = NearbyEventsViewModel(manifestApiKey)
+            //val mapViewModel = MapViewModel(manifestApiKey)
+            //val mappedEventsViewModel = NearbyEventsViewModel(manifestApiKey)
             MapView(
-                mapViewModel = mapViewModel,
-                //mappedEventsViewModel = mappedEventsViewModel,
+                manifestApiKey = manifestApiKey,
                 navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {
