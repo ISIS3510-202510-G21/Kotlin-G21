@@ -47,7 +47,7 @@ import com.isis3510.growhub.viewmodel.NearbyEventsViewModel
 @Composable
 fun MapView(
     mapViewModel: MapViewModel,
-    mappedEventsViewModel: NearbyEventsViewModel,
+    //mappedEventsViewModel: NearbyEventsViewModel,
     onNavigateBack: () -> Unit = {},
     navController: NavController
 ) {
@@ -61,8 +61,8 @@ fun MapView(
     val userLocation by mapViewModel.userLocation
 
     // Observe events to map from NearbyEventsViewModel
-    val mapEvents by mappedEventsViewModel.mapEvents.collectAsState()
-    val isLoading by mappedEventsViewModel.isLoading.collectAsState()
+    //val mapEvents by mappedEventsViewModel.mapEvents.collectAsState()
+    //val isLoading by mappedEventsViewModel.isLoading.collectAsState()
 
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
 
@@ -72,11 +72,12 @@ fun MapView(
     // ============================================================
     // PERMISSION HANDLING
     // ============================================================
-    // Handle location permission
+    // Handle permission requests for accessing fine location
     val permissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
     ) { isGranted ->
         if (isGranted) {
+            // Fetch the user's location and update the camera if permission is granted
             mapViewModel.fetchUserLocation(context, fusedLocationClient)
         }
     }
@@ -104,7 +105,7 @@ fun MapView(
 
     LaunchedEffect(userLocation) {
         userLocation?.let { location ->
-            mappedEventsViewModel.fetchUserLocation(location.latitude, location.longitude)
+            mapViewModel.fetchUserLocation(context, fusedLocationClient)
 
             // Move the camera to user's location only once
             if (!isCameraMovedToUserLocation) {
@@ -129,21 +130,15 @@ fun MapView(
                 .padding(paddingValues)
                 .background(Color.White)
         ) {
-            // Show loading indicator while fetching crimes
-            if (isLoading) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(400.dp)
-                        .padding(16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                MapContent(mapViewModel, mappedEventsViewModel, mapEvents, cameraPositionState)
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .background(Color.White)
+            ) {
+                MapContent(mapViewModel, cameraPositionState)
+                EventsList(mapViewModel.nearbyEvents)
             }
-            EventsList(mappedEventsViewModel.nearbyEvents)
         }
 
         Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
@@ -183,8 +178,8 @@ fun MapTopBar(onNavigateBack: () -> Unit = {}) {
 @Composable
 fun MapContent(
         viewModel: MapViewModel,
-        eventsVM: NearbyEventsViewModel,
-        mapEvents: List<LatLng>,
+        //eventsVM: NearbyEventsViewModel,
+        //mapEvents: List<LatLng>,
         cameraPositionState: CameraPositionState
     ) {
 
@@ -216,15 +211,16 @@ fun MapContent(
                 )
             }
 
+            /*
             // Muestra los markers customizados de los eventos.
             AdvancedMarkersMapContent(
-                events = eventsVM.nearbyEvents,
-                coordinates = mapEvents,
+                events = viewModel.nearbyEvents,
+                //coordinates = mapEvents,
                 onEventClick = { marker ->
                     // Acción al hacer click en un marker de evento.
                     false
                 }
-            )
+            )*/
         }
 
     }

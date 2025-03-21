@@ -72,7 +72,7 @@ fun AppNavGraph(
             val mappedEventsViewModel = NearbyEventsViewModel(manifestApiKey)
             MapView(
                 mapViewModel = mapViewModel,
-                mappedEventsViewModel = mappedEventsViewModel,
+                //mappedEventsViewModel = mappedEventsViewModel,
                 navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {

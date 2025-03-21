@@ -18,7 +18,7 @@ import com.isis3510.growhub.R
 @GoogleMapComposable
 fun AdvancedMarkersMapContent(
     events: List<Event>,
-    coordinates: List<LatLng>,
+    //coordinates: List<LatLng>,
     onEventClick: (Marker) -> Boolean = { false },
 ) {
     // Genera el icono personalizado para los markers
@@ -38,6 +38,7 @@ fun AdvancedMarkersMapContent(
         build()
     }
 
+    /*
     // Itera sobre la lista de eventos, asociando cada evento con su coordenada (si existe)
     coordinates.forEachIndexed { index, coordinate ->
         AdvancedMarker(
@@ -51,5 +52,5 @@ fun AdvancedMarkersMapContent(
                 false
             }
         )
-    }
+    }*/
 }
