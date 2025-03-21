@@ -6,6 +6,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.isis3510.growhub.view.auth.LoginScreen
+import com.isis3510.growhub.view.auth.RegisterScreen
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
@@ -49,7 +50,20 @@ fun AppNavGraph(
             )
         }
 
-        //composable(Destinations.REGISTER)
+        composable(Destinations.REGISTER) {
+            RegisterScreen(
+                onRegisterSuccess = {
+                    // Si el registro es exitoso, navega al Home
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.REGISTER) { inclusive = true }
+                    }
+                },
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
         composable(Destinations.HOME) {
             MainView(
                 navController = navController,
