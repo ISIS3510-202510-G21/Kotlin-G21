@@ -95,5 +95,7 @@ dependencies {
     // Image Loader
     implementation("io.coil-kt:coil-compose:2.2.2")
     androidTestImplementation ("androidx.compose.ui:ui-test-junit4:1.6.0")
+    implementation ("androidx.activity:activity-compose:<versión>")
+
 
 }

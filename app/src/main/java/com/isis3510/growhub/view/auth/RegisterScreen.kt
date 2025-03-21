@@ -94,7 +94,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    painter = painterResource(id = R.drawable.image_30113480),
+                    painter = painterResource(id = R.drawable.ic_email),
                     contentDescription = "User Icon"
                 )
             }
@@ -120,7 +120,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    painter = painterResource(id = R.drawable.image_30113480),
+                    painter = painterResource(id = R.drawable.ic_email),
                     contentDescription = "Email Icon"
                 )
             }
@@ -146,7 +146,7 @@ fun RegisterScreen(
                     .fillMaxWidth(),
                 leadingIcon = {
                     Icon(
-                        painter = painterResource(id = R.drawable.image_30113480),
+                        painter = painterResource(id = R.drawable.ic_email),
                         contentDescription = "Role Icon"
                     )
                 },
@@ -210,7 +210,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    painter = painterResource(id = R.drawable.image_3147576),
+                    painter = painterResource(id = R.drawable.ic_lock),
                     contentDescription = "Lock Icon"
                 )
             }
@@ -250,7 +250,7 @@ fun RegisterScreen(
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
-                    painter = painterResource(id = R.drawable.image_3147576),
+                    painter = painterResource(id = R.drawable.ic_lock),
                     contentDescription = "Lock Icon"
                 )
             }

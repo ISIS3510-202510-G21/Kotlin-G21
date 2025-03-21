@@ -7,6 +7,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
+import com.isis3510.growhub.view.create.CreateEventView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
@@ -112,7 +113,15 @@ fun AppNavGraph(
         }
 
         composable(Destinations.CREATE) {
-            PlaceholderScreen("CREATE")
+            CreateEventView(
+                onNavigateBack = {
+
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.CREATE) { inclusive = true }
+                    }
+                }
+            )
         }
+
     }
 }
