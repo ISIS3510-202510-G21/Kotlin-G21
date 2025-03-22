@@ -97,6 +97,12 @@ dependencies {
     // Image Loader
     implementation("io.coil-kt:coil-compose:2.2.2")
 
+    androidTestImplementation ("androidx.compose.ui:ui-test-junit4:1.6.0")
+    implementation ("androidx.activity:activity-compose:<versión>")
+
+
+
+
     // Google Maps Compose library
     val mapsComposeVersion = "4.4.1"
     implementation("com.google.maps.android:maps-compose:$mapsComposeVersion")
@@ -104,6 +110,7 @@ dependencies {
     implementation("com.google.maps.android:maps-compose-utils:$mapsComposeVersion")
     // Google Maps Compose widgets library
     implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
+
 }
 
 secrets {
