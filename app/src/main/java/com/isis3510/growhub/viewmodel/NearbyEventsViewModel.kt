@@ -20,6 +20,7 @@ class NearbyEventsViewModel(manifestApiKey: String?): ViewModel() {
     private val _userLocation = MutableStateFlow<Pair<Double, Double>?>(null)
     val userLocation: StateFlow<Pair<Double, Double>?> = _userLocation
 
+    /*
     private val _mapEvents = MutableStateFlow<List<LatLng>>(emptyList())
     val mapEvents: StateFlow<List<LatLng>> = _mapEvents
 
@@ -107,5 +108,5 @@ class NearbyEventsViewModel(manifestApiKey: String?): ViewModel() {
             )
         )
     }
-
+*/
 }

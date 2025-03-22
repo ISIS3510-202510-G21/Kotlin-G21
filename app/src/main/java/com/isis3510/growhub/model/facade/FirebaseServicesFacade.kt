@@ -92,6 +92,14 @@ class FirebaseServicesFacade(
                     ""
                 }
 
+                // Extract city from the locations collection
+                val locationCity = if (locationRef != null) {
+                    val locationDoc = locationRef.get().await()
+                    locationDoc.getString("city") ?: ""
+                } else {
+                    ""
+                }
+
                 // Extract the attendees name from the users collection
                 val attendeesNames = attendees.mapNotNull { attendeeRef ->
                     val attendeeDoc = attendeeRef.get().await()
@@ -124,7 +132,8 @@ class FirebaseServicesFacade(
                     startDate = formattedStartDate.toString(),
                     endDate = formattedEndDate.toString(),
                     category = categoryName,
-                    location = locationName
+                    location = locationName,
+                    city = locationCity
                 )
 
                 events.add(eventExtracted)
@@ -170,6 +179,14 @@ class FirebaseServicesFacade(
                     ""
                 }
 
+                // Extract city from the locations collection
+                val locationCity = if (locationRef != null) {
+                    val locationDoc = locationRef.get().await()
+                    locationDoc.getString("city") ?: ""
+                } else {
+                    ""
+                }
+
                 // Extract the attendees name from the users collection
                 val attendeesNames = attendees.mapNotNull { attendeeRef ->
                     val attendeeDoc = attendeeRef.get().await()
@@ -202,7 +219,8 @@ class FirebaseServicesFacade(
                     startDate = formattedStartDate.toString(),
                     endDate = formattedEndDate.toString(),
                     category = categoryName,
-                    location = locationName
+                    location = locationName,
+                    city = locationCity
                 )
 
                 events.add(eventExtracted)
