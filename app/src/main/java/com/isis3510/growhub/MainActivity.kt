@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.navigation.compose.rememberNavController
 import com.google.firebase.FirebaseApp
+import com.isis3510.growhub.utils.ManifestUtils
 import com.isis3510.growhub.view.navigation.AppNavGraph
 import com.isis3510.growhub.view.navigation.Destinations
 import com.isis3510.growhub.viewmodel.AuthViewModel
@@ -29,6 +30,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         FirebaseApp.initializeApp(this)
+        // Retrieve the API key from the manifest file
+        val apiKey = ManifestUtils.getApiKeyFromManifest(this)
         enableEdgeToEdge()
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         setContent {
@@ -40,20 +43,21 @@ class MainActivity : ComponentActivity() {
                     Destinations.LOGIN
                 }
 
-                AppScaffold(startDestination, authViewModel)
+                AppScaffold(apiKey, startDestination, authViewModel)
             }
         }
     }
 }
 
 @Composable
-fun AppScaffold(startDestination: String, authViewModel: AuthViewModel) {
+fun AppScaffold(manifestApiKey: String?, startDestination: String, authViewModel: AuthViewModel) {
     val navController = rememberNavController()
 
     Scaffold(
         modifier = Modifier.fillMaxSize()
     ) { innerPadding ->
         AppNavGraph(
+            manifestApiKey = manifestApiKey,
             navController = navController,
             startDestination = startDestination,
             modifier = Modifier.fillMaxSize().padding(innerPadding)
@@ -72,6 +76,7 @@ fun AppScaffoldPreview() {
 
     GrowhubTheme {
         AppScaffold(
+            manifestApiKey = "EXAMPLE",
             startDestination = fakeStartDestination,
             authViewModel = fakeAuthViewModel
         )

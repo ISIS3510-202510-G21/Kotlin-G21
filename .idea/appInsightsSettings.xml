@@ -8,10 +8,10 @@
             <InsightsFilterSettings>
               <option name="connection">
                 <ConnectionSetting>
-                  <option name="appId" value="PLACEHOLDER" />
-                  <option name="mobileSdkAppId" value="" />
-                  <option name="projectId" value="" />
-                  <option name="projectNumber" value="" />
+                  <option name="appId" value="com.app.Growhub" />
+                  <option name="mobileSdkAppId" value="1:847744610885:android:7995a01f8d4afe66aba92c" />
+                  <option name="projectId" value="growhub-50aa2" />
+                  <option name="projectNumber" value="847744610885" />
                 </ConnectionSetting>
               </option>
               <option name="signal" value="SIGNAL_UNSPECIFIED" />

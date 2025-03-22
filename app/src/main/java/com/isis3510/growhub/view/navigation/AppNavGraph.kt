@@ -1,5 +1,6 @@
 package com.isis3510.growhub.view.navigation
 
+import android.app.Application
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -11,7 +12,10 @@ import com.isis3510.growhub.view.create.CreateEventView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
+import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
+import com.isis3510.growhub.viewmodel.MapViewModel
+import com.isis3510.growhub.viewmodel.NearbyEventsViewModel
 
 //import com.isis3510.growhub.view.auth.RegisterScreen
 
@@ -28,6 +32,7 @@ object Destinations {
 
 @Composable
 fun AppNavGraph(
+    manifestApiKey: String?,
     navController: NavHostController,
     startDestination: String,
     modifier: Modifier = Modifier
@@ -78,7 +83,18 @@ fun AppNavGraph(
         }
 
         composable(Destinations.MAP) {
-            PlaceholderScreen("MAP")
+            val mapViewModel = MapViewModel(manifestApiKey)
+            val mappedEventsViewModel = NearbyEventsViewModel(manifestApiKey)
+            MapView(
+                mapViewModel = mapViewModel,
+                //mappedEventsViewModel = mappedEventsViewModel,
+                navController = navController,
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.MAP) { inclusive = true }
+                    }
+                }
+            )
         }
 
         composable(Destinations.MY_EVENTS) {

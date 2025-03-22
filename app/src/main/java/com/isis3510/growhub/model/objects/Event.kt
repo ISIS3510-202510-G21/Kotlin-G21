@@ -1,11 +1,13 @@
 package com.isis3510.growhub.model.objects
 
 data class Event(
-    val id: String,
-    val title: String,
+    val name: String,
+    val description: String,
     val location: String,
-    val date: String,
+    val startDate: String,
+    val endDate: String,
     val category: String,
     val imageUrl: String,
-    val cost: Double,
+    val cost: Int,
+    val attendees: List<String>
 )

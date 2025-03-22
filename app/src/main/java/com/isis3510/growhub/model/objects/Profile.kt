@@ -4,7 +4,7 @@ data class Profile (
     val name: String,
     val following: Int,
     val followers: Int,
-    val aboutMe: String ,
+    val description: String ,
     val interests: List<String>,
-    val profilePictureUrl: String
+    val profilePicture: String
 )

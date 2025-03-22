@@ -2,6 +2,7 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.gms.google-services")
+    id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
 }
 
 android {
@@ -83,6 +84,7 @@ dependencies {
     // Navegación
     implementation("androidx.navigation:navigation-compose:2.6.0")
     implementation(libs.firebase.firestore.ktx)
+    implementation(libs.play.services.location)
 
     // Testing
     testImplementation(libs.junit)
@@ -94,8 +96,29 @@ dependencies {
 
     // Image Loader
     implementation("io.coil-kt:coil-compose:2.2.2")
+
     androidTestImplementation ("androidx.compose.ui:ui-test-junit4:1.6.0")
     implementation ("androidx.activity:activity-compose:<versión>")
 
 
+
+
+    // Google Maps Compose library
+    val mapsComposeVersion = "4.4.1"
+    implementation("com.google.maps.android:maps-compose:$mapsComposeVersion")
+    // Google Maps Compose utility library
+    implementation("com.google.maps.android:maps-compose-utils:$mapsComposeVersion")
+    // Google Maps Compose widgets library
+    implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
+
+}
+
+secrets {
+    // Optionally specify a different file name containing your secrets.
+    // The plugin defaults to "local.properties"
+    propertiesFileName = "secrets.properties"
+
+    // A properties file containing default secret values. This file can be
+    // checked in version control.
+    defaultPropertiesFileName = "local.defaults.properties"
 }
