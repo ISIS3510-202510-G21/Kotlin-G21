@@ -95,7 +95,8 @@ fun RegisterScreen(
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_email),
-                    contentDescription = "User Icon"
+                    contentDescription = "User Icon",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         )
@@ -121,7 +122,8 @@ fun RegisterScreen(
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_email),
-                    contentDescription = "Email Icon"
+                    contentDescription = "Email Icon",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         )
@@ -147,7 +149,8 @@ fun RegisterScreen(
                 leadingIcon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_email),
-                        contentDescription = "Role Icon"
+                        contentDescription = "Role Icon",
+                        modifier = Modifier.size(24.dp)
                     )
                 },
                 trailingIcon = {
@@ -202,7 +205,8 @@ fun RegisterScreen(
                             id = if (passwordVisible) R.drawable.ic_eye_closed
                             else R.drawable.ic_eye_open
                         ),
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password"
+                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             },
@@ -211,7 +215,8 @@ fun RegisterScreen(
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_lock),
-                    contentDescription = "Lock Icon"
+                    contentDescription = "Lock Icon",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         )
@@ -242,7 +247,8 @@ fun RegisterScreen(
                             else R.drawable.ic_eye_open
                         ),
                         contentDescription =
-                        if (confirmPasswordVisible) "Hide password" else "Show password"
+                        if (confirmPasswordVisible) "Hide password" else "Show password",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             },
@@ -251,7 +257,8 @@ fun RegisterScreen(
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_lock),
-                    contentDescription = "Lock Icon"
+                    contentDescription = "Lock Icon",
+                    modifier = Modifier.size(24.dp)
                 )
             }
         )

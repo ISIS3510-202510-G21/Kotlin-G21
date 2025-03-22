@@ -88,7 +88,8 @@ fun LoginScreen(
                 leadingIcon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_email),
-                        contentDescription = "Email Icon"
+                        contentDescription = "Email Icon",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             )
@@ -115,7 +116,8 @@ fun LoginScreen(
                 leadingIcon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_lock),
-                        contentDescription = "Lock Icon"
+                        contentDescription = "Lock Icon",
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             )
