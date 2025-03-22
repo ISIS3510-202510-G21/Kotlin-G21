@@ -10,9 +10,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 
-/**
- * ViewModel que contiene el estado del formulario y la lógica para crear el evento.
- */
 class CreateEventViewModel(
     private val createEventRepository: CreateEventRepository = CreateEventRepository()
 ) : ViewModel() {
@@ -76,10 +73,6 @@ class CreateEventViewModel(
     fun onImageUrlChange(value: String) { _imageUrl.value = value }
     fun onLocationIdChange(value: String) { _locationId.value = value }
 
-    /**
-     * Convierte _startDate y _startHour en un Timestamp final.
-     * Ej: "26/02/2025" + "9:00 AM" => Timestamp
-     */
     private fun parseStartDateTime(): Timestamp {
         // Ajustar el patrón a tu conveniencia: dd/MM/yyyy HH:mm
         val pattern = "dd/MM/yyyy hh:mm a" // 26/02/2025 9:00 AM

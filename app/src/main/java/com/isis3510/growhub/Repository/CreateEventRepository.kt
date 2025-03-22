@@ -1,6 +1,7 @@
 package com.isis3510.growhub.repository
 
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 
@@ -22,22 +23,33 @@ class CreateEventRepository {
         val finalImageUrl = imageUrl ?: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKF_YlFFlKS6AQ8no0Qs_xM6AkjvwFwP61og&s"
         val emptyUsersList = arrayListOf<String>()
 
+        val locationData = hashMapOf(
+            "address" to address,
+            "city" to "Bogotá",
+            "details" to details,
+            "university" to true,
+        )
+
+        val locationRef: DocumentReference = firestore.collection("locations")
+            .add(locationData)
+            .await()
+
+
         val eventData = hashMapOf(
             "name" to name,
             "cost" to cost,
             "category" to category,
             "description" to description,
-            "start_date" to startDate,        // Timestamp
+            "start_date" to startDate,
             "end_date" to endDate,
-            "location_id" to locationId,     // String con formato "/locations/..."
+            "location_id" to locationRef,     // String con formato "/locations/..."
             "image" to finalImageUrl,        // string
             "users_registered" to emptyUsersList
         )
 
-        // Inserta el documento en la colección "events"
         firestore.collection("events")
-            .add(eventData) // add() crea un nuevo documento con ID automático
-            .await() // Esperamos la conclusión con corutinas
+            .add(eventData)
+            .await()
 
         return true
     }
