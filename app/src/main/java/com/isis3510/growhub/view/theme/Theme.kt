@@ -1,6 +1,5 @@
-package com.isis3510.growhub.ui.theme
+package com.isis3510.growhub.view.theme
 
-import android.app.Activity
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -10,6 +9,13 @@ import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.LocalContext
+import com.app.Growhub.view.theme.Pink40
+import com.app.Growhub.view.theme.Pink80
+import com.app.Growhub.view.theme.Purple40
+import com.app.Growhub.view.theme.Purple80
+import com.app.Growhub.view.theme.PurpleGrey40
+import com.app.Growhub.view.theme.PurpleGrey80
+import com.app.Growhub.view.theme.Typography
 
 private val DarkColorScheme = darkColorScheme(
     primary = Purple80,

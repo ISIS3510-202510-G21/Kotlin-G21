@@ -1,4 +1,4 @@
-package com.isis3510.growhub.ui.theme
+package com.app.Growhub.view.theme
 
 import androidx.compose.ui.graphics.Color
 
