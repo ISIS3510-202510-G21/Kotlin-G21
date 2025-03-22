@@ -60,7 +60,6 @@ class Filter(
     }
 
     suspend fun getHomeEventsData(): List<Map<String, Any>> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
 
         val querySnapshot = db.collection("events")
             .get()
@@ -69,6 +68,26 @@ class Filter(
         val events = mutableListOf<Map<String, Any>>()
 
         for (eventDocument in querySnapshot.documents) {
+            events.add(eventDocument.data ?: emptyMap())
+        }
+
+        return events
+    }
+
+    suspend fun getHomeRecommendedEventsData(): List<Map<String, Any>> {
+        val userId = auth.currentUser?.uid ?: return emptyList()
+
+        val querySnapshot = db.collection("recommendations")
+            .get()
+            .await()
+
+        // Get the document that matches the user ID
+        val recommendationDocument = querySnapshot.documents.firstOrNull { it.id == userId } ?: return emptyList()
+
+        val events = mutableListOf<Map<String, Any>>()
+        val recommendedEvents = recommendationDocument.get("events") as? List<String> ?: emptyList()
+        for (eventId in recommendedEvents) {
+            val eventDocument = db.collection("events").document(eventId).get().await()
             events.add(eventDocument.data ?: emptyMap())
         }
 

@@ -4,6 +4,7 @@ data class Event(
     val name: String,
     val description: String,
     val location: String,
+    val city: String,
     val startDate: String,
     val endDate: String,
     val category: String,
