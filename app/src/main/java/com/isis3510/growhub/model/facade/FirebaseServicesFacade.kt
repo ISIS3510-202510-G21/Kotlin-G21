@@ -233,6 +233,93 @@ class FirebaseServicesFacade(
         }
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchHomeRecommendedEvents(): List<Event> {
+        try {
+            val filteredEvents = filter.getHomeRecommendedEventsData()
+
+            val events = mutableListOf<Event>()
+
+            for (event in filteredEvents) {
+
+                val name = event["name"] as? String ?: ""
+                val imageUrl = event["image"] as? String ?: ""
+                val description = event["description"] as? String ?: ""
+                val cost = (event["cost"] as? Number)?.toInt() ?: 0
+                val attendees = (event["attendees"] as? List<DocumentReference>) ?: emptyList()
+
+                // Extract the category name from the categories collection
+                val categoryRef = event["category"] as? DocumentReference
+                val categoryName = if (categoryRef != null) {
+                    val categoryDoc = categoryRef.get().await()
+                    categoryDoc.getString("name") ?: ""
+                } else {
+                    ""
+                }
+
+                // Extract the location address from the locations collection
+                val locationRef = event["location_id"] as? DocumentReference
+                val locationName = if (locationRef != null) {
+                    val locationDoc = locationRef.get().await()
+                    locationDoc.getString("address") ?: ""
+                } else {
+                    ""
+                }
+
+                // Extract city from the locations collection
+                val locationCity = if (locationRef != null) {
+                    val locationDoc = locationRef.get().await()
+                    locationDoc.getString("city") ?: ""
+                } else {
+                    ""
+                }
+
+                // Extract the attendees name from the users collection
+                val attendeesNames = attendees.mapNotNull { attendeeRef ->
+                    val attendeeDoc = attendeeRef.get().await()
+                    attendeeDoc.getString("name")
+                }
+
+                // Extract the start date and end date from the events collection
+                val startTimestamp = event["start_date"] as? Timestamp
+                val endTimestamp = event["end_date"] as? Timestamp
+
+                // Convert Firestore Timestamp to LocalDateTime
+                val startDateTime =
+                    startTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())
+                        ?.toLocalDateTime()
+                val endDateTime =
+                    endTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())
+                        ?.toLocalDateTime()
+
+                // Convert date into "dd/MM/yyyy" format
+                val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                val formattedStartDate = startDateTime?.format(dateFormatter)
+                val formattedEndDate = endDateTime?.format(dateFormatter)
+
+                val eventExtracted = Event(
+                    name = name,
+                    imageUrl = imageUrl,
+                    description = description,
+                    cost = cost,
+                    attendees = attendeesNames,
+                    startDate = formattedStartDate.toString(),
+                    endDate = formattedEndDate.toString(),
+                    category = categoryName,
+                    location = locationName,
+                    city = locationCity
+                )
+
+                events.add(eventExtracted)
+            }
+
+            return events
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching home events", e)
+            return emptyList()
+        }
+    }
+
     suspend fun fetchCategories(): List<Category> {
         try {
             val filteredCategories = filter.getCategoriesData()
