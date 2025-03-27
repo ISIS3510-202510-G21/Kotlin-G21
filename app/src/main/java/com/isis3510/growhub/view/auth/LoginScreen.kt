@@ -29,7 +29,9 @@ import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.R
 import androidx.compose.material3.Icon
-
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -43,6 +45,7 @@ fun LoginScreen(
     val primaryBlue = Color(0xFF5669FF)
     var emailError by remember { mutableStateOf<String?>(null) }
     var passwordError by remember { mutableStateOf<String?>(null) }
+    var passwordVisible by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -111,6 +114,20 @@ fun LoginScreen(
                 label = { Text("Password") },
                 placeholder = { Text("Your password") },
                 keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
+                visualTransformation =
+                if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+                trailingIcon = {
+                    IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                        Icon(
+                            painter = painterResource(
+                                id = if (passwordVisible) R.drawable.ic_eye_closed
+                                else R.drawable.ic_eye_open
+                            ),
+                            contentDescription = if (passwordVisible) "Hide password" else "Show password",
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                },
                 isError = (passwordError != null),
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
