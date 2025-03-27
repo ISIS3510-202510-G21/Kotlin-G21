@@ -650,7 +650,20 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        val categoryList = listOf("Music", "Tech", "Sports", "Art", "Culture", "Others")
+        val categoryList = listOf("Leadership","Sports",
+            "Hackathons & Competitions",
+            "Career Fairs",
+            "Workshops",
+            "Technology",
+            "Science",
+            "Sustainability & Environment",
+            "Engineering",
+            "Networking",
+            "Entrepeneurship",
+            "SW Develop",
+            "Networking",
+            "Psychology")
+
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
