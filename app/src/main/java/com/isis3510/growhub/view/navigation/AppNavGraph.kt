@@ -1,23 +1,23 @@
 package com.isis3510.growhub.view.navigation
 
-import android.app.Application
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
+import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
-import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
+import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
-import com.isis3510.growhub.viewmodel.MapViewModel
-import com.isis3510.growhub.viewmodel.NearbyEventsViewModel
-
-//import com.isis3510.growhub.view.auth.RegisterScreen
 
 object Destinations {
     const val LOGIN = "login"
@@ -28,8 +28,10 @@ object Destinations {
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
     const val CREATE = "create"
+    const val CHATBOT = "chatbot"
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph(
     manifestApiKey: String?,
@@ -78,6 +80,9 @@ fun AppNavGraph(
                     navController.navigate(Destinations.LOGIN) {
                         popUpTo(Destinations.HOME) { inclusive = true }
                     }
+                },
+                onClickChat = {
+                    navController.navigate(Destinations.CHATBOT)
                 }
             )
         }
@@ -135,6 +140,16 @@ fun AppNavGraph(
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
                 }
+            )
+        }
+
+        composable(Destinations.CHATBOT) {
+            val context = LocalContext.current
+            val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+            ChatbotView(
+                navController = navController,
+                firebaseAnalytics = firebaseAnalytics
             )
         }
 

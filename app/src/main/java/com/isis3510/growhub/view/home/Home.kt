@@ -28,6 +28,7 @@ import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -37,9 +38,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -57,10 +58,12 @@ import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.HomeViewModel
+import com.isis3510.growhub.R
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainView(navController: NavHostController, onLogout: () -> Unit) {
+fun MainView(navController: NavHostController, onLogout: () -> Unit, onClickChat: () -> Unit) {
+
     Scaffold(
         topBar = { TopBoxRenderer(onLogout = onLogout) },
         containerColor = Color.White
@@ -78,13 +81,37 @@ fun MainView(navController: NavHostController, onLogout: () -> Unit) {
                 EventSliders(modifier = Modifier.fillMaxSize())
             }
 
-            Box(modifier = Modifier.fillMaxSize().offset(y = 100.dp), contentAlignment = Alignment.BottomCenter) {
+            // Bottom navigation bar
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = 100.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
                 BottomNavigationBar(navController = navController)
             }
+
+            // Floating Chatbot Button
+            FloatingActionButton(
+                onClick = { onClickChat() },
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .padding(end = 20.dp, bottom = 80.dp)
+                    .size(60.dp),
+                containerColor = Color(0xFF5669FF),
+                contentColor = Color.White
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.chatbot),
+                    contentDescription = "Chatbot",
+                    modifier = Modifier.size(28.dp),
+                    tint = Color.Unspecified
+                )
+            }
+
         }
     }
 }
-
 
 @Composable
 fun TopBoxRenderer(
@@ -390,7 +417,7 @@ fun MainViewPreview() {
             modifier = Modifier.fillMaxSize(),
             color = MaterialTheme.colorScheme.background
         ) {
-            MainView(navController = navController, onLogout = {})
+            MainView(navController = navController, onLogout = {}, onClickChat = {})
         }
     }
 }
