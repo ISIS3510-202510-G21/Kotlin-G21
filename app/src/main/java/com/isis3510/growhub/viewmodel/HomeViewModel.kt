@@ -54,7 +54,9 @@ class HomeViewModel(
                 nearbyEvents.add(events[i])
             }
 
-            recommendedEvents.addAll(recommendedEventsFacade)
+            for (i in 0 until minOf(3, recommendedEventsFacade.size)) {
+                recommendedEvents.add(recommendedEventsFacade[i])
+            }
         }
     }
 
