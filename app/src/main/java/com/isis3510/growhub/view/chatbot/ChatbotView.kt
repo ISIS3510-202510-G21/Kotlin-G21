@@ -57,7 +57,7 @@ import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 
 @Composable
 fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavController) {
-    val chatbotViewModel = ChatbotViewModel()
+    val chatbotViewModel: ChatbotViewModel = viewModel()
     val connectivityViewModel: ConnectivityViewModel = viewModel()
     var userInput by remember { mutableStateOf("") }
     val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
@@ -65,6 +65,7 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
 
     LaunchedEffect(Unit) {
         chatbotViewModel.checkBotStatus()
+        chatbotViewModel.sendInitialBotMessage()
     }
 
     Box {

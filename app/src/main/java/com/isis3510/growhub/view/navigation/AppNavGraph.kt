@@ -34,7 +34,6 @@ object Destinations {
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph(
-    manifestApiKey: String?,
     navController: NavHostController,
     startDestination: String,
     modifier: Modifier = Modifier
@@ -47,7 +46,6 @@ fun AppNavGraph(
         composable(Destinations.LOGIN) {
             LoginScreen(
                 onLoginSuccess = {
-                    // Successful login will take us Home
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.LOGIN) { inclusive = true }
                     }
@@ -61,7 +59,6 @@ fun AppNavGraph(
         composable(Destinations.REGISTER) {
             RegisterScreen(
                 onRegisterSuccess = {
-                    // Si el registro es exitoso, navega al Home
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.REGISTER) { inclusive = true }
                     }
@@ -91,7 +88,6 @@ fun AppNavGraph(
             //val mapViewModel = MapViewModel(manifestApiKey)
             //val mappedEventsViewModel = NearbyEventsViewModel(manifestApiKey)
             MapView(
-                manifestApiKey = manifestApiKey,
                 navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {

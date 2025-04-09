@@ -15,7 +15,7 @@ interface GeminiApiService {
 
     companion object {
         fun create(): GeminiApiService {
-            val apiKey = "FIX1"
+            val apiKey = "AIzaSyAJjUTMrd0xhbaS9anqQSjxMhh9OiJ3ijo"
 
             val client = OkHttpClient.Builder()
                 .addInterceptor { chain ->
