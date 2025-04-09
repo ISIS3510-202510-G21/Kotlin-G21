@@ -3,7 +3,7 @@ package com.isis3510.growhub.viewmodel
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
-import com.isis3510.growhub.repository.CreateEventRepository
+import com.isis3510.growhub.Repository.CreateEventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
