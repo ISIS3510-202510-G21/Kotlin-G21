@@ -1,5 +1,7 @@
 package com.isis3510.growhub.view.events
 
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,7 +30,9 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -42,12 +46,23 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.isis3510.growhub.view.theme.GrowhubTheme
+import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SuccessfulRegistrationView() {
+fun SuccessfulRegistrationView(
+    viewModel: SuccessfulRegistrationViewModel = viewModel(),
+    onNavigateBack: () -> Unit = {},
+) {
     Scaffold(
         topBar = {
-            EventTopBar()
+            EventTopBar(onNavigateBack)
         },
         content = { innerPadding ->
             Column(
@@ -56,16 +71,37 @@ fun SuccessfulRegistrationView() {
                     .padding(horizontal = 16.dp)
                     .fillMaxSize()
             ) {
-                SuccessBanner()
-                EventRegistrationDetailsTitle()
-                EventCard()
-                InfoSection()
-                Spacer(modifier = Modifier.height(16.dp))
-                MyEventsButton()
-                Spacer(modifier = Modifier.height(32.dp))
+                EventRegistrationContent(viewModel)
             }
         }
     )
+}
+
+@RequiresApi(Build.VERSION_CODES.O)
+@Composable
+fun EventRegistrationContent(
+    viewModel: SuccessfulRegistrationViewModel
+) {
+    val event = viewModel.registeredEvent
+    if (event.isNotEmpty()) {
+        val eventR = event[0]
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            SuccessBanner()
+            EventRegistrationDetailsTitle()
+            EventCard(eventR.name, eventR.creator, eventR.cost, eventR.attendees)
+            InfoSection(eventR.startDate, eventR.category, eventR.skills, eventR.location)
+            Spacer(modifier = Modifier.height(16.dp))
+            MyEventsButton()
+            Spacer(modifier = Modifier.height(32.dp))
+        }
+    }
 }
 
 @Composable
@@ -141,7 +177,7 @@ fun EventRegistrationDetailsTitle() {
 }
 
 @Composable
-fun EventCard() {
+fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>) {
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp),
@@ -169,13 +205,13 @@ fun EventCard() {
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Tech Industry Career Fair",
+                    text = name,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
                     color = Color(color = 0xFF72796F)
                 )
                 Text(
-                    text = "By Juan Sánchez",
+                    text = creator,
                     fontSize = 14.sp,
                     color = Color(color = 0xFF72796F)
                 )
@@ -202,7 +238,7 @@ fun EventCard() {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "$10000",
+                                text = cost.toString(),
                                 color = Color(0xFF1E88E5),
                                 fontSize = 14.sp
                             )
@@ -230,7 +266,7 @@ fun EventCard() {
                                 fontWeight = FontWeight.Bold
                             )
                             Text(
-                                text = "5 people",
+                                text = attendees.size.toString(),
                                 color = Color(0xFF1E88E5),
                                 fontSize = 14.sp,
                             )
@@ -243,7 +279,7 @@ fun EventCard() {
 }
 
 @Composable
-fun InfoSection() {
+fun InfoSection(startDate: String, category: String, skills: List<String>, location: String) {
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp),
@@ -252,13 +288,16 @@ fun InfoSection() {
             .padding(vertical = 16.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            InfoRow(label = "Time", value = "1:00 PM")
-            InfoRow(label = "Date", value = "9 May 2025")
-            InfoRow(label = "Category", value = "Career Fairs")
-            InfoRow(label = "Skills", value = "Interview Preparation, Financial Planning")
+            // Extract the start time from the start date
+            val startTime = startDate.split(" ")[1]
+            val date = startDate.split(" ")[0]
+            InfoRow(label = "Time", value = startTime)
+            InfoRow(label = "Date", value = date)
+            InfoRow(label = "Category", value = category)
+            InfoRow(label = "Skills", value = skills.joinToString(", "))
             InfoRow(
                 label = "Location",
-                value = "Cra. 37 #24-67, Bogotá\nCorferias, Pabellón 4, Salón Principal"
+                value = location
             )
         }
     }
@@ -288,8 +327,16 @@ fun InfoRow(label: String, value: String) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true)
 @Composable
 fun PreviewEventBookedScreen() {
-    SuccessfulRegistrationView()
+    GrowhubTheme {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            SuccessfulRegistrationView(onNavigateBack = {})
+        }
+    }
 }

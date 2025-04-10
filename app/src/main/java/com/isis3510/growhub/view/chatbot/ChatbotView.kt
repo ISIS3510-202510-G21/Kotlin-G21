@@ -55,6 +55,10 @@ import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.viewmodel.ChatbotViewModel
 import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
 @Composable
 fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavController) {
     val chatbotViewModel: ChatbotViewModel = viewModel()

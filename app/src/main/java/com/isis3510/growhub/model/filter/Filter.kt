@@ -109,4 +109,25 @@ class Filter(
 
     }
 
+    suspend fun getRegistrationData(eventID: String): Map<String, Any> {
+        val eventDocRef = db.collection("events").document(eventID)
+        val eventDoc = eventDocRef.get().await()
+        val eventData = eventDoc.data ?: emptyMap()
+
+        return mapOf(
+            "attendees" to (eventData["attendees"] as List<DocumentReference>),
+            "category" to (eventData["category"] as DocumentReference),
+            "cost" to (eventData["cost"] as Long).toInt(),
+            "creator_id" to (eventData["creator_id"] as DocumentReference),
+            "description" to (eventData["description"] as String),
+            "end_date" to (eventData["end_date"] as com.google.firebase.Timestamp),
+            "image" to (eventData["image"] as String),
+            "location_id" to (eventData["location_id"] as DocumentReference),
+            "name" to (eventData["name"] as String),
+            "skills" to (eventData["skills"] as List<DocumentReference>),
+            "start_date" to (eventData["start_date"] as com.google.firebase.Timestamp),
+            "users_registered" to (eventData["users_registered"] as Long).toInt()
+        )
+    }
+
 }
