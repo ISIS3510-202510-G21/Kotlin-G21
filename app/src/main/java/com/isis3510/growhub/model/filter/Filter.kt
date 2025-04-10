@@ -129,5 +129,4 @@ class Filter(
             "users_registered" to (eventData["users_registered"] as Long).toInt()
         )
     }
-
 }
