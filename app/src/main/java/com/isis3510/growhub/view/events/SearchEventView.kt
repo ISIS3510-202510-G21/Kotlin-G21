@@ -355,5 +355,3 @@ fun EventCard(event: Event) {
         }
     }
 }
-
-
