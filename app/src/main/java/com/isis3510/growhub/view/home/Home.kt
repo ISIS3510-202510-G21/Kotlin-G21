@@ -62,10 +62,10 @@ import com.isis3510.growhub.R
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun MainView(navController: NavHostController, onLogout: () -> Unit, onClickChat: () -> Unit) {
+fun MainView(navController: NavHostController, onLogout: () -> Unit, onClickChat: () -> Unit, onSearch: () -> Unit = {}) {
 
     Scaffold(
-        topBar = { TopBoxRenderer(onLogout = onLogout) },
+        topBar = { TopBoxRenderer(onLogout = onLogout, onSearch = onSearch) },
         containerColor = Color.White
     ) { innerPadding ->
         Box(
@@ -116,7 +116,8 @@ fun MainView(navController: NavHostController, onLogout: () -> Unit, onClickChat
 @Composable
 fun TopBoxRenderer(
     viewModel: AuthViewModel = viewModel(),
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onSearch: () -> Unit = {}
 ) {
     Box(
         modifier = Modifier
@@ -177,7 +178,8 @@ fun TopBoxRenderer(
                     .fillMaxWidth(0.9f)
                     .height(45.dp)
                     .background(Color.White, RoundedCornerShape(10.dp))
-                    .border(2.dp, Color.White, RoundedCornerShape(10.dp)),
+                    .border(2.dp, Color.White, RoundedCornerShape(10.dp))
+                    .clickable { onSearch() },
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(

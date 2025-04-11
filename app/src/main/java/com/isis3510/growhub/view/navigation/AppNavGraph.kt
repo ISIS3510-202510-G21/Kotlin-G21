@@ -15,6 +15,7 @@ import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
+import com.isis3510.growhub.view.events.SearchEventView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
@@ -32,6 +33,7 @@ object Destinations {
     const val CREATE = "create"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
+    const val SEARCH = "search"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -82,6 +84,9 @@ fun AppNavGraph(
                 },
                 onClickChat = {
                     navController.navigate(Destinations.CHATBOT)
+                },
+                onSearch = {
+                    navController.navigate(Destinations.SEARCH)
                 }
             )
         }
@@ -159,6 +164,16 @@ fun AppNavGraph(
                     }
                 },
                 viewModel = SuccessfulRegistrationViewModel(eventID = TODO())
+            )
+        }
+
+        composable(Destinations.SEARCH) {
+            SearchEventView(
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.SEARCH) { inclusive = true }
+                    }
+                }
             )
         }
     }

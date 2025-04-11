@@ -75,6 +75,7 @@ dependencies {
     implementation ("androidx.compose.material3:material3")
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.generativeai)
+    implementation(libs.material)
     var composeBomVersion = "2023.08.00"
     implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
 

@@ -48,7 +48,8 @@ class Filter(
         val attendedEvents = mutableListOf<Map<String, Any>>()
 
         for (eventDocument in querySnapshot.documents) {
-            val attendees = eventDocument.get("attendees") as? List<DocumentReference> ?: emptyList()
+            val attendees =
+                eventDocument.get("attendees") as? List<DocumentReference> ?: emptyList()
 
             // Check if the user is in the attendees list
             if (attendees.any { it.id == userId }) {
@@ -82,7 +83,8 @@ class Filter(
             .await()
 
         // Get the document that matches the user ID
-        val recommendationDocument = querySnapshot.documents.firstOrNull { it.id == userId } ?: return emptyList()
+        val recommendationDocument =
+            querySnapshot.documents.firstOrNull { it.id == userId } ?: return emptyList()
 
         val events = mutableListOf<Map<String, Any>>()
         val recommendedEvents = recommendationDocument.get("events") as? List<String> ?: emptyList()
@@ -128,5 +130,47 @@ class Filter(
             "start_date" to (eventData["start_date"] as com.google.firebase.Timestamp),
             "users_registered" to (eventData["users_registered"] as Long).toInt()
         )
+    }
+
+    suspend fun getAllEvents(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("events")
+            .get()
+            .await()
+
+        val events = mutableListOf<Map<String, Any>>()
+
+        for (eventDocument in querySnapshot.documents) {
+            events.add(eventDocument.data ?: emptyMap())
+        }
+
+        return events
+    }
+
+    suspend fun getSkillsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("skills")
+            .get()
+            .await()
+
+        val skills = mutableListOf<Map<String, Any>>()
+
+        for (skillDocument in querySnapshot.documents) {
+            skills.add(skillDocument.data ?: emptyMap())
+        }
+
+        return skills
+    }
+
+    suspend fun getLocationsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("locations")
+            .get()
+            .await()
+
+        val locations = mutableListOf<Map<String, Any>>()
+
+        for (locationDocument in querySnapshot.documents) {
+            locations.add(locationDocument.data ?: emptyMap())
+        }
+
+        return locations
     }
 }
