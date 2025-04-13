@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
+import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
 
 @Preview(showBackground = true)
@@ -80,15 +82,19 @@ fun PreviewCreateEventContent() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventView(
-    onNavigateBack: () -> Unit = {},
-    viewModel: CreateEventViewModel = viewModel()
+    onNavigateBack: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    // Usamos el factory que recibe un Context
+    val factory = remember { CreateEventViewModelFactory(context) }
+    // Instanciamos el ViewModel con factory
+    val viewModel: CreateEventViewModel = viewModel(factory = factory)
+
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
-    // Lanzador para elegir imagen
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -148,15 +154,12 @@ fun CreateEventContent(
     val endHour by viewModel.endHour.collectAsState()
     val address by viewModel.address.collectAsState()
     val details by viewModel.details.collectAsState()
-
-    // NUEVO: estados para la ciudad, si es universitario y skills
     val city by viewModel.city.collectAsState()
     val isUniversity by viewModel.isUniversity.collectAsState()
     val allSkills by viewModel.allSkills.collectAsState()
     val selectedSkills by viewModel.selectedSkills.collectAsState()
     val skillSelectionError by viewModel.skillSelectionError.collectAsState()
 
-    // Errores
     var nameError by remember { mutableStateOf<String?>(null) }
     var costError by remember { mutableStateOf<String?>(null) }
     var categoryError by remember { mutableStateOf<String?>(null) }
@@ -247,7 +250,6 @@ fun CreateEventContent(
         onImageUpload = { onImagePickerClick() },
         onCreateEvent = {
             var hasError = false
-            // Validaciones
             if (name.isBlank()) {
                 nameError = "Please enter the event name."
                 hasError = true
@@ -291,19 +293,15 @@ fun CreateEventContent(
                 detailsError = "Please enter some details."
                 hasError = true
             }
-            // Chequeo simple de city vacío
             if (city.isBlank()) {
-                // Podrías usar un cityError si lo deseas
+                // O si quieres un error local, p.e. cityError
                 hasError = true
             }
-            // Verificamos si se pasaron de 3 skills
             if (selectedSkills.size > 3) {
-                // skillSelectionError se maneja en el ViewModel, si gustas
                 hasError = true
             }
 
             if (!hasError) {
-                // Llamamos al método del viewModel que a su vez llama al repositorio
                 viewModel.createEvent()
             }
         },
@@ -382,7 +380,6 @@ fun CreateEventContentInternal(
                 .padding(horizontal = 25.dp)
                 .padding(vertical = 0.dp)
         ) {
-            // ---------- Campos ya existentes -----------
             LabeledTextField(
                 label = "Name",
                 value = name,
@@ -561,7 +558,6 @@ fun CreateEventContentInternal(
             )
             ErrorText(addressError)
 
-            // ---------- NUEVO: City Dropdown ----------
             Text(
                 text = "City",
                 fontSize = 14.sp,
@@ -569,9 +565,8 @@ fun CreateEventContentInternal(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
             )
-            CityDropdown() // Se implementa abajo
+            CityDropdown()
 
-            // ---------- NUEVO: University Dropdown ----------
             Text(
                 text = "This is an university event?",
                 fontSize = 14.sp,
@@ -579,7 +574,7 @@ fun CreateEventContentInternal(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
             )
-            UniversityDropdown() // Se implementa abajo
+            UniversityDropdown()
 
             LabeledTextField(
                 label = "Details",
@@ -590,7 +585,6 @@ fun CreateEventContentInternal(
             )
             ErrorText(detailsError)
 
-            // ---------- NUEVO: Selección de Skills ----------
             Text(
                 text = "Skills (max 3)",
                 fontSize = 14.sp,
@@ -598,7 +592,7 @@ fun CreateEventContentInternal(
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(top = 12.dp, bottom = 1.dp)
             )
-            SkillsSelection() // Se implementa abajo
+            SkillsSelection()
             ErrorText(skillSelectionError)
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -652,18 +646,11 @@ fun ErrorText(error: String?) {
     }
 }
 
-// Reutilizamos la idea de CategoryDropdown, pero para ciudades
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun CityDropdown(
-    // En un proyecto real, recibirías la ciudad seleccionada y un callback.
-    // Aquí asumimos que viene del ViewModel directamente.
-    viewModel: CreateEventViewModel = viewModel()
-) {
+fun CityDropdown(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
     val city by viewModel.city.collectAsState()
     var expanded by remember { mutableStateOf(false) }
-
-    // Ejemplo de lista de ciudades principales
     val cities = listOf(
         "Bogotá",
         "Medellín",
@@ -701,10 +688,7 @@ fun CityDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             cities.forEach { c ->
                 DropdownMenuItem(
                     text = { Text(c) },
@@ -718,16 +702,11 @@ fun CityDropdown(
     }
 }
 
-// Dropdown para escoger true o false
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UniversityDropdown(
-    viewModel: CreateEventViewModel = viewModel()
-) {
+fun UniversityDropdown(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
     val isUniversity by viewModel.isUniversity.collectAsState()
     var expanded by remember { mutableStateOf(false) }
-
-    // Solo dos opciones: true y false (en string)
     val boolOptions = listOf("true", "false")
 
     ExposedDropdownMenuBox(
@@ -754,10 +733,7 @@ fun UniversityDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             boolOptions.forEach { option ->
                 DropdownMenuItem(
                     text = { Text(option) },
@@ -771,31 +747,25 @@ fun UniversityDropdown(
     }
 }
 
-// Para mostrar la lista de skills y permitir seleccionar máx 3
 @Composable
-fun SkillsSelection(
-    viewModel: CreateEventViewModel = viewModel()
-) {
+fun SkillsSelection(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
     val allSkills by viewModel.allSkills.collectAsState()
     val selectedSkills by viewModel.selectedSkills.collectAsState()
 
     Column {
         allSkills.forEach { skillName ->
             val isSelected = selectedSkills.contains(skillName)
-            // Puedes usar un Chip, Button o Row con checkbox, etc.
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 4.dp)
-                    .clickable {
-                        viewModel.toggleSkill(skillName)
-                    },
+                    .clickable { viewModel.toggleSkill(skillName) },
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 Text(text = skillName, color = Color.Black)
                 if (isSelected) {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_check), // Reemplázalo por tu ícono preferido
+                        painter = painterResource(id = R.drawable.ic_check),
                         contentDescription = "Selected",
                         tint = Color.Green
                     )
@@ -849,7 +819,6 @@ fun CategoryDropdown(
     isError: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
-
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -875,8 +844,6 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-
-        // Tu lista de categorías
         val categoryList = listOf(
             "Leadership",
             "Sports",
@@ -893,11 +860,7 @@ fun CategoryDropdown(
             "Networking",
             "Psychology"
         )
-
-        ExposedDropdownMenu(
-            expanded = expanded,
-            onDismissRequest = { expanded = false }
-        ) {
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
             categoryList.forEach { cat ->
                 DropdownMenuItem(
                     text = { Text(cat) },

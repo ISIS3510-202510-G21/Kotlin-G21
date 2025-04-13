@@ -1,8 +1,11 @@
 package com.isis3510.growhub.viewmodel
 
+import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.isis3510.growhub.offline.NetworkUtils
+import com.isis3510.growhub.offline.OfflineEventManager
 import com.isis3510.growhub.repository.CreateEventRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,8 +16,11 @@ import java.util.Date
 import java.util.Locale
 
 class CreateEventViewModel(
-    private val createEventRepository: CreateEventRepository = CreateEventRepository()
+    private val createEventRepository: CreateEventRepository = CreateEventRepository(),
+    private val context: Context
 ) : ViewModel() {
+
+    private val offlineManager = OfflineEventManager(context, createEventRepository)
 
     private val _name = MutableStateFlow("")
     val name: StateFlow<String> = _name
@@ -75,6 +81,8 @@ class CreateEventViewModel(
 
     init {
         fetchSkills()
+        // Intentamos sincronizar eventos offline cada vez que se inicia el ViewModel
+        syncOfflineEventsIfPossible()
     }
 
     fun onNameChange(value: String) { _name.value = value }
@@ -148,36 +156,70 @@ class CreateEventViewModel(
 
     fun createEvent() {
         viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
             try {
-                _isLoading.value = true
-                _errorMessage.value = null
                 val eventCost = _cost.value.toDoubleOrNull() ?: 0.0
                 val startTimestamp = parseStartDateTime()
                 val endTimestamp = parseEndDateTime()
-                val success = createEventRepository.createEvent(
-                    name = _name.value,
-                    cost = eventCost,
-                    category = _category.value,
-                    description = _description.value,
-                    startDate = startTimestamp,
-                    endDate = endTimestamp,
-                    locationId = _locationId.value,
-                    imageUrl = _imageUrl.value,
-                    address = _address.value,
-                    details = _details.value,
-                    city = _city.value,
-                    isUniversity = _isUniversity.value,
-                    skillIds = _selectedSkills.value
-                )
-                if (success) {
-                    clearForm()
+
+                val hasInternet = NetworkUtils.isNetworkAvailable(context)
+                if (!hasInternet) {
+                    // Guardar offline
+                    offlineManager.saveOfflineEvent(
+                        name = _name.value,
+                        cost = eventCost,
+                        category = _category.value,
+                        description = _description.value,
+                        startDate = startTimestamp,
+                        endDate = endTimestamp,
+                        locationId = _locationId.value,
+                        imageUrl = _imageUrl.value,
+                        address = _address.value,
+                        details = _details.value,
+                        city = _city.value,
+                        isUniversity = _isUniversity.value,
+                        skillIds = _selectedSkills.value
+                    )
+                    _errorMessage.value = "No tienes internet. El evento se subirá cuando estés en línea."
                 } else {
-                    _errorMessage.value = "Could not create event"
+                    val success = offlineManager.uploadSingleEvent(
+                        name = _name.value,
+                        cost = eventCost,
+                        category = _category.value,
+                        description = _description.value,
+                        startDate = startTimestamp,
+                        endDate = endTimestamp,
+                        locationId = _locationId.value,
+                        imageUrl = _imageUrl.value,
+                        address = _address.value,
+                        details = _details.value,
+                        city = _city.value,
+                        isUniversity = _isUniversity.value,
+                        skillIds = _selectedSkills.value
+                    )
+                    if (success) {
+                        clearForm()
+                    } else {
+                        _errorMessage.value = "Could not create event"
+                    }
                 }
             } catch (e: Exception) {
                 _errorMessage.value = e.message
             } finally {
                 _isLoading.value = false
+            }
+        }
+    }
+
+    fun syncOfflineEventsIfPossible() {
+        viewModelScope.launch {
+            val hasInternet = NetworkUtils.isNetworkAvailable(context)
+            if (hasInternet) {
+                val uploadedCount = offlineManager.tryUploadAllOfflineEvents()
+                if (uploadedCount > 0) {
+                    _errorMessage.value = "Se han sincronizado $uploadedCount evento(s) que estaban pendientes."
+                }
             }
         }
     }
