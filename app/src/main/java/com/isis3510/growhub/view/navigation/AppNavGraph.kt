@@ -1,6 +1,8 @@
 package com.isis3510.growhub.view.navigation
 
 import android.app.Application
+import android.os.Build
+import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavHostController
@@ -30,6 +32,7 @@ object Destinations {
     const val CREATE = "create"
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph(
     manifestApiKey: String?,

@@ -63,6 +63,9 @@ import com.isis3510.growhub.viewmodel.HomeViewModel
 fun MainView(navController: NavHostController, onLogout: () -> Unit) {
     Scaffold(
         topBar = { TopBoxRenderer(onLogout = onLogout) },
+        bottomBar = {
+            BottomNavigationBar(navController = navController)
+        },
         containerColor = Color.White
     ) { innerPadding ->
         Box(
@@ -72,15 +75,8 @@ fun MainView(navController: NavHostController, onLogout: () -> Unit) {
         ) {
             // CategoryColorButtons always in the superior part
             CategoryColorButtons(modifier = Modifier.fillMaxWidth())
+            EventSliders(modifier = Modifier.fillMaxSize())
 
-            // In landscape, we force the sliders to whole screen
-            Box(modifier = Modifier.fillMaxSize()) {
-                EventSliders(modifier = Modifier.fillMaxSize())
-            }
-
-            Box(modifier = Modifier.fillMaxSize().offset(y = 100.dp), contentAlignment = Alignment.BottomCenter) {
-                BottomNavigationBar(navController = navController)
-            }
         }
     }
 }
