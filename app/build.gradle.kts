@@ -75,6 +75,7 @@ dependencies {
     implementation ("androidx.compose.material3:material3")
     var composeBomVersion = "2023.08.00"
     implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
 
     // Firebase (BoM, para manejar versiones automáticamente)
     implementation(platform("com.google.firebase:firebase-bom:32.2.3"))

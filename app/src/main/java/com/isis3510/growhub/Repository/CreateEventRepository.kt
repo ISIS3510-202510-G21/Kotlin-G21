@@ -9,6 +9,9 @@ class CreateEventRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
 
+    /**
+     * Ahora se agregan city, isUniversity y skillIds para almacenarlos en Firestore
+     */
     suspend fun createEvent(
         name: String,
         cost: Double,
@@ -19,7 +22,10 @@ class CreateEventRepository {
         locationId: String,
         imageUrl: String?,
         address: String,
-        details: String
+        details: String,
+        city: String,                         // NUEVO
+        isUniversity: Boolean,               // NUEVO
+        skillIds: List<String>               // NUEVO - IDs de los skills seleccionados
     ): Boolean {
         // Primero buscamos la categoría correspondiente en Firestore
         val categoryQuerySnapshot = firestore.collection("categories")
@@ -27,8 +33,7 @@ class CreateEventRepository {
             .get()
             .await()
 
-        // Si no encuentra ningún documento con ese "name", puedes decidir cómo manejarlo
-        // En este caso, simplemente retornamos false indicando que no se pudo crear el evento
+        // Si no encuentra ningún documento con ese "name", retornamos false
         if (categoryQuerySnapshot.isEmpty) {
             return false
         }
@@ -36,12 +41,12 @@ class CreateEventRepository {
         // Tomamos la primera coincidencia como la categoría a referenciar
         val categoryRef = categoryQuerySnapshot.documents[0].reference
 
-        // Datos de la ubicación
+        // Datos de la ubicación (ya NO se fija en Bogotá ni en university=true)
         val locationData = hashMapOf(
             "address" to address,
-            "city" to "Bogotá",
+            "city" to city,                       // NUEVO
             "details" to details,
-            "university" to true
+            "university" to isUniversity          // NUEVO
         )
 
         // Creamos la ubicación y obtenemos su referencia
@@ -56,18 +61,23 @@ class CreateEventRepository {
         // Lista de usuarios vacía de inicio
         val emptyUsersList = arrayListOf<String>()
 
+        // NUEVO: Convertimos cada skillId a una DocumentReference de la colección "skills"
+        val skillRefs = skillIds.map { skillId ->
+            firestore.collection("skills").document(skillId)
+        }
+
         // Datos del evento
         val eventData = hashMapOf(
             "name" to name,
             "cost" to cost,
-            // Se guarda como referencia el documento encontrado en categories
-            "category" to categoryRef,
+            "category" to categoryRef,       // Se guarda como referencia
             "description" to description,
             "start_date" to startDate,
             "end_date" to endDate,
-            "location_id" to locationRef,  // Referencia al documento de location
+            "location_id" to locationRef,    // Referencia al documento de location
             "image" to finalImageUrl,
-            "users_registered" to emptyUsersList
+            "users_registered" to emptyUsersList,
+            "skills" to skillRefs            // NUEVO: lista de referencias a "skills"
         )
 
         // Guardamos el evento en la colección "events"

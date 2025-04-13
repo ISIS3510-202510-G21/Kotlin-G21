@@ -10,5 +10,7 @@ data class Event(
     val category: String,
     val imageUrl: String,
     val cost: Int,
-    val attendees: List<String>
+    val attendees: List<String>,
+    val isUniversity: Boolean,
+    val skills: List<String>
 )

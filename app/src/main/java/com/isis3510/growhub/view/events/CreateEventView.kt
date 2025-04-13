@@ -72,7 +72,8 @@ fun PreviewCreateEventContent() {
         onDetailsChange = { detailsError = null },
         onImageUpload = {},
         onCreateEvent = {},
-        onNavigateBack = {}
+        onNavigateBack = {},
+        skillSelectionError = "error de skills selector"
     )
 }
 
@@ -87,6 +88,7 @@ fun CreateEventView(
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
+    // Lanzador para elegir imagen
     val imagePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri ->
@@ -147,6 +149,14 @@ fun CreateEventContent(
     val address by viewModel.address.collectAsState()
     val details by viewModel.details.collectAsState()
 
+    // NUEVO: estados para la ciudad, si es universitario y skills
+    val city by viewModel.city.collectAsState()
+    val isUniversity by viewModel.isUniversity.collectAsState()
+    val allSkills by viewModel.allSkills.collectAsState()
+    val selectedSkills by viewModel.selectedSkills.collectAsState()
+    val skillSelectionError by viewModel.skillSelectionError.collectAsState()
+
+    // Errores
     var nameError by remember { mutableStateOf<String?>(null) }
     var costError by remember { mutableStateOf<String?>(null) }
     var categoryError by remember { mutableStateOf<String?>(null) }
@@ -179,6 +189,7 @@ fun CreateEventContent(
         endHourError = endHourError,
         addressError = addressError,
         detailsError = detailsError,
+        skillSelectionError = skillSelectionError,
         onNameChange = {
             viewModel.onNameChange(it)
             nameError = null
@@ -187,8 +198,11 @@ fun CreateEventContent(
         onCostChange = {
             viewModel.onCostChange(it)
             costError = null
-            if (it.isBlank()) costError = "Please enter a cost."
-            else if (it.toDoubleOrNull() == null) costError = "Cost must be a valid number."
+            if (it.isBlank()) {
+                costError = "Please enter a cost."
+            } else if (it.toDoubleOrNull() == null) {
+                costError = "Cost must be a valid number."
+            }
         },
         onCategoryChange = {
             viewModel.onCategoryChange(it)
@@ -233,6 +247,7 @@ fun CreateEventContent(
         onImageUpload = { onImagePickerClick() },
         onCreateEvent = {
             var hasError = false
+            // Validaciones
             if (name.isBlank()) {
                 nameError = "Please enter the event name."
                 hasError = true
@@ -276,7 +291,19 @@ fun CreateEventContent(
                 detailsError = "Please enter some details."
                 hasError = true
             }
+            // Chequeo simple de city vacío
+            if (city.isBlank()) {
+                // Podrías usar un cityError si lo deseas
+                hasError = true
+            }
+            // Verificamos si se pasaron de 3 skills
+            if (selectedSkills.size > 3) {
+                // skillSelectionError se maneja en el ViewModel, si gustas
+                hasError = true
+            }
+
             if (!hasError) {
+                // Llamamos al método del viewModel que a su vez llama al repositorio
                 viewModel.createEvent()
             }
         },
@@ -306,6 +333,7 @@ fun CreateEventContentInternal(
     endHourError: String?,
     addressError: String?,
     detailsError: String?,
+    skillSelectionError: String?,
     onNameChange: (String) -> Unit,
     onCostChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
@@ -347,12 +375,14 @@ fun CreateEventContentInternal(
                 color = Color.Black
             )
         }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 25.dp)
                 .padding(vertical = 0.dp)
         ) {
+            // ---------- Campos ya existentes -----------
             LabeledTextField(
                 label = "Name",
                 value = name,
@@ -361,6 +391,7 @@ fun CreateEventContentInternal(
                 onValueChange = onNameChange
             )
             ErrorText(nameError)
+
             LabeledTextField(
                 label = "Cost",
                 value = cost,
@@ -370,6 +401,7 @@ fun CreateEventContentInternal(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             ErrorText(costError)
+
             Text(
                 text = "Category",
                 fontSize = 14.sp,
@@ -384,6 +416,7 @@ fun CreateEventContentInternal(
                 isError = (categoryError != null)
             )
             ErrorText(categoryError)
+
             LabeledTextField(
                 label = "Description",
                 value = description,
@@ -392,6 +425,7 @@ fun CreateEventContentInternal(
                 onValueChange = onDescriptionChange
             )
             ErrorText(descriptionError)
+
             Text(
                 text = "Date",
                 fontSize = 14.sp,
@@ -454,6 +488,7 @@ fun CreateEventContentInternal(
                     ErrorText(endDateError)
                 }
             }
+
             Text(
                 text = "Hour",
                 fontSize = 14.sp,
@@ -516,6 +551,7 @@ fun CreateEventContentInternal(
                     ErrorText(endHourError)
                 }
             }
+
             LabeledTextField(
                 label = "Address",
                 value = address,
@@ -524,6 +560,27 @@ fun CreateEventContentInternal(
                 onValueChange = onAddressChange
             )
             ErrorText(addressError)
+
+            // ---------- NUEVO: City Dropdown ----------
+            Text(
+                text = "City",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
+            )
+            CityDropdown() // Se implementa abajo
+
+            // ---------- NUEVO: University Dropdown ----------
+            Text(
+                text = "This is an university event?",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
+            )
+            UniversityDropdown() // Se implementa abajo
+
             LabeledTextField(
                 label = "Details",
                 value = details,
@@ -532,6 +589,18 @@ fun CreateEventContentInternal(
                 onValueChange = onDetailsChange
             )
             ErrorText(detailsError)
+
+            // ---------- NUEVO: Selección de Skills ----------
+            Text(
+                text = "Skills (max 3)",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 12.dp, bottom = 1.dp)
+            )
+            SkillsSelection() // Se implementa abajo
+            ErrorText(skillSelectionError)
+
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = onImageUpload,
@@ -549,6 +618,7 @@ fun CreateEventContentInternal(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Upload Image of the event", color = Color.Black)
             }
+
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onCreateEvent,
@@ -579,6 +649,160 @@ fun ErrorText(error: String?) {
             fontSize = 12.sp,
             modifier = Modifier.padding(start = 8.dp, top = 2.dp)
         )
+    }
+}
+
+// Reutilizamos la idea de CategoryDropdown, pero para ciudades
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CityDropdown(
+    // En un proyecto real, recibirías la ciudad seleccionada y un callback.
+    // Aquí asumimos que viene del ViewModel directamente.
+    viewModel: CreateEventViewModel = viewModel()
+) {
+    val city by viewModel.city.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+
+    // Ejemplo de lista de ciudades principales
+    val cities = listOf(
+        "Bogotá",
+        "Medellín",
+        "Cali",
+        "Barranquilla",
+        "Cartagena",
+        "Bucaramanga",
+        "Pereira",
+        "Manizales",
+        "Santa Marta",
+        "Ibagué"
+    )
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = city,
+            onValueChange = {},
+            placeholder = { Text("Choose a city") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .height(50.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            cities.forEach { c ->
+                DropdownMenuItem(
+                    text = { Text(c) },
+                    onClick = {
+                        viewModel.onCityChange(c)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+// Dropdown para escoger true o false
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UniversityDropdown(
+    viewModel: CreateEventViewModel = viewModel()
+) {
+    val isUniversity by viewModel.isUniversity.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+
+    // Solo dos opciones: true y false (en string)
+    val boolOptions = listOf("true", "false")
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = if (isUniversity) "true" else "false",
+            onValueChange = {},
+            placeholder = { Text("Is it a university event?") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .height(50.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            boolOptions.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        viewModel.onIsUniversityChange(option == "true")
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+// Para mostrar la lista de skills y permitir seleccionar máx 3
+@Composable
+fun SkillsSelection(
+    viewModel: CreateEventViewModel = viewModel()
+) {
+    val allSkills by viewModel.allSkills.collectAsState()
+    val selectedSkills by viewModel.selectedSkills.collectAsState()
+
+    Column {
+        allSkills.forEach { skillName ->
+            val isSelected = selectedSkills.contains(skillName)
+            // Puedes usar un Chip, Button o Row con checkbox, etc.
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable {
+                        viewModel.toggleSkill(skillName)
+                    },
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = skillName, color = Color.Black)
+                if (isSelected) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check), // Reemplázalo por tu ícono preferido
+                        contentDescription = "Selected",
+                        tint = Color.Green
+                    )
+                }
+            }
+            Divider()
+        }
     }
 }
 
@@ -625,6 +849,7 @@ fun CategoryDropdown(
     isError: Boolean
 ) {
     var expanded by remember { mutableStateOf(false) }
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -650,7 +875,11 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        val categoryList = listOf("Leadership","Sports",
+
+        // Tu lista de categorías
+        val categoryList = listOf(
+            "Leadership",
+            "Sports",
             "Hackathons & Competitions",
             "Career Fairs",
             "Workshops",
@@ -662,7 +891,8 @@ fun CategoryDropdown(
             "Entrepeneurship",
             "SW Develop",
             "Networking",
-            "Psychology")
+            "Psychology"
+        )
 
         ExposedDropdownMenu(
             expanded = expanded,
