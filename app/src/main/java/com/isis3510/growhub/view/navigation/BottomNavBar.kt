@@ -1,5 +1,6 @@
 package com.isis3510.growhub.view.navigation
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -14,19 +15,25 @@ import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavController
 import com.isis3510.growhub.R
+import com.isis3510.growhub.offline.NetworkUtils
 
-
-// Bottom Navigation Bar
 @Composable
 fun BottomNavigationBar(navController: NavController) {
+    // Revisamos si hay internet
+    val context = LocalContext.current
+    val hasInternet = NetworkUtils.isNetworkAvailable(context)
+
     val navItems = listOf(
         Destinations.HOME to "Home",
         Destinations.MAP to "Map",
@@ -35,7 +42,9 @@ fun BottomNavigationBar(navController: NavController) {
         Destinations.PROFILE to "Profile"
     )
 
-    val navBackStackEntry = navController.currentBackStackEntryFlow.collectAsState(initial = navController.currentBackStackEntry)
+    val navBackStackEntry = navController.currentBackStackEntryFlow.collectAsState(
+        initial = navController.currentBackStackEntry
+    )
     val currentRoute = navBackStackEntry.value?.destination?.route
 
     NavigationBar(
@@ -87,13 +96,21 @@ fun BottomNavigationBar(navController: NavController) {
                 },
                 selected = currentRoute == route,
                 colors = NavigationBarItemDefaults.colors(indicatorColor = Color.White),
+
+                // No bloquear directamente, siempre permitimos el click
+                enabled = true,
+
                 onClick = {
-                    if (route == "Add") {
-                        navController.navigate(Destinations.CREATE)
+                    if (!hasInternet) {
+                        Toast.makeText(context, "Please check your internet connection", Toast.LENGTH_SHORT).show()
                     } else {
-                        navController.navigate(route) {
-                            popUpTo(Destinations.HOME) { inclusive = false }
-                            launchSingleTop = true
+                        if (route == "Add") {
+                            navController.navigate(Destinations.CREATE)
+                        } else {
+                            navController.navigate(route) {
+                                popUpTo(Destinations.HOME) { inclusive = false }
+                                launchSingleTop = true
+                            }
                         }
                     }
                 }
