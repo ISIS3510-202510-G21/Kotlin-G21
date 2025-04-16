@@ -1,109 +1,132 @@
 package com.isis3510.growhub.viewmodel
 
 import android.os.Build
+import android.util.Log // Import Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.State
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
+import kotlinx.coroutines.async
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
-import kotlin.math.min // Import min directly
+import kotlin.math.min
 
-@RequiresApi(Build.VERSION_CODES.O) // Still needed due to LocalDate usage
+@RequiresApi(Build.VERSION_CODES.O)
 class HomeEventsViewModel(
-    // Consider using Dependency Injection here in a real app (Hilt, Koin)
     private val firebaseFacade: FirebaseServicesFacade = FirebaseServicesFacade()
 ) : ViewModel() {
 
-    // State holders for different event lists
+    // --- State Holders de Eventos ---
     val upcomingEvents = mutableStateListOf<Event>()
     val nearbyEvents = mutableStateListOf<Event>()
     val recommendedEvents = mutableStateListOf<Event>()
 
-    // Consider using StateFlow for better integration with Compose recomposition
-    // Example:
-    // private val _upcomingEvents = MutableStateFlow<List<Event>>(emptyList())
-    // val upcomingEvents: StateFlow<List<Event>> = _upcomingEvents.asStateFlow()
-    // ... and update the loading functions accordingly
+    // --- Estados de carga individuales ---
+    private val _isLoadingUpcoming = mutableStateOf(true)
+    val isLoadingUpcoming: State<Boolean> = _isLoadingUpcoming
 
+    private val _isLoadingNearby = mutableStateOf(true)
+    val isLoadingNearby: State<Boolean> = _isLoadingNearby
+
+    private val _isLoadingRecommended = mutableStateOf(true)
+    val isLoadingRecommended: State<Boolean> = _isLoadingRecommended
+
+    // --- Inicialización ---
     init {
-        // Load all event types on initialization
-        loadUpcomingEvents()
-        loadNearbyEvents()
-        loadRecommendedEvents()
+        loadAllEvents()
     }
 
-    @RequiresApi(Build.VERSION_CODES.O) // Specifically for LocalDate usage
-    private fun loadUpcomingEvents() {
+    // --- Lógica de carga concurrente con estados independientes ---
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun loadAllEvents() {
+        // Se podría quitar el flag global si se utiliza solo el de cada sección.
         viewModelScope.launch {
             try {
-                val allMyEvents = firebaseFacade.fetchMyEvents()
-                val today = LocalDate.now()
-                val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                // Lanzamos las tres peticiones concurrentemente
+                val deferredUpcoming = async { firebaseFacade.fetchMyEvents() }
+                val deferredNearby = async { firebaseFacade.fetchHomeEvents() }
+                val deferredRecommended = async { firebaseFacade.fetchHomeRecommendedEvents() }
 
-                val filteredUpcoming = allMyEvents.filter { event ->
-                    try {
-                        val eventDate = LocalDate.parse(event.startDate, formatter)
-                        eventDate.isAfter(today)
-                    } catch (e: Exception) {
-                        // Handle potential parsing errors if format is inconsistent
-                        // Log.e("EventsViewModel", "Error parsing date for event ${event.id}", e)
-                        false // Exclude if date parsing fails
+                // --- Upcoming Events ---
+                runCatching { deferredUpcoming.await() }
+                    .onSuccess { allMyEvents ->
+                        processUpcomingEvents(allMyEvents)
+                    }.onFailure { e ->
+                        Log.e("HomeEventsVM", "Error fetching upcoming events", e)
+                        upcomingEvents.clear()
                     }
-                }
-                // Update the state list (clear first if necessary)
+                _isLoadingUpcoming.value = false
+
+                // --- Nearby Events ---
+                runCatching { deferredNearby.await() }
+                    .onSuccess { homeEvents ->
+                        processNearbyEvents(homeEvents)
+                    }.onFailure { e ->
+                        Log.e("HomeEventsVM", "Error fetching nearby events", e)
+                        nearbyEvents.clear()
+                    }
+                _isLoadingNearby.value = false
+
+                // --- Recommended Events ---
+                runCatching { deferredRecommended.await() }
+                    .onSuccess { recommended ->
+                        processRecommendedEvents(recommended)
+                    }.onFailure { e ->
+                        Log.e("HomeEventsVM", "Error fetching recommended events", e)
+                        recommendedEvents.clear()
+                    }
+                _isLoadingRecommended.value = false
+
+            } catch (e: Exception) {
+                Log.e("HomeEventsVM", "Error in loadAllEvents coroutine scope", e)
                 upcomingEvents.clear()
-                upcomingEvents.addAll(filteredUpcoming)
-
-            } catch (e: Exception) {
-                // Handle exceptions during Firebase fetch (e.g., network error)
-                // Log.e("EventsViewModel", "Error fetching upcoming events", e)
-                // You might want to expose an error state to the UI
-            }
-        }
-    }
-
-    private fun loadNearbyEvents() {
-        viewModelScope.launch {
-            try {
-                val homeEvents = firebaseFacade.fetchHomeEvents()
-                // Take only the first 3 (or fewer if list is smaller)
-                val nearbySubset = homeEvents.take(min(3, homeEvents.size))
-
                 nearbyEvents.clear()
-                nearbyEvents.addAll(nearbySubset)
-
-            } catch (e: Exception) {
-                // Handle exceptions
-                // Log.e("EventsViewModel", "Error fetching nearby events", e)
-            }
-        }
-    }
-
-    private fun loadRecommendedEvents() {
-        viewModelScope.launch {
-            try {
-                val recommended = firebaseFacade.fetchHomeRecommendedEvents()
-                // Take only the first 3 (or fewer if list is smaller)
-                val recommendedSubset = recommended.take(min(3, recommended.size))
-
                 recommendedEvents.clear()
-                recommendedEvents.addAll(recommendedSubset)
 
-            } catch (e: Exception) {
-                // Handle exceptions
-                // Log.e("EventsViewModel", "Error fetching recommended events", e)
+                _isLoadingUpcoming.value = false
+                _isLoadingNearby.value = false
+                _isLoadingRecommended.value = false
             }
         }
     }
 
-    // Potential future function for refreshing data
-    // fun refreshEvents() {
-    //     loadUpcomingEvents()
-    //     loadNearbyEvents()
-    //     loadRecommendedEvents()
-    // }
+    // --- Funciones de procesamiento ---
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun processUpcomingEvents(allMyEvents: List<Event>) {
+        val today = LocalDate.now()
+        val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        val filteredUpcoming = allMyEvents.filter { event ->
+            try {
+                if (event.startDate.isEmpty()) return@filter false
+                val eventDate = LocalDate.parse(event.startDate, formatter)
+                eventDate.isAfter(today) || eventDate.isEqual(today)
+            } catch (e: Exception) {
+                Log.w("HomeEventsVM", "Error parsing date '${event.startDate}' for event ${event.name}. Skipping.", e)
+                false
+            }
+        }
+        val upcomingSubset = filteredUpcoming.take(3) // Limita a 3 eventos
+        Log.d("HomeEventsVM", "Processed Upcoming: Found ${upcomingSubset.size} events.")
+        upcomingEvents.clear()
+        upcomingEvents.addAll(upcomingSubset)
+    }
+
+    private fun processNearbyEvents(homeEvents: List<Event>) {
+        val nearbySubset = homeEvents.take(min(3, homeEvents.size))
+        Log.d("HomeEventsVM", "Processed Nearby: Found ${nearbySubset.size} events.")
+        nearbyEvents.clear()
+        nearbyEvents.addAll(nearbySubset)
+    }
+
+    private fun processRecommendedEvents(recommended: List<Event>) {
+        val recommendedSubset = recommended.take(min(3, recommended.size))
+        Log.d("HomeEventsVM", "Processed Recommended: Found ${recommendedSubset.size} events.")
+        recommendedEvents.clear()
+        recommendedEvents.addAll(recommendedSubset)
+    }
 }

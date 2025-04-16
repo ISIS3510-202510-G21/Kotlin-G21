@@ -98,11 +98,6 @@ fun MainView(
                         //TODO: Navigation to the Event Detail
                         Log.d("HomeView", "Event clicked: ${event.name}")
                         // navController.navigate(...)
-                    },
-                    onSeeAllClick = { sectionTitle ->
-                        //TODO: This is wrong or at least should be changed
-                        Log.d("HomeView", "See All clicked for: $sectionTitle")
-                        // navController.navigate(...)
                     }
                 )
             }

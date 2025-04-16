@@ -75,24 +75,30 @@ class Filter(
     }
 
     suspend fun getHomeRecommendedEventsData(): List<Map<String, Any>> {
+        // Recupera el id del usuario actualmente autenticado
         val userId = auth.currentUser?.uid ?: return emptyList()
 
-        val querySnapshot = db.collection("recommendations")
+        // Obtiene el documento del usuario desde la colección "users"
+        val querySnapshot = db.collection("users").document(userId)
             .get()
             .await()
 
-        // Get the document that matches the user ID
-        val recommendationDocument = querySnapshot.documents.firstOrNull { it.id == userId } ?: return emptyList()
+        // Extrae la lista de ids de eventos recomendados del atributo "recommended_events"
+        val recommendedEventsIds = querySnapshot.get("recommended_events") as? List<String> ?: emptyList()
 
+        // Lista para acumular los datos de los eventos
         val events = mutableListOf<Map<String, Any>>()
-        val recommendedEvents = recommendationDocument.get("events") as? List<String> ?: emptyList()
-        for (eventId in recommendedEvents) {
+
+        // Para cada id, consulta el documento correspondiente en la colección "events"
+        for (eventId in recommendedEventsIds) {
             val eventDocument = db.collection("events").document(eventId).get().await()
-            events.add(eventDocument.data ?: emptyMap())
+            // Si el documento existe, añade sus datos a la lista
+            eventDocument.data?.let { events.add(it) }
         }
 
         return events
     }
+
 
     suspend fun getCategoriesData(): List<Map<String, Any>> {
         val querySnapshot = db.collection("categories")
