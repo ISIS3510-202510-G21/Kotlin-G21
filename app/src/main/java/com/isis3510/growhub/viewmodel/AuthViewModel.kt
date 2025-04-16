@@ -69,22 +69,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         return firebaseLoggedIn && localLoggedIn
     }
 
-    /**
-     * Esta función se deja para no romper referencias.
-     * Ahora sólo 'simula' el registro, pero NO crea el usuario en FirebaseAuth.
-     * En vez de eso, se usará finalizeUserRegistration(...) desde la pantalla de intereses.
-     */
     fun registerUser(onRegisterAuthSuccess: (String) -> Unit) {
-        // Antes creaba el usuario en FirebaseAuth, ahora solo limpia error:
         _uiState.value = _uiState.value.copy(errorMessage = null)
-        // Llamamos al callback con un string vacío (antes pasaba el userId)
         onRegisterAuthSuccess("")
     }
 
-    /**
-     * Guarda temporalmente la data que viene de la pantalla Register en la UI state,
-     * sin crear nada en Firebase.
-     */
     fun updateRegistrationData(
         name: String,
         email: String,

@@ -1,5 +1,6 @@
 package com.isis3510.growhub.view.auth
 
+import android.widget.Toast
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -29,6 +30,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import androidx.compose.ui.text.input.KeyboardType
+import com.isis3510.growhub.offline.NetworkUtils
+import androidx.compose.ui.platform.LocalContext
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,6 +42,8 @@ fun RegisterScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val primaryBlue = Color(0xFF5669FF)
+
+    val context = LocalContext.current
 
     var passwordVisible by remember { mutableStateOf(false) }
     var confirmPasswordVisible by remember { mutableStateOf(false) }
@@ -283,6 +288,11 @@ fun RegisterScreen(
 
         Button(
             onClick = {
+                val hasInternet = NetworkUtils.isNetworkAvailable(context)
+                if (!hasInternet) {
+                    Toast.makeText(context, "No internet connection", Toast.LENGTH_LONG).show()
+                    return@Button
+                }
                 var hasError = false
                 // Validaciones locales
                 if (uiState.name.isBlank()) {
