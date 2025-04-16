@@ -8,18 +8,18 @@ import androidx.room.Query
 @Dao
 interface CategoryDao {
 
-    // Get categories ordered correctly, with limit and offset for pagination
-    @Query("SELECT * FROM categories ORDER BY `order` ASC LIMIT :limit OFFSET :offset")
+    @Query("SELECT * FROM categoryentity ORDER BY id ASC LIMIT :limit OFFSET :offset")
     suspend fun getCategories(limit: Int, offset: Int): List<CategoryEntity>
 
-    // Insert a list of categories. Replace on conflict using the primary key (name).
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertAll(categories: List<CategoryEntity>)
+    suspend fun insertCategory(category: CategoryEntity)
 
-    @Query("SELECT COUNT(*) FROM categories")
-    suspend fun getCategoryCount(): Int
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertCategories(categories: List<CategoryEntity>)
 
-    // Clear all categories, useful before inserting a fresh list from network
-    @Query("DELETE FROM categories")
-    suspend fun deleteAll()
+    @Query("SELECT COUNT(*) FROM categoryentity")
+    suspend fun getCount(): Int
+
+    @Query("DELETE FROM categoryentity WHERE :now - createdAt > :maxAge")
+    suspend fun deleteOlderThan(now: Long, maxAge: Long)
 }

@@ -1,86 +1,47 @@
 package com.isis3510.growhub.Repository
 
-import android.util.Log
-import com.isis3510.growhub.local.data.CategoryDao
-import com.isis3510.growhub.local.data.toDomainModel
-import com.isis3510.growhub.local.data.toEntity
-import com.isis3510.growhub.model.facade.FirebaseServicesFacade
+import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.objects.Category
-import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.flow
-import kotlinx.coroutines.flow.flowOn
-import kotlinx.coroutines.withContext
+import com.isis3510.growhub.model.objects.toCategory
+import com.isis3510.growhub.model.objects.toEntity
+import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 
-// Re-define or import DataResult if not globally available
-sealed class DataResult<out T> {
-    data class Success<T>(val data: T) : DataResult<T>()
-    data class Error(val exception: Exception) : DataResult<Nothing>()
-    object Loading : DataResult<Nothing>()
-}
+class CategoryRepository(db: AppLocalDatabase) {
 
-// Concrete class directly, no interface implementation
-class CategoryRepository(
-    private val categoryDao: CategoryDao,
-    private val firebaseFacade: FirebaseServicesFacade,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
-) {
+    private val categoryDao = db.categoryDao()
 
-    private var isNetworkFetchInProgress = false
+    // Query categories from local database using paging to split in groups of 5
+    private suspend fun getCategoriesLocal(limit: Int, offset: Int): List<Category> {
+        return categoryDao.getCategories(limit, offset).map { it.toCategory() }
+    }
 
-    // Method signature remains the same, just remove 'override'
-    fun getPaginatedCategories(page: Int, pageSize: Int): Flow<DataResult<List<Category>>> = flow {
-        emit(DataResult.Loading)
-        val offset = (page - 1) * pageSize
-        try {
-            // 1. Emit local data
-            val localCategories = categoryDao.getCategories(limit = pageSize, offset = offset)
-            emit(DataResult.Success(localCategories.map { it.toDomainModel() }))
+    // Query to Firebase, store group in local database and return its list
+    private suspend fun fetchCategoriesFromFirebaseAndStore(limit: Int, offset: Int): List<Category> {
+        // Return all categories from Firebase
+        val allCategories = FirebaseServicesFacade().fetchCategories()
+        // Perform paging process in local memory
+        val paginatedCategories = allCategories.drop(offset).take(limit)
 
-            // 2. Trigger network check/fetch on first page load
-            if (page == 1 && !isNetworkFetchInProgress) {
-                Log.d("CategoryRepository", "Triggering network check/fetch.")
-                fetchAndStoreAllCategories()
-            }
-        } catch (e: Exception) {
-            Log.e("CategoryRepository", "Error getting paginated categories", e)
-            emit(DataResult.Error(e))
+        if (paginatedCategories.isNotEmpty()) {
+            val entities = paginatedCategories.map { it.toEntity() }
+            categoryDao.insertCategories(entities)
         }
-    }.flowOn(ioDispatcher)
+        return paginatedCategories
+    }
 
-    private suspend fun fetchAndStoreAllCategories() {
-        if (isNetworkFetchInProgress) return
-        isNetworkFetchInProgress = true
-        withContext(ioDispatcher) {
-            try {
-                Log.d("CategoryRepository", "Fetching all categories from Firebase...")
-                val networkCategories = firebaseFacade.fetchCategories()
-                Log.d("CategoryRepository", "Fetched ${networkCategories.size} categories from Firebase.")
-                val categoryEntities = networkCategories.mapIndexed { index, category ->
-                    category.toEntity(order = index)
-                }
-                categoryDao.deleteAll()
-                categoryDao.insertAll(categoryEntities)
-                Log.d("CategoryRepository", "Stored categories locally.")
-            } catch (e: Exception) {
-                Log.e("CategoryRepository", "Failed to fetch/store categories", e)
-            } finally {
-                isNetworkFetchInProgress = false
-            }
+    // Caching then fallback to Network
+    suspend fun getCategories(limit: Int, offset: Int): List<Category> {
+        val localCategories = getCategoriesLocal(limit, offset)
+        return localCategories.ifEmpty {
+            fetchCategoriesFromFirebaseAndStore(limit, offset)
         }
     }
 
-    // Method signature remains the same, just remove 'override'
-    suspend fun refreshCategoriesFromNetwork() {
-        Log.d("CategoryRepository", "Explicit refresh requested.")
-        fetchAndStoreAllCategories()
-    }
-
-    // Method signature remains the same, just remove 'override'
-    suspend fun getTotalCategoryCount(): Int {
-        return withContext(ioDispatcher) {
-            categoryDao.getCategoryCount()
-        }
+    // Delete categories that are older than 7 days
+    suspend fun deleteOlderCategories() {
+        return categoryDao.deleteOlderThan(
+            now = System.currentTimeMillis(),
+            maxAge = 7 * 24 * 60 * 60 * 1000
+        )
     }
 }
