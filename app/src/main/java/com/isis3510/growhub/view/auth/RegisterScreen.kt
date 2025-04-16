@@ -1,7 +1,7 @@
 package com.isis3510.growhub.view.auth
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.Button
@@ -16,7 +16,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -24,20 +23,18 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.isis3510.growhub.FakeApplication
 import com.isis3510.growhub.R
-import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RegisterScreen(
     viewModel: AuthViewModel = viewModel(),
-    onRegisterSuccess: () -> Unit,
+    onNavigateToInterests: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
@@ -52,9 +49,8 @@ fun RegisterScreen(
     var passwordError by remember { mutableStateOf<String?>(null) }
     var confirmPasswordError by remember { mutableStateOf<String?>(null) }
 
-    // Para menú básico (sin ExposedDropdownMenu)
     var roleMenuExpanded by remember { mutableStateOf(false) }
-    val selectedRole = uiState.userRole ?: "Select a role"
+    val selectedRole = if (uiState.userRole.isNotBlank()) uiState.userRole else "Select a role"
     val roles = listOf("Host", "Attendee")
 
     Column(
@@ -136,7 +132,7 @@ fun RegisterScreen(
             )
         }
 
-        // User Role (DropdownMenu SIN ExposedDropdownMenu)
+        // User Role (Dropdown)
         Box {
             OutlinedTextField(
                 value = selectedRole,
@@ -144,8 +140,7 @@ fun RegisterScreen(
                 readOnly = true,
                 label = { Text("User Role") },
                 isError = (roleError != null),
-                modifier = Modifier
-                    .fillMaxWidth(),
+                modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
                         painter = painterResource(id = R.drawable.ic_email),
@@ -164,8 +159,7 @@ fun RegisterScreen(
             )
             DropdownMenu(
                 expanded = roleMenuExpanded,
-                onDismissRequest = { roleMenuExpanded = false },
-                modifier = Modifier.fillMaxWidth()
+                onDismissRequest = { roleMenuExpanded = false }
             ) {
                 roles.forEach { role ->
                     DropdownMenuItem(
@@ -196,6 +190,7 @@ fun RegisterScreen(
                 passwordError = null
             },
             label = { Text("Your password") },
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             visualTransformation =
             if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -237,6 +232,7 @@ fun RegisterScreen(
                 confirmPasswordError = null
             },
             label = { Text("Confirm password") },
+            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
             visualTransformation =
             if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
@@ -246,8 +242,7 @@ fun RegisterScreen(
                             id = if (confirmPasswordVisible) R.drawable.ic_eye_closed
                             else R.drawable.ic_eye_open
                         ),
-                        contentDescription =
-                        if (confirmPasswordVisible) "Hide password" else "Show password",
+                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -289,6 +284,7 @@ fun RegisterScreen(
         Button(
             onClick = {
                 var hasError = false
+                // Validaciones locales
                 if (uiState.name.isBlank()) {
                     nameError = "Please enter your full name."
                     hasError = true
@@ -300,7 +296,7 @@ fun RegisterScreen(
                     emailError = "Please enter a valid email address"
                     hasError = true
                 }
-                if (uiState.userRole.isNullOrEmpty()) {
+                if (uiState.userRole.isBlank()) {
                     roleError = "Please select a user role."
                     hasError = true
                 }
@@ -312,12 +308,17 @@ fun RegisterScreen(
                     confirmPasswordError = "Please confirm your password."
                     hasError = true
                 }
+                // Si no hay errores, guardamos la data en el ViewModel (sin crear usuario en FirebaseAuth).
                 if (!hasError) {
-                    if (uiState.password != uiState.confirmPassword) {
-                        confirmPasswordError = "Passwords do not match."
-                    } else {
-                        viewModel.registerUser { onRegisterSuccess() }
-                    }
+                    viewModel.updateRegistrationData(
+                        name = uiState.name,
+                        email = uiState.email,
+                        password = uiState.password,
+                        confirmPassword = uiState.confirmPassword,
+                        userRole = uiState.userRole
+                    )
+                    // Navegamos a InterestsScreen
+                    onNavigateToInterests()
                 }
             },
             modifier = Modifier
@@ -341,25 +342,5 @@ fun RegisterScreen(
                 Text(text = "Sign In", color = primaryBlue)
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun RegisterScreenPreview() {
-    val fakeApp = FakeApplication()
-    val previewViewModel = AuthViewModel(fakeApp).apply {
-        onNameChange("John Doe")
-        onEmailChange("new@user.com")
-        onPasswordChange("password")
-        onConfirmPasswordChange("password")
-        onUserRoleChange("Host")
-    }
-    GrowhubTheme {
-        RegisterScreen(
-            viewModel = previewViewModel,
-            onRegisterSuccess = {},
-            onNavigateBack = {}
-        )
     }
 }
