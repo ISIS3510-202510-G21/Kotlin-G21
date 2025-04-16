@@ -22,8 +22,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -37,7 +35,7 @@ import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
-// Colores predefinidos
+// Predefined colors for buttons
 private val categoryColors = listOf(
     Color(0xffef635a), Color(0xfff59762), Color(0xff29d697),
     Color(0xff3b5998), Color(0xff8e44ad), Color(0xff2c3e50),
@@ -67,7 +65,6 @@ fun CategoriesView(
     val isLoadingMore by categoriesViewModel.isLoadingMore.observeAsState(false)
     val hasReachedEnd by categoriesViewModel.hasReachedEnd.observeAsState(false)
     val listState = rememberLazyListState()
-    val context = LocalContext.current
 
     // State for the temporary message visibility
     var showEndMessage by remember { mutableStateOf(false) }
@@ -76,26 +73,11 @@ fun CategoriesView(
     Log.d("CategoriesView", "Recomposition: showEndMessage = $showEndMessage, isLoadingMore = $isLoadingMore, hasReachedEnd = $hasReachedEnd")
 
     // --- Effect for observing the LiveData event ---
-    val lifecycleOwner = LocalLifecycleOwner.current
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
     val scope = rememberCoroutineScope() // Scope tied to the composable lifecycle
 
     DisposableEffect(lifecycleOwner, categoriesViewModel) { // Effect runs when keys change or on dispose
-        // Observe Unit? because SingleLiveEvent.call() posts null
-        val observer = androidx.lifecycle.Observer<Unit?> { _ -> // Use Unit? and ignore the parameter
-            // This lambda executes when the SingleLiveEvent fires
-            Log.d("CategoriesView", "Observer detected SingleLiveEvent!")
-            if (!showEndMessage) { // Prevent starting a new timer if one is already running
-                scope.launch {
-                    Log.d("CategoriesView", "Coroutine launched: Setting showEndMessage = true")
-                    showEndMessage = true
-                    delay(3000L) // Keep message visible for 3 seconds
-                    Log.d("CategoriesView", "Coroutine finished delay: Setting showEndMessage = false")
-                    showEndMessage = false
-                }
-            } else {
-                Log.d("CategoriesView", "SingleLiveEvent observed, but message already showing.")
-            }
-
+        val observer = androidx.lifecycle.Observer<Unit?> { _ ->
             if (!showEndMessage) { // Prevent starting a new timer if one is already running
                 scope.launch {
                     Log.d("CategoriesView", "Coroutine launched: Setting showEndMessage = true")
@@ -111,12 +93,10 @@ fun CategoriesView(
 
         // Start observing
         categoriesViewModel.showNoMoreCategoriesMessage.observe(lifecycleOwner, observer)
-        Log.d("CategoriesView", "LiveData observer ADDED")
 
         // Cleanup: Remove observer when the effect leaves composition
         onDispose {
             categoriesViewModel.showNoMoreCategoriesMessage.removeObserver(observer)
-            Log.d("CategoriesView", "LiveData observer REMOVED")
         }
     }
 
