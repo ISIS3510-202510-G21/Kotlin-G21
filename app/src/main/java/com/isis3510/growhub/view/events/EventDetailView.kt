@@ -5,28 +5,43 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.platform.LocalInspectionMode
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
+import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.R
 import com.isis3510.growhub.model.objects.Event
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
 
+/* ---------- Paleta / estilos ---------- */
+private val CardShape = RoundedCornerShape(12.dp)
+private val CardBg     = Color.White
+private val Accent     = Color(0xFF5669FF)
+private val ChipBg     = Color(0xFFF4F4F4)
+private val ChipLabel  = Color(0xFF9A9A9A)
+private val BodyText   = Color(0xFF191D17)
 
+/* ---------- Pantalla completo ---------- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -34,206 +49,253 @@ fun EventDetailView(
     eventName: String,
     navController: NavHostController
 ) {
-    /* ---------- Estado ---------- */
+    /* --- Estado UI --- */
     var event by remember { mutableStateOf<Event?>(null) }
     var loading by remember { mutableStateOf(true) }
 
+    /* --- Preview mock ---------------------------------------------------- */
+    val inPreview = LocalInspectionMode.current
+    if (inPreview && event == null) {
+        event = Event(
+            name = "IA Prompt Engineering",
+            description = "En un mundo donde la inteligencia artificial ...",
+            location = "Cra. 1 #18a‑12",
+            city = "Bogotá",
+            startDate = "24 Nov 2025",
+            endDate = "24 Nov 2025",
+            category = "IA Engineers",
+            imageUrl = "https://placehold.co/600x400/png",
+            cost = 0,
+            attendees = listOf("Miguel Durán"),
+            isUniversity = false,
+            skills = listOf("Programming")
+        )
+        loading = false
+    }
 
-    /* ---------- Carga desde Firestore ---------- */
+    /* --- Carga Firestore (omitida en Preview) ---------------------------- */
     LaunchedEffect(eventName) {
-        val snapshot = FirebaseFirestore.getInstance()
+        if (inPreview) return@LaunchedEffect     // evita Firebase en preview
+
+        val doc = FirebaseFirestore.getInstance()
             .collection("events")
             .whereEqualTo("name", eventName)
+            .limit(1)
             .get()
             .await()
+            .documents
+            .firstOrNull()
 
-        if (!snapshot.isEmpty) {
-            val d = snapshot.documents[0]
+        doc?.let { d ->
+            /* helpers para refs */
+            suspend fun DocumentReference?.string(field: String): String =
+                this?.get()?.await()?.getString(field) ?: "Unknown"
 
-            val categoryRef = d.getDocumentReference("category")
-            val categoryName = try {
-                categoryRef?.get()?.await()?.getString("name") ?: "Unknown"
-            } catch (e: Exception) {
-                "Unknown"
-            }
+            suspend fun DocumentReference?.bool(field: String): Boolean =
+                this?.get()?.await()?.getBoolean(field) ?: false
 
-            val locationRef = d.getDocumentReference("locations")
-            val address = try {
-                locationRef?.get()?.await()?.getString("address") ?: "Unknown"
-            } catch (e: Exception) {
-                "Unknown"
-            }
+            val categoryName = d.getDocumentReference("category").string("name")
+            val locationRef  = d.getDocumentReference("location_id")
+            val address      = locationRef.string("address")
+            val cityName     = locationRef.string("city")
+            val univFlag     = locationRef.bool("university")
 
-            val city = try {
-                locationRef?.get()?.await()?.getString("city") ?: "Unknown"
-            } catch (e: Exception) {
-                "Unknown"
-            }
+            val attendees = (d["attendees"] as? List<*>)?.mapNotNull {
+                (it as? DocumentReference)?.string("name")
+            } ?: emptyList()
 
-            val university = try {
-                locationRef?.get()?.await()?.getBoolean("university") ?: false
-            } catch (e: Exception) {
-                false
-            }
-
-            val attendeesList = try {
-                (d.get("attendees") as? List<*>)?.mapNotNull {
-                    (it as? com.google.firebase.firestore.DocumentReference)?.get()?.await()?.getString("name")
-                } ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-
-            val skillsList = try {
-                (d.get("skills") as? List<*>)?.mapNotNull { ref ->
-                    (ref as? com.google.firebase.firestore.DocumentReference)?.get()?.await()?.getString("name")
-                } ?: emptyList()
-            } catch (e: Exception) {
-                emptyList()
-            }
-
-
+            val skills = (d["skills"] as? List<*>)?.mapNotNull {
+                (it as? DocumentReference)?.string("name")
+            } ?: emptyList()
 
             event = Event(
                 name         = d.getString("name") ?: "",
                 description  = d.getString("description") ?: "",
                 location     = address,
-                city         = city,
+                city         = cityName,
                 startDate    = d.getTimestamp("start_date")?.toDate()
                     ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
                 endDate      = d.getTimestamp("end_date")?.toDate()
                     ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
-                category = categoryName,
+                category     = categoryName,
                 imageUrl     = d.getString("image") ?: "",
                 cost         = d.getDouble("cost")?.toInt() ?: 0,
-                attendees = attendeesList,
-                isUniversity = university,
-                skills = skillsList,
+                attendees    = attendees,
+                isUniversity = univFlag,
+                skills       = skills
             )
         }
         loading = false
     }
 
-    /* ---------- UI ---------- */
+    /* ------------------------- UI --------------------------------------- */
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
                 title = { Text("Event") },
                 navigationIcon = {
                     IconButton(onClick = { navController.popBackStack() }) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            painterResource(id = R.drawable.ic_arrow_back),
+                            contentDescription = "",
+                            tint = Color.Black,
+                            modifier = Modifier.size(29.dp)
+                        )
                     }
-                }
+                },
+                colors = TopAppBarDefaults.centerAlignedTopAppBarColors(
+                    containerColor = CardBg, titleContentColor = BodyText
+                )
             )
         },
         containerColor = Color.White
-    ) { paddingValues ->
+    ) { padd ->
         if (loading) {
-            Box(
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                CircularProgressIndicator(color = Accent)
+            }
+        } else event?.let { ev ->
+            LazyColumn(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(paddingValues),
-                contentAlignment = Alignment.Center
+                    .padding(padd),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+                contentPadding = PaddingValues(bottom = 24.dp)
             ) {
-                CircularProgressIndicator()
-            }
-        } else {
-            event?.let { ev ->
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(paddingValues),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
-                ) {
 
-                    item {
-                        Image(
-                            painter = rememberAsyncImagePainter(ev.imageUrl),
-                            contentDescription = ev.name,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .height(170.dp)
-                                .clip(RoundedCornerShape(8.dp))
-                        )
-                    }
+                /* ---------- Banner ---------- */
+                item {
+                    Image(
+                        painter = rememberAsyncImagePainter(ev.imageUrl),
+                        contentDescription = ev.name,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(190.dp)
+                            .clip(CardShape)
+                    )
+                }
 
-                    item {
+                /* ---------- Nombre ---------- */
+                item {
+                    Card(
+                        shape = CardShape,
+                        colors = CardDefaults.cardColors(CardBg),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                    ) {
                         Text(
-                            text = ev.name,
-                            fontSize = 22.sp,
+                            ev.name,
+                            fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
-                            modifier = Modifier.padding(horizontal = 16.dp)
+                            color = BodyText,
+                            modifier = Modifier.padding(16.dp)
                         )
                     }
+                }
 
-                    /* --- Cost / Category / Location cards --- */
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            InfoChip(label = "Cost", value = if (ev.cost == 0) "FREE" else "\$${ev.cost}")
-                            InfoChip(label = "Category", value = ev.category)
-                            InfoChip(label = "Location", value = ev.location)
-                        }
+                /* ---------- Chips Cost/Category/Location ---------- */
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        Arrangement.spacedBy(8.dp)
+                    ) {
+                        InfoChip(
+                            "Cost",
+                            if (ev.cost == 0) "FREE" else "\$${ev.cost}",
+                            painterResource(id = R.drawable.ic_money),
+                            Modifier.weight(1f)
+                        )
+                        InfoChip(
+                            "Category",
+                            ev.category,
+                            painterResource(id = R.drawable.ic_category),
+                            Modifier.weight(1f)
+                        )
+                        InfoChip(
+                            "Location",
+                            ev.location.ifBlank { "Unknown" },
+                            painterResource(id = R.drawable.ic_pin),
+                            Modifier.weight(1f)
+                        )
                     }
+                }
 
-                    /* --- Start & End --- */
-                    item {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            InfoChip(label = "Start", value = ev.startDate)
-                            InfoChip(label = "End", value = ev.endDate)
-                        }
+                /* ---------- Start / End ---------- */
+                item {
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp),
+                        Arrangement.spacedBy(8.dp)
+                    ) {
+                        InfoChip(
+                            "Start",
+                            ev.startDate,
+                            painterResource(id = R.drawable.ic_calendar),
+                            Modifier.weight(1f)
+                        )
+                        InfoChip(
+                            "End",
+                            ev.endDate,
+                            painterResource(id = R.drawable.ic_calendar),
+                            Modifier.weight(1f)
+                        )
                     }
+                }
 
-                    /* --- Description --- */
-                    item {
-                        SectionCard(title = "Description") {
-                            Text(ev.description, fontSize = 14.sp)
-                        }
+                /* ---------- Description ---------- */
+                item {
+                    SectionCard("Description") {
+                        Text(ev.description, fontSize = 14.sp, color = BodyText, lineHeight = 18.sp)
                     }
+                }
 
-                    /* --- Skills --- */
-                    if (ev.skills.isNotEmpty()) {
-                        item {
-                            SectionCard(title = "Skills") {
-                                FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    ev.skills.forEach { s ->
-                                        AssistChip(onClick = {}, label = { Text(s) })
-                                    }
+                /* ---------- Skills ---------- */
+                if (ev.skills.isNotEmpty()) {
+                    item {
+                        SectionCard("Skills") {
+                            FlowRow(
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                ev.skills.forEach { s ->
+                                    AssistChip(
+                                        onClick = {},
+                                        label = { Text(s) },
+                                        colors = AssistChipDefaults.assistChipColors(
+                                            containerColor = ChipBg, labelColor = BodyText
+                                        )
+                                    )
                                 }
                             }
                         }
                     }
+                }
 
-                    /* --- Speaker (placeholder con creatorId) --- */
+                /* ---------- Speaker ---------- */
+                if (ev.attendees.isNotEmpty()) {
                     item {
-                        SectionCard(title = "Speaker") {
-                            Text(text = "Creator ID: ${ev.attendees.firstOrNull() ?: "N/A"}")
+                        SectionCard("Speaker") {
+                            Text(ev.attendees.first(), color = BodyText)
                         }
                     }
+                }
 
-                    /* --- Book Event button (todavía inhabilitado) --- */
-                    item {
-                        Button(
-                            onClick = { /* sin implementar */ },
-                            enabled = false,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = 16.dp)
-                        ) {
-                            Text("Book Event")
-                        }
+                /* ---------- Botón ---------- */
+                item {
+                    Button(
+                        onClick = {},
+                        enabled = false,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .height(48.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Accent)
+                    ) {
+                        Text("Book Event", color = Color.White)
                     }
                 }
             }
@@ -241,18 +303,31 @@ fun EventDetailView(
     }
 }
 
-/* ---------- Helpers ---------- */
-
+/* ---------- COMPONENTES REUTILIZABLES ----------------------------------- */
 @Composable
-private fun InfoChip(label: String, value: String) {
+private fun InfoChip(
+    label: String,
+    value: String,
+    icon: Painter,
+    modifier: Modifier = Modifier
+) {
     Column(
-        modifier = Modifier
-            .background(Color(0xFFF4F4F4), RoundedCornerShape(12.dp))
-            .padding(vertical = 12.dp),
+        modifier = modifier
+            .background(ChipBg, CardShape)
+            .padding(vertical = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(label, fontSize = 10.sp, color = Color(0xFF9A9A9A))
-        Text(value, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+        Icon(icon, null, tint = ChipLabel, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.height(2.dp))
+        Text(label, fontSize = 10.sp, color = ChipLabel)
+        Text(
+            value,
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = BodyText,
+            overflow = TextOverflow.Ellipsis,
+            maxLines = 1
+        )
     }
 }
 
@@ -261,15 +336,25 @@ private fun SectionCard(
     title: String,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    Column(
+    Card(
+        shape = CardShape,
+        colors = CardDefaults.cardColors(CardBg),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
-            .background(Color(0xFFF4F4F4), RoundedCornerShape(12.dp))
-            .padding(16.dp)
     ) {
-        Text(title, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-        Spacer(Modifier.height(8.dp))
-        content()
+        Column(Modifier.padding(16.dp)) {
+            Text(title, fontWeight = FontWeight.Bold, color = BodyText)
+            Spacer(Modifier.height(8.dp))
+            content()
+        }
     }
+}
+
+/* ---------- PREVIEW ----------------------------------------------------- */
+@Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
+@Composable
+fun EventDetailPreview() {
+    val nav = rememberNavController()
+    EventDetailView(eventName = "Preview", navController = nav)
 }
