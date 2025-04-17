@@ -7,19 +7,19 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.LocationOn
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue // Import getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -28,6 +28,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -36,13 +39,67 @@ fun EventsView(
     eventsViewModel: HomeEventsViewModel,
     onEventClick: (Event) -> Unit
 ) {
-    // Observa las listas y el estado de carga
-    val upcomingEvents = eventsViewModel.upcomingEvents
-    val nearbyEvents = eventsViewModel.nearbyEvents
-    val recommendedEvents = eventsViewModel.recommendedEvents
+    val upcomingEvents by eventsViewModel.upcomingEvents
+    val nearbyEvents by eventsViewModel.nearbyEvents
+    val recommendedEvents by eventsViewModel.recommendedEvents
     val isLoadingUpcoming by eventsViewModel.isLoadingUpcoming
     val isLoadingNearby by eventsViewModel.isLoadingNearby
     val isLoadingRecommended by eventsViewModel.isLoadingRecommended
+
+    val isLoadingMoreUpcoming by eventsViewModel.isLoadingMoreUpcoming
+    val isLoadingMoreNearby by eventsViewModel.isLoadingMoreNearby
+    val isLoadingMoreRecommended by eventsViewModel.isLoadingMoreRecommended
+
+    val listStateUpcoming = rememberLazyListState()
+    val listStateNearby = rememberLazyListState()
+    val listStateRecommended = rememberLazyListState()
+
+    // Effects for pagination
+    LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
+        snapshotFlow { listStateUpcoming.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("EventsView", "Upcoming Events - Scrolled near end detected")
+                if (!isLoadingMoreUpcoming && upcomingEvents.isNotEmpty() && !eventsViewModel.hasReachedEndUpcoming.value) {
+                    Log.d("EventsView", "Upcoming Events - Loading more events")
+                    eventsViewModel.loadMoreUpcomingEvents()
+                } else {
+                    Log.d("EventsView", "Upcoming Events - Not loading more events: isLoadingMoreUpcoming=$isLoadingMoreUpcoming, isEmpty=${upcomingEvents.isEmpty()}, hasReachedEndUpcoming=${eventsViewModel.hasReachedEndUpcoming.value}")
+                }
+            }
+    }
+
+    LaunchedEffect(listStateNearby, nearbyEvents, isLoadingMoreNearby) {
+        snapshotFlow { listStateNearby.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("EventsView", "Nearby Events - Scrolled near end detected")
+                if (!isLoadingMoreNearby && nearbyEvents.isNotEmpty() && !eventsViewModel.hasReachedEndNearby.value) {
+                    Log.d("EventsView", "Nearby Events - Loading more events")
+                    eventsViewModel.loadMoreNearbyEvents()
+                } else {
+                    Log.d("EventsView", "Nearby Events - Not loading more events: isLoadingMoreNearby=$isLoadingMoreNearby, isEmpty=${nearbyEvents.isEmpty()}, hasReachedEndNearby=${eventsViewModel.hasReachedEndNearby.value}")
+                }
+            }
+    }
+
+    LaunchedEffect(listStateRecommended, recommendedEvents, isLoadingMoreRecommended) {
+        snapshotFlow { listStateRecommended.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("EventsView", "Recommended Events - Scrolled near end detected")
+                if (!isLoadingMoreRecommended && recommendedEvents.isNotEmpty() && !eventsViewModel.hasReachedEndRecommended.value) {
+                    Log.d("EventsView", "Recommended Events - Loading more events")
+                    eventsViewModel.loadMoreRecommendedEvents()
+                } else {
+                    Log.d("EventsView", "Recommended Events - Not loading more events: isLoadingMoreRecommended=$isLoadingMoreRecommended, isEmpty=${recommendedEvents.isEmpty()}, hasReachedEndRecommended=${eventsViewModel.hasReachedEndRecommended.value}")
+                }
+            }
+    }
+
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -50,15 +107,15 @@ fun EventsView(
     ) {
         // --- Upcoming Events Section ---
         if (isLoadingUpcoming) {
-            // Mientras se carga se muestra el placeholder
-            EventSectionPlaceholder(title = "Upcoming Events")
+            EventSectionPlaceholder()
         } else {
-            // Si no hay datos se muestra el placeholder específico de sección
             if (upcomingEvents.isNotEmpty()) {
                 EventSection(
                     title = "Upcoming Events",
                     events = upcomingEvents,
-                    onEventClick = onEventClick
+                    onEventClick = onEventClick,
+                    listState = listStateUpcoming,
+                    isLoadingMore = isLoadingMoreUpcoming
                 )
             } else {
                 EventSectionEmpty(title = "Upcoming Events")
@@ -67,13 +124,15 @@ fun EventsView(
 
         // --- Nearby Events Section ---
         if (isLoadingNearby) {
-            EventSectionPlaceholder(title = "Nearby Events")
+            EventSectionPlaceholder()
         } else {
             if (nearbyEvents.isNotEmpty()) {
                 EventSection(
                     title = "Nearby Events",
                     events = nearbyEvents,
-                    onEventClick = onEventClick
+                    onEventClick = onEventClick,
+                    listState = listStateNearby,
+                    isLoadingMore = isLoadingMoreNearby
                 )
             } else {
                 EventSectionEmpty(title = "Nearby Events")
@@ -82,13 +141,15 @@ fun EventsView(
 
         // --- Recommended Events Section ---
         if (isLoadingRecommended) {
-            EventSectionPlaceholder(title = "You may like")
+            EventSectionPlaceholder()
         } else {
             if (recommendedEvents.isNotEmpty()) {
                 EventSection(
                     title = "You may like",
                     events = recommendedEvents,
                     onEventClick = onEventClick,
+                    listState = listStateRecommended,
+                    isLoadingMore = isLoadingMoreRecommended
                 )
             } else {
                 EventSectionEmpty(title = "You may like")
@@ -96,7 +157,6 @@ fun EventsView(
         }
     }
 }
-
 
 @Composable
 fun EventSectionEmpty(
@@ -148,7 +208,9 @@ fun EventSectionEmpty(
 private fun EventSection(
     title: String,
     events: List<Event>,
-    onEventClick: (Event) -> Unit
+    onEventClick: (Event) -> Unit,
+    listState: LazyListState,
+    isLoadingMore: Boolean
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Section Header Row
@@ -168,6 +230,7 @@ private fun EventSection(
 
         // Horizontal List of Events
         LazyRow(
+            state = listState,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(16.dp),
             contentPadding = PaddingValues(horizontal = 16.dp)
@@ -180,6 +243,14 @@ private fun EventSection(
                     event = event,
                     onClick = { onEventClick(event) }
                 )
+            }
+            if (isLoadingMore) {
+                item {
+                    CircularProgressIndicator(
+                        modifier = Modifier.padding(8.dp).size(24.dp),
+                        strokeWidth = 2.dp
+                    )
+                }
             }
         }
     }
@@ -234,7 +305,7 @@ private fun EventCard(event: Event, onClick: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = event.startDate ?: "N/A", // Handle null date
+                            text = event.startDate,
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -264,7 +335,7 @@ private fun EventCard(event: Event, onClick: () -> Unit) {
 
 
 @Composable
-private fun EventSectionPlaceholder(title: String) {
+private fun EventSectionPlaceholder() {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier

@@ -46,8 +46,8 @@ class HomeViewModel(
 
     private fun loadEventsFromFirebase() {
         viewModelScope.launch {
-            val events = firebaseFacade.fetchHomeEvents()
-            val recommendedEventsFacade = firebaseFacade.fetchHomeRecommendedEvents()
+            val events = firebaseFacade.fetchHomeEvents(limit = 5)
+            val recommendedEventsFacade = firebaseFacade.fetchHomeRecommendedEvents(limit = 5)
 
             // Add only the first 3 events to the nearbyEvents and recommendedEvents list
             for (i in 0 until minOf(3, events.size)) {
