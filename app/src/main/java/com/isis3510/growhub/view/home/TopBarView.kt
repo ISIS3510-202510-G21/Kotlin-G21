@@ -36,7 +36,7 @@ fun TopBarView(
     authViewModel: AuthViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
-    onSearchClick: () -> Unit
+    onSearch: () -> Unit
 ) {
     // Collect the simplified state type
     val locationState by locationViewModel.locationState.collectAsStateWithLifecycle()
@@ -171,7 +171,7 @@ fun TopBarView(
                     .height(45.dp)
                     .background(Color.White, RoundedCornerShape(10.dp))
                     .border(1.dp, Color.White.copy(alpha = 0.5f), RoundedCornerShape(10.dp)) // Subtle border
-                    .clickable { onSearchClick() }, // Trigger search callback
+                    .clickable { onSearch() }, // Trigger search callback
                 contentAlignment = Alignment.CenterStart
             ) {
                 Row(

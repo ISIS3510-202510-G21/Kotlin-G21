@@ -31,6 +31,7 @@ fun MainView(
     navController: NavHostController,
     onLogout: () -> Unit,
     onClickChat: () -> Unit,
+    onSearch: () -> Unit,
     // HERE WE MUST INJECT THE VIEW MODELS INTO THE CONSTRUCTOR
     authViewModel: AuthViewModel = viewModel(),
     categoriesViewModel: CategoriesViewModel = viewModel(),
@@ -43,9 +44,7 @@ fun MainView(
                 authViewModel = authViewModel,
                 locationViewModel = locationViewModel,
                 onLogout = onLogout,
-                onSearchClick = {
-                    Log.d("HomeView", "Search clicked")
-                }
+                onSearch = onSearch
             )
         },
         containerColor = MaterialTheme.colorScheme.background,
@@ -125,7 +124,8 @@ fun MainViewPreview() {
             MainView(
                 navController = navController,
                 onLogout = {},
-                onClickChat = {}
+                onClickChat = {},
+                onSearch = {},
                 // Provide fake/mock ViewModels here for a better preview if needed
             )
         }
