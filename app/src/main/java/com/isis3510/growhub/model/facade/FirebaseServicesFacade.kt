@@ -135,6 +135,28 @@ class FirebaseServicesFacade(
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchSearchEvents(limit: Long = 5): List<Event> {
+        try {
+            val filteredEvents = filter.getSearchEventsData(limit)
+            return mapFilterEventsToEvents(filteredEvents)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching search events", e)
+            return emptyList()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchNextSearchEvents(limit: Long = 3, excludedIds: List<String>): List<Event> {
+        try {
+            val filteredEvents = filter.getNextSearchEventsData(limit, excludedIds)
+            return mapFilterEventsToEvents(filteredEvents)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching next search events", e)
+            return emptyList()
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
     private suspend fun mapFilterEventsToEvents(filteredEvents: List<Map<String, Any>>): List<Event> {
         val events = mutableListOf<Event>()
 
@@ -270,6 +292,7 @@ class FirebaseServicesFacade(
             val locationString = "$locationName, $locationDetails"
 
             return Event(
+                id = eventID,
                 name = eventName,
                 description = filteredData["description"] as? String ?: "",
                 location = locationString,
@@ -287,90 +310,6 @@ class FirebaseServicesFacade(
             Log.e("FirebaseServicesFacade", "Error fetching registration data", e)
             throw e
         }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchAllEvents(): List<Event> {
-        val events = filter.getAllEvents()
-
-        val eventList = mutableListOf<Event>()
-        for (event in events) {
-            val name = event["name"] as? String ?: ""
-            val imageUrl = event["image"] as? String ?: ""
-            val description = event["description"] as? String ?: ""
-            val cost = (event["cost"] as? Number)?.toInt() ?: 0
-            val attendees = (event["attendees"] as? List<DocumentReference>) ?: emptyList()
-
-            // Extract the creators name from the users collection
-            val creatorRef = event["creator_id"] as? DocumentReference
-            val creatorDoc = creatorRef?.get()?.await()
-            val creatorName = creatorDoc?.getString("name") ?: ""
-
-            // Extract the category name from the categories collection
-            val categoryRef = event["category"] as? DocumentReference
-            val categoryName = if (categoryRef != null) {
-                val categoryDoc = categoryRef.get().await()
-                categoryDoc.getString("name") ?: ""
-            } else {
-                ""
-            }
-
-            // Extract the location city from the locations collection
-            val locationRef = event["location_id"] as? DocumentReference
-            val locationCity = if (locationRef != null) {
-                val locationDoc = locationRef.get().await()
-                locationDoc.getString("city") ?: ""
-            } else {
-                ""
-            }
-
-            // Extract the attendees name from the users collection
-            val attendeesNames = attendees.mapNotNull { attendeeRef ->
-                val attendeeDoc = attendeeRef.get().await()
-                attendeeDoc.getString("name")
-            }
-
-            // Extract the start date and end date from the events collection
-            val startTimestamp = event["start_date"] as? Timestamp
-            val endTimestamp = event["end_date"] as? Timestamp
-
-            // Convert Firestore Timestamp to LocalDateTime
-            val startDateTime =
-                startTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())
-                    ?.toLocalDateTime()
-            val endDateTime =
-                endTimestamp?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())
-                    ?.toLocalDateTime()
-
-            // Convert date into "dd/MM/yyyy" format
-            val dateFormatter = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
-            val formattedStartDate = startDateTime?.format(dateFormatter)
-            val formattedEndDate = endDateTime?.format(dateFormatter)
-
-            // Extract the skills from the skills collection
-            val skillsRef = (event["skills"] as? List<DocumentReference>) ?: emptyList()
-            val skills = skillsRef.mapNotNull { skillReference ->
-                val skillDoc = skillReference.get().await()
-                skillDoc.getString("name")
-            }
-
-            val eventExtracted = Event(
-                name = name,
-                imageUrl = imageUrl,
-                description = description,
-                cost = cost,
-                attendees = attendeesNames,
-                startDate = formattedStartDate.toString(),
-                endDate = formattedEndDate.toString(),
-                category = categoryName,
-                location = locationCity,
-                creator = "",
-                skills = skills
-            )
-
-            eventList.add(eventExtracted)
-        }
-        return eventList
     }
 
     suspend fun fetchSkills(): List<String> {

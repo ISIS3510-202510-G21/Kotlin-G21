@@ -3,16 +3,18 @@ package com.isis3510.growhub.view.events
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +23,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
@@ -29,7 +33,9 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -39,15 +45,18 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -61,7 +70,11 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.view.home.isScrolledNearEnd
+import com.isis3510.growhub.viewmodel.HomeEventsViewModel
 import com.isis3510.growhub.viewmodel.SearchEventViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Calendar
@@ -73,23 +86,46 @@ import java.util.Calendar
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SearchEventView(
-    viewModel: SearchEventViewModel = viewModel(),
+    searchEventsViewModel: SearchEventViewModel,
     onNavigateBack: () -> Unit = {},
 ) {
+    val searchEvents by searchEventsViewModel.searchEvents
+    val isLoading by searchEventsViewModel.isLoading
+    val isLoadingMore by searchEventsViewModel.isLoadingMore
+
+    val listStateSearch = rememberLazyListState()
+
+    // Effects for pagination
+    LaunchedEffect(listStateSearch, searchEvents, isLoadingMore) {
+        snapshotFlow { listStateSearch.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("SearchEventView", "Search Events - Scrolled near end detected")
+                if (!isLoadingMore && searchEvents.isNotEmpty() && !searchEventsViewModel.hasReachedEnd.value) {
+                    Log.d("SearchEventView", "Search Events - Loading more events")
+                    searchEventsViewModel.loadMoreSearchEvents()
+                } else {
+                    Log.d("EventsView", "Upcoming Events - Not loading more events: isLoadingMoreUpcoming=$isLoadingMore, isEmpty=${searchEvents.isEmpty()}, hasReachedEndUpcoming=${searchEventsViewModel.hasReachedEnd.value}")
+                }
+            }
+    }
+
     Scaffold(
         topBar = { SearchEventTopBar(onNavigateBack) },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            SearchEventContent(viewModel)
+            //SearchEventContent(viewModel)
         }
     }
 }
 
+@SuppressLint("StateFlowValueCalledInComposition")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SearchEventContent(viewModel: SearchEventViewModel) {
@@ -102,14 +138,8 @@ fun SearchEventContent(viewModel: SearchEventViewModel) {
         Spacer(modifier = Modifier.height(16.dp))
         SearchFilters(viewModel)
         Spacer(modifier = Modifier.height(16.dp))
-        LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-        ) {
-            items(viewModel.filteredEvents) { event ->
-                EventCard(event)
-            }
-        }
+
+        // COMPLETAR
     }
 }
 
@@ -176,47 +206,60 @@ fun SearchBar(viewModel: SearchEventViewModel) {
 @Composable
 fun SearchFilters(viewModel: SearchEventViewModel) {
 
-    FlowRow(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp)
-    ) {
-        val typesList = listOf("Free", "Paid")
-        FilterDropdown("By Type", viewModel.selectedType, typesList) {
-            viewModel.selectedType = it
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .horizontalScroll(rememberScrollState()) // scroll horizontal
+                .padding(8.dp)
+        ) {
+            val typesList = listOf("Free", "Paid")
+            FilterDropdown("By Type", viewModel.selectedType, typesList) {
+                viewModel.selectedType = it
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            val categoriesList = viewModel.categories.map { it.name }
+            FilterDropdown("By Category", viewModel.selectedCategory, categoriesList) {
+                viewModel.selectedCategory = it
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            FilterDropdown("By Skill", viewModel.selectedSkill, viewModel.skills) {
+                viewModel.selectedSkill = it
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            FilterDropdown("By Location", viewModel.selectedLocation, viewModel.locations) {
+                viewModel.selectedLocation = it
+            }
+
+            Spacer(modifier = Modifier.width(8.dp))
+
+            DatePickerButton(
+                selectedDate = viewModel.selectedDate,
+                onDateSelected = { viewModel.selectedDate = it }
+            )
         }
 
-        val categoriesList = viewModel.categories.map { it.name }
-        FilterDropdown("By Category", viewModel.selectedCategory, categoriesList) {
-            viewModel.selectedCategory = it
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Button(
+            onClick = { viewModel.clearFilters() },
+            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
+            modifier = Modifier
+                .padding(horizontal = 8.dp)
+                .align(Alignment.Start)
+        ) {
+            Icon(
+                imageVector = Icons.Default.Clear,
+                contentDescription = "Clear Icon",
+                tint = Color.White
+            )
+            Text("Clear Filters", color = Color.White)
         }
-
-        FilterDropdown("By Skill", viewModel.selectedSkill, viewModel.skills) {
-            viewModel.selectedSkill = it
-        }
-
-        FilterDropdown("By Location", viewModel.selectedLocation, viewModel.locations) {
-            viewModel.selectedLocation = it
-        }
-
-        DatePickerButton(
-            selectedDate = viewModel.selectedDate,
-            onDateSelected = { viewModel.selectedDate = it }
-        )
-    }
-
-    Spacer(modifier = Modifier.height(8.dp))
-
-    Button(
-        onClick = { viewModel.clearFilters() },
-        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50))
-    ) {
-        Icon(
-            imageVector = Icons.Default.Clear,
-            contentDescription = "Clear Icon",
-            tint = Color.White
-        )
-        Text("Clear Filters")
     }
 }
 
@@ -351,6 +394,89 @@ fun EventCard(event: Event) {
                     color = Color(0xff191d17)
                 )
                 Text(text = event.location, fontSize = 14.sp, color = Color.Gray)
+            }
+        }
+    }
+}
+
+@Composable
+fun EventCardPlaceholder() {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier
+                .padding(16.dp)
+                .height(80.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(80.dp)
+                    .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+            )
+
+            Spacer(modifier = Modifier.width(12.dp))
+
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxHeight(),
+                verticalArrangement = Arrangement.SpaceBetween
+            ) {
+                Box(
+                    modifier = Modifier
+                        .height(16.dp)
+                        .fillMaxWidth(0.4f)
+                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .height(18.dp)
+                        .fillMaxWidth(0.7f)
+                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                )
+                Box(
+                    modifier = Modifier
+                        .height(14.dp)
+                        .fillMaxWidth(0.3f)
+                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EventSectionEmpty() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Área centralizada para indicar "No Events Found"
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No events found icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Events Found",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

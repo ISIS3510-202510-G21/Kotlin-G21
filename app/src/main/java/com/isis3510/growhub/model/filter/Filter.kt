@@ -16,10 +16,12 @@ class Filter(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val homeEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de la home
+    private val searchEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de búsqueda
 
     init {
         val maxCacheSize = 5 * 1024 * 1024 // 5MB de tamaño máximo para la caché
         homeEventsCache = LruCache(maxCacheSize)
+        searchEventsCache = LruCache(maxCacheSize)
     }
 
     suspend fun getProfileData(): Map<String, Any>? {
@@ -221,16 +223,55 @@ class Filter(
         )
     }
 
-    suspend fun getAllEvents(): List<Map<String, Any>> {
+    suspend fun getSearchEventsData(limit: Long): List<Map<String, Any>> {
+        val cacheKey = "search_events_initial_${limit}" // Key for the initial cache
+
+        // 1. Verify if there are data in the initial cache
+        val cachedEvents = searchEventsCache.get(cacheKey)
+        if (cachedEvents != null) {
+            Log.d("SearchEvents", "Get ${cachedEvents.size} events from Cache")
+            return cachedEvents
+        }
+
+        // 2. Query Firebase if there are no cached data
+        Log.d("SearchEvents", "Query for more events")
         val querySnapshot = db.collection("events")
+            .limit(limit) // Limit the initial query for faster performance
             .get()
             .await()
 
         val events = mutableListOf<Map<String, Any>>()
-
         for (eventDocument in querySnapshot.documents) {
-            events.add(eventDocument.data ?: emptyMap())
+            val eventData = eventDocument.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = eventDocument.id
+            events.add(eventMapWithId)
         }
+
+        // 3. Save the initial data on the cache
+        searchEventsCache.put(cacheKey, events)
+
+        return events
+    }
+
+    suspend fun getNextSearchEventsData(limit: Long = 5, excludedIds: List<String>): List<Map<String, Any>> {
+        // Query Firebase to fetch the next events for the search
+        Log.d("SearchEvents", "Query for more events -> End of Row, excluding IDs: $excludedIds")
+        val querySnapshot = db.collection("events")
+            .whereNotIn("__name__", excludedIds)
+            .limit(limit)
+            .get()
+            .await()
+
+        val events = mutableListOf<Map<String, Any>>()
+        for (eventDocument in querySnapshot.documents) {
+            val eventData = eventDocument.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = eventDocument.id
+            events.add(eventMapWithId)
+        }
+
+        Log.d("SearchEvents", "Found ${events.size} new events")
 
         return events
     }
