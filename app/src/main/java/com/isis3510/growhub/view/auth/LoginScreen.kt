@@ -33,8 +33,6 @@ import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.R
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.ui.text.input.PasswordVisualTransformation
-import androidx.compose.ui.text.input.VisualTransformation
 
 import androidx.compose.ui.text.input.KeyboardType
 
