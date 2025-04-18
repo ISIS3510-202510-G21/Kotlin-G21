@@ -3,6 +3,7 @@ package com.isis3510.growhub.view.create
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -22,10 +23,13 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.google.accompanist.flowlayout.FlowRow
 import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
 import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
+
+
 
 @Preview(showBackground = true)
 @Composable
@@ -747,31 +751,61 @@ fun UniversityDropdown(viewModel: CreateEventViewModel = viewModel(factory = Cre
     }
 }
 
+
 @Composable
-fun SkillsSelection(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
+fun SkillsSelection(
+    viewModel: CreateEventViewModel = viewModel(
+        factory = CreateEventViewModelFactory(LocalContext.current)
+    )
+) {
     val allSkills by viewModel.allSkills.collectAsState()
     val selectedSkills by viewModel.selectedSkills.collectAsState()
 
-    Column {
-        allSkills.forEach { skillName ->
-            val isSelected = selectedSkills.contains(skillName)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable { viewModel.toggleSkill(skillName) },
-                horizontalArrangement = Arrangement.SpaceBetween
+    /* Contenedor con altura fija y scroll interno */
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .padding(8.dp)
+    ) {
+        val scrollState = rememberScrollState()
+
+        Column(
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .fillMaxWidth()
+        ) {
+            /* Usamos FlowRow para que los chips se distribuyan en filas */
+            FlowRow(
+                mainAxisSpacing = 8.dp,
+                crossAxisSpacing = 8.dp
             ) {
-                Text(text = skillName, color = Color.Black)
-                if (isSelected) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_check),
-                        contentDescription = "Selected",
-                        tint = Color.Green
+                allSkills.forEach { skill ->
+                    val isSelected = selectedSkills.contains(skill)
+
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.toggleSkill(skill) },
+                        label = { Text(text = skill, maxLines = 1) },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = if (isSelected) Color(0xFF5669FF).copy(alpha = .15f)
+                            else Color(0xFFF5F5F5),
+                            labelColor = if (isSelected) Color(0xFF5669FF) else Color.Black
+                        )
                     )
                 }
             }
-            Divider()
         }
     }
 }
