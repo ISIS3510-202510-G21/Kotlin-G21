@@ -232,4 +232,17 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     fun setUserId(id: String) {
         _uiState.value = _uiState.value.copy(userId = id)
     }
+
+    fun startFreshRegistration() {
+        _uiState.value = _uiState.value.copy(
+            name = "",
+            email = "",
+            password = "",
+            confirmPassword = "",
+            userRole = "",
+            errorMessage = null,
+            isLoading = false
+        )
+        RegistrationCache.remove("draft")
+    }
 }

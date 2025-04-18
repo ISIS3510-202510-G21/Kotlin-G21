@@ -12,6 +12,7 @@ import android.util.LruCache
  * desde cero (es lo que la profesora pidió: caché temporal en memoria).
  */
 object RegistrationCache {
+
     private const val MAX_ENTRIES = 20
     private val cache = object : LruCache<String, Any>(MAX_ENTRIES) {}
 
@@ -21,4 +22,7 @@ object RegistrationCache {
     fun <T> get(key: String): T? = cache.get(key) as? T
 
     fun clear() = cache.evictAll()
+    fun remove(key: String) = cache.remove(key)
+
+
 }

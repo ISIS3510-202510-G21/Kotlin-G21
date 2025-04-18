@@ -3,28 +3,33 @@ package com.isis3510.growhub.view.auth
 import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.isis3510.growhub.R
+import com.isis3510.growhub.cache.RegistrationCache
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.viewmodel.AuthViewModel
-import com.isis3510.growhub.cache.RegistrationCache
 
+/**
+ * Pantalla para seleccionar intereses.
+ *  – Diseño de 2 columnas (Material Grid) inspirado en la maqueta adjunta.
+ *  – Cada tarjeta muestra un icono por defecto y el nombre del skill.
+ *  – Al tocar una tarjeta se alterna su selección (se muestra un ‘check’ azul).
+ */
 @Composable
 fun InterestsScreen(
     viewModel: AuthViewModel,
@@ -35,19 +40,24 @@ fun InterestsScreen(
     val uiState by viewModel.uiState.collectAsState()
 
     val skillsList = uiState.availableSkills
+    /** IDs actualmente seleccionados **/
     val selectedSkillIds = remember { mutableStateListOf<String>() }
 
+    /** Traemos skills de Firestore si aún no estaban **/
     LaunchedEffect(Unit) {
-        if (skillsList.isEmpty()) {
-            viewModel.fetchSkillsList()
-        }
+        if (skillsList.isEmpty()) viewModel.fetchSkillsList()
     }
+
+    /** Colores **/
+    val primaryBlue = Color(0xFF5669FF)
+    val cardBorder = Color(0xFFE0E0E0)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
+        /* -------- Título -------- */
         Text(
             text = "Select your interests",
             style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
@@ -55,91 +65,135 @@ fun InterestsScreen(
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        LazyColumn(
+        /* -------- Grilla de intereses -------- */
+        LazyVerticalGrid(
+            columns = GridCells.Fixed(2),
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(bottom = 8.dp)
         ) {
-            items(skillsList) { skill ->
-                SkillItem(
+            items(skillsList, key = { it.id }) { skill ->
+                val isSelected = selectedSkillIds.contains(skill.id)
+                SkillCard(
                     skillName = skill.name,
-                    skillId = skill.id,
-                    isSelected = selectedSkillIds.contains(skill.id),
-                    onCheckedChange = { checked ->
-                        if (checked) selectedSkillIds.add(skill.id)
-                        else selectedSkillIds.remove(skill.id)
-                    }
+                    isSelected = isSelected,
+                    onToggle = {
+                        if (isSelected) selectedSkillIds.remove(skill.id)
+                        else selectedSkillIds.add(skill.id)
+                    },
+                    primaryBlue = primaryBlue,
+                    borderColor = cardBorder
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
+        /* -------- Botón CONTINUE -------- */
         Button(
             onClick = {
                 val hasNetwork = NetworkUtils.isNetworkAvailable(context)
                 if (!hasNetwork) {
-                    Toast.makeText(
-                        context,
-                        "Please check your internet connection.",
-                        Toast.LENGTH_LONG
-                    ).show()
+                    Toast.makeText(context, "Please check your internet connection.", Toast.LENGTH_LONG).show()
                 } else {
-                    // 🗃️ Guardamos intereses seleccionados en la LRU
                     RegistrationCache.put("selectedSkills", selectedSkillIds.toList())
-
                     viewModel.finalizeUserRegistration(
                         selectedSkills = selectedSkillIds.toList(),
                         onSuccess = {
                             Toast.makeText(context, "Registered successfully", Toast.LENGTH_LONG).show()
                             onContinueSuccess()
                         },
-                        onError = { errorMsg ->
-                            Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
-                        }
+                        onError = { msg -> Toast.makeText(context, msg, Toast.LENGTH_LONG).show() }
                     )
                 }
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF5669FF)),
-            modifier = Modifier.fillMaxWidth()
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(50.dp),
+            colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
         ) {
             Text(text = "CONTINUE", color = Color.White)
         }
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(6.dp))
 
-        TextButton(onClick = { onGoBack() }) {
-            Text(text = "Go back")
+        /* -------- Go back -------- */
+        TextButton(onClick = onGoBack, modifier = Modifier.align(Alignment.CenterHorizontally)) {
+            Text("Go back")
         }
     }
 }
 
+/* ------------------------------------------------------------------------- */
+/* -----------------------------  COMPONENTES ------------------------------ */
+/* ------------------------------------------------------------------------- */
+
+/**
+ * Tarjeta individual de Skill.
+ *
+ * @param skillName   nombre visible
+ * @param isSelected  determina si se muestra overlay con check
+ * @param onToggle    callback al tocar la tarjeta
+ */
 @Composable
-fun SkillItem(
+private fun SkillCard(
     skillName: String,
-    skillId: String,
     isSelected: Boolean,
-    onCheckedChange: (Boolean) -> Unit
+    onToggle: () -> Unit,
+    primaryBlue: Color,
+    borderColor: Color
 ) {
     Card(
+        modifier = Modifier
+            .height(120.dp)
+            .fillMaxWidth()
+            .clickable { onToggle() },
         colors = CardDefaults.cardColors(containerColor = Color.White),
-        border = BorderStroke(1.dp, Color.LightGray),
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        border = BorderStroke(1.dp, borderColor),
+        elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
-        Row(
+        Column(
             modifier = Modifier
-                .fillMaxWidth()
-                .background(Color.White)
-                .padding(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+                .fillMaxSize()
+                .padding(6.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center
         ) {
-            Text(text = skillName, color = Color.Black)
-            Checkbox(
-                checked = isSelected,
-                onCheckedChange = onCheckedChange
+            /* Icono (por defecto uno genérico) */
+            Icon(
+                painter = painterResource(id = R.drawable.ic_interest_default),
+                contentDescription = null,
+                tint = primaryBlue,
+                modifier = Modifier.size(36.dp)
             )
+            Spacer(modifier = Modifier.height(6.dp))
+            Text(
+                text = skillName,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2
+            )
+        }
+
+        /* Overlay con “check” cuando está seleccionado */
+        if (isSelected) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(primaryBlue.copy(alpha = 0.1f))
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = "Selected",
+                    tint = primaryBlue,
+                    modifier = Modifier
+                        .size(28.dp)
+                        .align(Alignment.TopEnd)
+                        .padding(6.dp)
+                )
+            }
         }
     }
 }
