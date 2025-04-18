@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -23,6 +24,7 @@ import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
+import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
 
 @Preview(showBackground = true)
@@ -72,16 +74,22 @@ fun PreviewCreateEventContent() {
         onDetailsChange = { detailsError = null },
         onImageUpload = {},
         onCreateEvent = {},
-        onNavigateBack = {}
+        onNavigateBack = {},
+        skillSelectionError = "error de skills selector"
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventView(
-    onNavigateBack: () -> Unit = {},
-    viewModel: CreateEventViewModel = viewModel()
+    onNavigateBack: () -> Unit = {}
 ) {
+    val context = LocalContext.current
+    // Usamos el factory que recibe un Context
+    val factory = remember { CreateEventViewModelFactory(context) }
+    // Instanciamos el ViewModel con factory
+    val viewModel: CreateEventViewModel = viewModel(factory = factory)
+
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
@@ -146,6 +154,11 @@ fun CreateEventContent(
     val endHour by viewModel.endHour.collectAsState()
     val address by viewModel.address.collectAsState()
     val details by viewModel.details.collectAsState()
+    val city by viewModel.city.collectAsState()
+    val isUniversity by viewModel.isUniversity.collectAsState()
+    val allSkills by viewModel.allSkills.collectAsState()
+    val selectedSkills by viewModel.selectedSkills.collectAsState()
+    val skillSelectionError by viewModel.skillSelectionError.collectAsState()
 
     var nameError by remember { mutableStateOf<String?>(null) }
     var costError by remember { mutableStateOf<String?>(null) }
@@ -179,6 +192,7 @@ fun CreateEventContent(
         endHourError = endHourError,
         addressError = addressError,
         detailsError = detailsError,
+        skillSelectionError = skillSelectionError,
         onNameChange = {
             viewModel.onNameChange(it)
             nameError = null
@@ -187,8 +201,11 @@ fun CreateEventContent(
         onCostChange = {
             viewModel.onCostChange(it)
             costError = null
-            if (it.isBlank()) costError = "Please enter a cost."
-            else if (it.toDoubleOrNull() == null) costError = "Cost must be a valid number."
+            if (it.isBlank()) {
+                costError = "Please enter a cost."
+            } else if (it.toDoubleOrNull() == null) {
+                costError = "Cost must be a valid number."
+            }
         },
         onCategoryChange = {
             viewModel.onCategoryChange(it)
@@ -276,6 +293,14 @@ fun CreateEventContent(
                 detailsError = "Please enter some details."
                 hasError = true
             }
+            if (city.isBlank()) {
+                // O si quieres un error local, p.e. cityError
+                hasError = true
+            }
+            if (selectedSkills.size > 3) {
+                hasError = true
+            }
+
             if (!hasError) {
                 viewModel.createEvent()
             }
@@ -306,6 +331,7 @@ fun CreateEventContentInternal(
     endHourError: String?,
     addressError: String?,
     detailsError: String?,
+    skillSelectionError: String?,
     onNameChange: (String) -> Unit,
     onCostChange: (String) -> Unit,
     onCategoryChange: (String) -> Unit,
@@ -347,6 +373,7 @@ fun CreateEventContentInternal(
                 color = Color.Black
             )
         }
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -361,6 +388,7 @@ fun CreateEventContentInternal(
                 onValueChange = onNameChange
             )
             ErrorText(nameError)
+
             LabeledTextField(
                 label = "Cost",
                 value = cost,
@@ -370,6 +398,7 @@ fun CreateEventContentInternal(
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
             )
             ErrorText(costError)
+
             Text(
                 text = "Category",
                 fontSize = 14.sp,
@@ -384,6 +413,7 @@ fun CreateEventContentInternal(
                 isError = (categoryError != null)
             )
             ErrorText(categoryError)
+
             LabeledTextField(
                 label = "Description",
                 value = description,
@@ -392,6 +422,7 @@ fun CreateEventContentInternal(
                 onValueChange = onDescriptionChange
             )
             ErrorText(descriptionError)
+
             Text(
                 text = "Date",
                 fontSize = 14.sp,
@@ -454,6 +485,7 @@ fun CreateEventContentInternal(
                     ErrorText(endDateError)
                 }
             }
+
             Text(
                 text = "Hour",
                 fontSize = 14.sp,
@@ -516,6 +548,7 @@ fun CreateEventContentInternal(
                     ErrorText(endHourError)
                 }
             }
+
             LabeledTextField(
                 label = "Address",
                 value = address,
@@ -524,6 +557,25 @@ fun CreateEventContentInternal(
                 onValueChange = onAddressChange
             )
             ErrorText(addressError)
+
+            Text(
+                text = "City",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
+            )
+            CityDropdown()
+
+            Text(
+                text = "This is an university event?",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
+            )
+            UniversityDropdown()
+
             LabeledTextField(
                 label = "Details",
                 value = details,
@@ -532,6 +584,17 @@ fun CreateEventContentInternal(
                 onValueChange = onDetailsChange
             )
             ErrorText(detailsError)
+
+            Text(
+                text = "Skills (max 3)",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 12.dp, bottom = 1.dp)
+            )
+            SkillsSelection()
+            ErrorText(skillSelectionError)
+
             Spacer(modifier = Modifier.height(12.dp))
             OutlinedButton(
                 onClick = onImageUpload,
@@ -549,6 +612,7 @@ fun CreateEventContentInternal(
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Upload Image of the event", color = Color.Black)
             }
+
             Spacer(modifier = Modifier.height(24.dp))
             Button(
                 onClick = onCreateEvent,
@@ -579,6 +643,136 @@ fun ErrorText(error: String?) {
             fontSize = 12.sp,
             modifier = Modifier.padding(start = 8.dp, top = 2.dp)
         )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun CityDropdown(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
+    val city by viewModel.city.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    val cities = listOf(
+        "Bogotá",
+        "Medellín",
+        "Cali",
+        "Barranquilla",
+        "Cartagena",
+        "Bucaramanga",
+        "Pereira",
+        "Manizales",
+        "Santa Marta",
+        "Ibagué"
+    )
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = city,
+            onValueChange = {},
+            placeholder = { Text("Choose a city") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .height(50.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            cities.forEach { c ->
+                DropdownMenuItem(
+                    text = { Text(c) },
+                    onClick = {
+                        viewModel.onCityChange(c)
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun UniversityDropdown(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
+    val isUniversity by viewModel.isUniversity.collectAsState()
+    var expanded by remember { mutableStateOf(false) }
+    val boolOptions = listOf("true", "false")
+
+    ExposedDropdownMenuBox(
+        expanded = expanded,
+        onExpandedChange = { expanded = !expanded },
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        OutlinedTextField(
+            value = if (isUniversity) "true" else "false",
+            onValueChange = {},
+            placeholder = { Text("Is it a university event?") },
+            readOnly = true,
+            trailingIcon = {
+                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+            },
+            modifier = Modifier
+                .menuAnchor()
+                .fillMaxWidth()
+                .height(50.dp)
+                .clickable { expanded = true },
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black
+            )
+        )
+        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+            boolOptions.forEach { option ->
+                DropdownMenuItem(
+                    text = { Text(option) },
+                    onClick = {
+                        viewModel.onIsUniversityChange(option == "true")
+                        expanded = false
+                    }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun SkillsSelection(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
+    val allSkills by viewModel.allSkills.collectAsState()
+    val selectedSkills by viewModel.selectedSkills.collectAsState()
+
+    Column {
+        allSkills.forEach { skillName ->
+            val isSelected = selectedSkills.contains(skillName)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 4.dp)
+                    .clickable { viewModel.toggleSkill(skillName) },
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(text = skillName, color = Color.Black)
+                if (isSelected) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = "Selected",
+                        tint = Color.Green
+                    )
+                }
+            }
+            Divider()
+        }
     }
 }
 
@@ -650,7 +844,9 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        val categoryList = listOf("Leadership","Sports",
+        val categoryList = listOf(
+            "Leadership",
+            "Sports",
             "Hackathons & Competitions",
             "Career Fairs",
             "Workshops",

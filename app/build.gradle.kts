@@ -11,7 +11,7 @@ android {
 
     defaultConfig {
         applicationId = "com.app.Growhub"
-        minSdk = 24
+        minSdk = 26
         targetSdk = 34
         versionCode = 1
         versionName = "1.0"
@@ -75,6 +75,7 @@ dependencies {
     implementation ("androidx.compose.material3:material3")
     var composeBomVersion = "2023.08.00"
     implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
+    implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")
 
     // Firebase (BoM, para manejar versiones automáticamente)
     implementation(platform("com.google.firebase:firebase-bom:32.2.3"))
@@ -110,6 +111,8 @@ dependencies {
     implementation("com.google.maps.android:maps-compose-utils:$mapsComposeVersion")
     // Google Maps Compose widgets library
     implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
+    implementation("com.google.code.gson:gson:2.10.1")
+    implementation("androidx.compose.ui:ui-text:1.6.0")
 
 }
 

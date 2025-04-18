@@ -18,8 +18,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,6 +36,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 
+import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -81,8 +85,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = {
-                    viewModel.onEmailChange(it)
-                    emailError = null
+                    if (it.length <= 50) {
+                        viewModel.onEmailChange(it)
+                        emailError = null
+                    }
                 },
                 label = { Text("Email") },
                 placeholder = { Text("abc@email.com") },
@@ -108,8 +114,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = {
-                    viewModel.onPasswordChange(it)
-                    passwordError = null
+                    if (it.length <= 30) {
+                        viewModel.onPasswordChange(it)
+                        passwordError = null
+                    }
                 },
                 label = { Text("Password") },
                 placeholder = { Text("Your password") },

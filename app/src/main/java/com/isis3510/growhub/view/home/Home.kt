@@ -57,12 +57,24 @@ import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.HomeViewModel
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainView(navController: NavHostController, onLogout: () -> Unit) {
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xff4a43ec)
+    SideEffect {
+        // Cambia el color de la barra de estado
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false // false = iconos en blanco; true = iconos oscuros
+        )
+    }
     Scaffold(
         topBar = { TopBoxRenderer(onLogout = onLogout) },
+        bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = Color.White
     ) { innerPadding ->
         Box(
@@ -72,15 +84,8 @@ fun MainView(navController: NavHostController, onLogout: () -> Unit) {
         ) {
             // CategoryColorButtons always in the superior part
             CategoryColorButtons(modifier = Modifier.fillMaxWidth())
+            EventSliders(modifier = Modifier.fillMaxSize())
 
-            // In landscape, we force the sliders to whole screen
-            Box(modifier = Modifier.fillMaxSize()) {
-                EventSliders(modifier = Modifier.fillMaxSize())
-            }
-
-            Box(modifier = Modifier.fillMaxSize().offset(y = 100.dp), contentAlignment = Alignment.BottomCenter) {
-                BottomNavigationBar(navController = navController)
-            }
         }
     }
 }
