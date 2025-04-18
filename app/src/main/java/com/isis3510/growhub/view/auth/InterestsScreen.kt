@@ -24,12 +24,6 @@ import com.isis3510.growhub.cache.RegistrationCache
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.viewmodel.AuthViewModel
 
-/**
- * Pantalla para seleccionar intereses.
- *  – Diseño de 2 columnas (Material Grid) inspirado en la maqueta adjunta.
- *  – Cada tarjeta muestra un icono por defecto y el nombre del skill.
- *  – Al tocar una tarjeta se alterna su selección (se muestra un ‘check’ azul).
- */
 @Composable
 fun InterestsScreen(
     viewModel: AuthViewModel,
@@ -50,7 +44,7 @@ fun InterestsScreen(
 
     /** Colores **/
     val primaryBlue = Color(0xFF5669FF)
-    val cardBorder = Color(0xFFE0E0E0)
+    val cardBorder = Color(0xFF161616)
 
     Column(
         modifier = Modifier
@@ -60,7 +54,8 @@ fun InterestsScreen(
         /* -------- Título -------- */
         Text(
             text = "Select your interests",
-            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold)
+            style = MaterialTheme.typography.headlineSmall.copy(fontWeight = FontWeight.Bold),
+
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -90,7 +85,7 @@ fun InterestsScreen(
             }
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(5.dp))
 
         /* -------- Botón CONTINUE -------- */
         Button(
@@ -173,7 +168,8 @@ private fun SkillCard(
             Text(
                 text = skillName,
                 style = MaterialTheme.typography.bodySmall,
-                maxLines = 2
+                maxLines = 2,
+                color = Color.Black
             )
         }
 
