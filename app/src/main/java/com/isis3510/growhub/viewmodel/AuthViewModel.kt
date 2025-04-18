@@ -9,9 +9,11 @@ import com.isis3510.growhub.model.AuthPreferences
 import com.isis3510.growhub.model.objects.AuthUiState
 import com.isis3510.growhub.model.objects.Skill
 import com.isis3510.growhub.offline.NetworkUtils
+import com.isis3510.growhub.cache.RegistrationCache
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
+
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -23,6 +25,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
     private val authPrefs: AuthPreferences by lazy { AuthPreferences(application) }
 
     init {
+        RegistrationCache.get<AuthUiState>("draft")?.let { _uiState.value = it }
         // Recuperar credenciales si "remember me" estaba encendido
         val savedEmail = authPrefs.getSavedEmail()
         val savedPass = authPrefs.getSavedPassword()
@@ -81,13 +84,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         confirmPassword: String,
         userRole: String
     ) {
-        _uiState.value = _uiState.value.copy(
+        val newState = _uiState.value.copy(
             name = name,
             email = email,
             password = password,
             confirmPassword = confirmPassword,
             userRole = userRole
         )
+        _uiState.value = newState
+        RegistrationCache.put("draft", newState)
     }
 
     fun loginUser(onLoginSuccess: () -> Unit) {
@@ -148,63 +153,55 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        val state = _uiState.value
+        // Recuperamos borrador de la caché si está presente
+        val draftState = RegistrationCache.get<AuthUiState>("draft") ?: _uiState.value
         val context = getApplication<Application>().applicationContext
 
-        // Validar conexión
+        // Validaciones de red y contraseñas (igual que antes) ...
         if (!NetworkUtils.isNetworkAvailable(context)) {
             onError("Please check your internet connection.")
             return
         }
-
-        // Validar contraseñas coincidan
-        if (state.password != state.confirmPassword) {
+        if (draftState.password != draftState.confirmPassword) {
             onError("Passwords do not match.")
             return
         }
 
-        _uiState.value = state.copy(isLoading = true, errorMessage = null)
+        _uiState.value = draftState.copy(isLoading = true, errorMessage = null)
 
-        // Crear el usuario en FirebaseAuth
+        // Create user in FirebaseAuth
         firebaseAuth.createUserWithEmailAndPassword(
-            state.email.trim(),
-            state.password.trim()
+            draftState.email.trim(),
+            draftState.password.trim()
         ).addOnCompleteListener { task ->
             if (task.isSuccessful) {
                 val newUserId = task.result?.user?.uid.orEmpty()
-
                 val userData = hashMapOf(
-                    "email" to state.email.trim(),
-                    "name" to state.name.trim(),
-                    "user_type" to if (state.userRole.isBlank()) "Attendee" else state.userRole,
+                    "email" to draftState.email.trim(),
+                    "name" to draftState.name.trim(),
+                    "user_type" to if (draftState.userRole.isBlank()) "Attendee" else draftState.userRole,
                     "skills" to selectedSkills
                 )
 
-                // Guardar en Firestore
                 firestore.collection("users").document(newUserId)
                     .set(userData)
                     .addOnSuccessListener {
-                        // Manejo de "rememberMe"
-                        if (state.rememberMe) {
-                            authPrefs.saveCredentials(state.email.trim(), state.password.trim())
+                        // Persistencia local (igual que antes) ...
+                        if (draftState.rememberMe) {
+                            authPrefs.saveCredentials(draftState.email.trim(), draftState.password.trim())
                             authPrefs.setUserLoggedIn(true)
                         } else {
                             authPrefs.clearCredentials()
                             authPrefs.setUserLoggedIn(false)
                         }
-
-                        // Guardar datos básicos en local (userId, nombre, email)
-                        authPrefs.saveUserData(
-                            userId = newUserId,
-                            userName = state.name.trim(),
-                            userEmail = state.email.trim()
-                        )
+                        authPrefs.saveUserData(newUserId, draftState.name.trim(), draftState.email.trim())
 
                         _uiState.value = _uiState.value.copy(
                             userId = newUserId,
                             isLoading = false,
                             errorMessage = null
                         )
+                        RegistrationCache.clear()   // 🧹 Limpiamos la caché
                         onSuccess()
                     }
                     .addOnFailureListener { e ->
@@ -225,6 +222,7 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         firebaseAuth.signOut()
         authPrefs.setUserLoggedIn(false)
         authPrefs.clearCredentials()
+        RegistrationCache.clear()
         _uiState.value = AuthUiState()
     }
 
@@ -233,5 +231,18 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
      */
     fun setUserId(id: String) {
         _uiState.value = _uiState.value.copy(userId = id)
+    }
+
+    fun startFreshRegistration() {
+        _uiState.value = _uiState.value.copy(
+            name = "",
+            email = "",
+            password = "",
+            confirmPassword = "",
+            userRole = "",
+            errorMessage = null,
+            isLoading = false
+        )
+        RegistrationCache.remove("draft")
     }
 }

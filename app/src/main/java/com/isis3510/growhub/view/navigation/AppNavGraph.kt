@@ -93,6 +93,7 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToRegister = {
+                    authViewModel.startFreshRegistration()
                     navController.navigate(Destinations.REGISTER)
                 }
             )
