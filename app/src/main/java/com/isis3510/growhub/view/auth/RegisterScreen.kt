@@ -87,8 +87,10 @@ fun RegisterScreen(
         OutlinedTextField(
             value = uiState.name,
             onValueChange = {
-                viewModel.onNameChange(it)
-                nameError = null
+                if (it.length <= 40) {
+                    viewModel.onNameChange(it)
+                    nameError = null
+                }
             },
             label = { Text("Full name") },
             isError = (nameError != null),
@@ -114,8 +116,10 @@ fun RegisterScreen(
         OutlinedTextField(
             value = uiState.email,
             onValueChange = {
-                viewModel.onEmailChange(it)
-                emailError = null
+                if (it.length <= 50) {
+                    viewModel.onNameChange(it)
+                    emailError  = null
+                }
             },
             label = { Text("Email") },
             isError = (emailError != null),
@@ -191,8 +195,10 @@ fun RegisterScreen(
         OutlinedTextField(
             value = uiState.password,
             onValueChange = {
-                viewModel.onPasswordChange(it)
-                passwordError = null
+                if (it.length <= 30) {
+                    viewModel.onPasswordChange(it)
+                    passwordError = null
+                }
             },
             label = { Text("Your password") },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
@@ -233,8 +239,10 @@ fun RegisterScreen(
         OutlinedTextField(
             value = uiState.confirmPassword,
             onValueChange = {
-                viewModel.onConfirmPasswordChange(it)
-                confirmPasswordError = null
+                if (it.length <= 30) {
+                    viewModel.onConfirmPasswordChange(it)
+                    confirmPasswordError = null
+                }
             },
             label = { Text("Confirm password") },
             keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),

@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.viewmodel.AuthViewModel
+import com.isis3510.growhub.cache.RegistrationCache
 
 @Composable
 fun InterestsScreen(
@@ -85,23 +86,17 @@ fun InterestsScreen(
                         Toast.LENGTH_LONG
                     ).show()
                 } else {
-                    // Aquí sí se crea realmente el usuario en FirebaseAuth y Firestore:
+                    // 🗃️ Guardamos intereses seleccionados en la LRU
+                    RegistrationCache.put("selectedSkills", selectedSkillIds.toList())
+
                     viewModel.finalizeUserRegistration(
                         selectedSkills = selectedSkillIds.toList(),
                         onSuccess = {
-                            Toast.makeText(
-                                context,
-                                "Registered successfully", // "Se registró exitosamente" en inglés
-                                Toast.LENGTH_LONG
-                            ).show()
+                            Toast.makeText(context, "Registered successfully", Toast.LENGTH_LONG).show()
                             onContinueSuccess()
                         },
                         onError = { errorMsg ->
-                            Toast.makeText(
-                                context,
-                                errorMsg,
-                                Toast.LENGTH_LONG
-                            ).show()
+                            Toast.makeText(context, errorMsg, Toast.LENGTH_LONG).show()
                         }
                     )
                 }

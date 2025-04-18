@@ -82,8 +82,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = {
-                    viewModel.onEmailChange(it)
-                    emailError = null
+                    if (it.length <= 50) {
+                        viewModel.onEmailChange(it)
+                        emailError = null
+                    }
                 },
                 label = { Text("Email") },
                 placeholder = { Text("abc@email.com") },
@@ -109,8 +111,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = {
-                    viewModel.onPasswordChange(it)
-                    passwordError = null
+                    if (it.length <= 30) {
+                        viewModel.onPasswordChange(it)
+                        passwordError = null
+                    }
                 },
                 label = { Text("Password") },
                 placeholder = { Text("Your password") },
