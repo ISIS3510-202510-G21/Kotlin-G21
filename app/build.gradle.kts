@@ -120,7 +120,6 @@ dependencies {
     implementation(libs.room.runtime)
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
-    implementation ("com.google.code.gson:gson:2.10.1")
 
 }
 
