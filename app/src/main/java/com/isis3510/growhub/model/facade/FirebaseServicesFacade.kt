@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.annotation.RequiresApi
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.model.filter.Filter
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
@@ -146,13 +147,16 @@ class FirebaseServicesFacade(
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchNextSearchEvents(limit: Long = 3, excludedIds: List<String>): List<Event> {
-        try {
-            val filteredEvents = filter.getNextSearchEventsData(limit, excludedIds)
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchNextSearchEvents(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextSearchEventsData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching next search events", e)
-            return emptyList()
+            Pair(emptyList(), null)
         }
     }
 
@@ -168,6 +172,11 @@ class FirebaseServicesFacade(
             val cost = (event["cost"] as? Number)?.toInt() ?: 0
             val attendees = (event["attendees"] as? List<DocumentReference>) ?: emptyList()
             val eventId = event["id"] as? String ?: ""
+
+            // Extract the creators name from the users collection
+            val creatorRef = event["creator_id"] as? DocumentReference
+            val creatorDoc = creatorRef?.get()?.await()
+            val creatorName = creatorDoc?.getString("name") ?: ""
 
             // Extract the category name from the categories collection
             val categoryRef = event["category"] as? DocumentReference
@@ -201,6 +210,13 @@ class FirebaseServicesFacade(
                 attendeeDoc.getString("name")
             }
 
+            // Extract the skills from the skills collection
+            val skillsRef = (event["skills"] as? List<DocumentReference>) ?: emptyList()
+            val skills = skillsRef.mapNotNull { skillReference ->
+                val skillDoc = skillReference.get().await()
+                skillDoc.getString("name")
+            }
+
             // Extract the start date and end date from the events collection
             val startTimestamp = event["start_date"] as? Timestamp
             val endTimestamp = event["end_date"] as? Timestamp
@@ -228,9 +244,9 @@ class FirebaseServicesFacade(
                 startDate = formattedStartDate.toString(),
                 endDate = formattedEndDate.toString(),
                 category = categoryName,
-                location = locationName,
-                skills = emptyList(),
-                creator = locationCity
+                location = locationCity,
+                skills = skills,
+                creator = creatorName
             )
             events.add(eventExtracted)
         }

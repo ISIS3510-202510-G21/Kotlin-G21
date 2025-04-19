@@ -6,6 +6,8 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import android.util.LruCache
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.Query
 
 /**
  * Created by: Juan Manuel Jáuregui
@@ -254,27 +256,36 @@ class Filter(
         return events
     }
 
-    suspend fun getNextSearchEventsData(limit: Long = 5, excludedIds: List<String>): List<Map<String, Any>> {
-        // Query Firebase to fetch the next events for the search
-        Log.d("SearchEvents", "Query for more events -> End of Row, excluding IDs: $excludedIds")
-        val querySnapshot = db.collection("events")
-            .whereNotIn("__name__", excludedIds)
-            .limit(limit)
-            .get()
-            .await()
+    suspend fun getNextSearchEventsData(
+        limit: Long = 5,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        Log.d("SearchEvents", "Querying next events with limit = $limit")
 
-        val events = mutableListOf<Map<String, Any>>()
-        for (eventDocument in querySnapshot.documents) {
-            val eventData = eventDocument.data ?: emptyMap()
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
             val eventMapWithId = eventData.toMutableMap()
-            eventMapWithId["id"] = eventDocument.id
-            events.add(eventMapWithId)
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
         }
 
-        Log.d("SearchEvents", "Found ${events.size} new events")
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
 
-        return events
+        Log.d("SearchEvents", "Fetched ${events.size} events")
+
+        return Pair(events, newLastSnapshot)
     }
+
 
     suspend fun getSkillsData(): List<Map<String, Any>> {
         val querySnapshot = db.collection("skills")

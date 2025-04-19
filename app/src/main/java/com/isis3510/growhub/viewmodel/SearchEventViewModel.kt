@@ -8,6 +8,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
@@ -25,6 +26,8 @@ class SearchEventViewModel : ViewModel() {
     var locations: List<String> = emptyList()
     var skills: List<String> = emptyList()
 
+    private var lastSearchSnapshot: DocumentSnapshot? = null
+
     var searchQuery by mutableStateOf("")
     var selectedType by mutableStateOf("")
     var selectedCategory by mutableStateOf("")
@@ -35,9 +38,6 @@ class SearchEventViewModel : ViewModel() {
     val isLoadingMore = mutableStateOf(false)
     val hasReachedEnd = mutableStateOf(false)
 
-    private var currentEventIds: List<String> = emptyList()
-    private var eventsOffset: Long = 0
-
     init {
         loadInitialEvents()
     }
@@ -46,6 +46,7 @@ class SearchEventViewModel : ViewModel() {
     fun loadInitialEvents() {
         Log.d("SearchEventViewModel", "loadInitialEvents: Start")
         loadInitialSearchEvents()
+        loadCategoriesSkillsLocations()
         Log.d("SearchEventViewModel", "loadInitialEvents: End")
     }
 
@@ -61,9 +62,6 @@ class SearchEventViewModel : ViewModel() {
             isLoading.value = false
             hasReachedEnd.value = events.isEmpty()
             Log.d("SearchEventsViewModel", "loadInitialSearchEvents: hasReachedEnd = $hasReachedEnd")
-            categories = firebaseServicesFacade.fetchCategories()
-            locations = firebaseServicesFacade.fetchLocations()
-            skills = firebaseServicesFacade.fetchSkills()
         }
         Log.d("SearchEventsViewModel", "loadInitialSearchEvents: End")
     }
@@ -75,25 +73,36 @@ class SearchEventViewModel : ViewModel() {
 
         isLoadingMore.value = true
         viewModelScope.launch {
-            val alreadyLoadedIds = searchEvents.value.map { it.id }
-            Log.d("SearchEventsViewModel", "loadMoreSearchEvents: Calling firebaseServicesFacade.fetchNextSearchEvents, excluding ${alreadyLoadedIds.size} IDs")
-            val nextEvents = firebaseServicesFacade.fetchNextSearchEvents(excludedIds = alreadyLoadedIds)
-            Log.d("SearchEventsViewModel", "loadMoreSearchEvents: Received ${nextEvents.size} next search events from Facade")
-            if (nextEvents.isNotEmpty()) {
-                searchEvents.value += nextEvents
-            } else {
-                hasReachedEnd.value = true
-                Log.d("SearchEventsViewModel", "loadMoreSearchEvents: No more search events, hasReachedEnd set to true")
+            try {
+                Log.d("SearchEventsViewModel", "Calling firebaseServicesFacade.fetchNextSearchEvents with lastSnapshot = $lastSearchSnapshot")
+                val (nextEvents, newLastSnapshot) = firebaseServicesFacade.fetchNextSearchEvents(lastSnapshot = lastSearchSnapshot)
+                Log.d("SearchEventsViewModel", "Received ${nextEvents.size} new events")
+
+                if (nextEvents.isNotEmpty()) {
+                    searchEvents.value += nextEvents
+                    lastSearchSnapshot = newLastSnapshot
+                } else {
+                    hasReachedEnd.value = true
+                    Log.d("SearchEventsViewModel", "No more search events, hasReachedEnd set to true")
+                }
+
+            } catch (e: Exception) {
+                Log.e("SearchEventsViewModel", "Error loading more search events", e)
+            } finally {
+                isLoadingMore.value = false
+                Log.d("SearchEventsViewModel", "loadMoreSearchEvents: isLoadingMore set to false")
             }
-            isLoadingMore.value = false
-            Log.d("SearchEventsViewModel", "loadMoreSearchEvents: isLoadingMore set to false")
+        }
+        Log.d("SearchEventsViewModel", "loadMoreSearchEvents: End")
+    }
+
+    private fun loadCategoriesSkillsLocations() {
+        viewModelScope.launch {
             categories = firebaseServicesFacade.fetchCategories()
             locations = firebaseServicesFacade.fetchLocations()
             skills = firebaseServicesFacade.fetchSkills()
         }
-        Log.d("SearchEventsViewModel", "loadMoreEvents: End")
     }
-
     val filteredEvents: List<Event>
         get() = searchEvents.value
             .filter {
@@ -113,4 +122,5 @@ class SearchEventViewModel : ViewModel() {
         selectedDate = ""
         searchQuery = ""
     }
+
 }

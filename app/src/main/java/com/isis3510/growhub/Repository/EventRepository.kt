@@ -11,11 +11,6 @@ class EventRepository(db: AppLocalDatabase) {
 
     private val eventDao = db.eventDao()
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun getEvents(): List<Event> {
-        return FirebaseServicesFacade().fetchAllEvents()
-    }
-
     suspend fun getLocalEvents(): List<Event> {
         return eventDao.getEvents().map { it.toEvent() }
     }

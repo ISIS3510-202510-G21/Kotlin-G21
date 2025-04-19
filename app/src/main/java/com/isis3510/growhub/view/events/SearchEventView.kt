@@ -11,7 +11,6 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -35,11 +34,11 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Warning
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
@@ -52,6 +51,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -70,8 +70,9 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.view.home.isScrolledNearEnd
-import com.isis3510.growhub.viewmodel.HomeEventsViewModel
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 import com.isis3510.growhub.viewmodel.SearchEventViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -86,16 +87,18 @@ import java.util.Calendar
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SearchEventView(
-    searchEventsViewModel: SearchEventViewModel,
+    searchEventsViewModel: SearchEventViewModel = viewModel(),
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
 ) {
+    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+
     val searchEvents by searchEventsViewModel.searchEvents
     val isLoading by searchEventsViewModel.isLoading
     val isLoadingMore by searchEventsViewModel.isLoadingMore
 
     val listStateSearch = rememberLazyListState()
 
-    // Effects for pagination
     LaunchedEffect(listStateSearch, searchEvents, isLoadingMore) {
         snapshotFlow { listStateSearch.isScrolledNearEnd() }
             .distinctUntilChanged()
@@ -106,7 +109,10 @@ fun SearchEventView(
                     Log.d("SearchEventView", "Search Events - Loading more events")
                     searchEventsViewModel.loadMoreSearchEvents()
                 } else {
-                    Log.d("EventsView", "Upcoming Events - Not loading more events: isLoadingMoreUpcoming=$isLoadingMore, isEmpty=${searchEvents.isEmpty()}, hasReachedEndUpcoming=${searchEventsViewModel.hasReachedEnd.value}")
+                    Log.d(
+                        "SearchEventView",
+                        "Not loading more: isLoadingMore=$isLoadingMore, isEmpty=${searchEvents.isEmpty()}, hasReachedEnd=${searchEventsViewModel.hasReachedEnd.value}"
+                    )
                 }
             }
     }
@@ -120,26 +126,61 @@ fun SearchEventView(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            //SearchEventContent(viewModel)
+            if (isLoading) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(16.dp)
+                ) {
+                    EventCardPlaceholder()
+                }
+            } else {
+                if (isNetworkAvailable == ConnectionStatus.Available) {
+                    LazyColumn(
+                        state = listStateSearch,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        item {
+                            SearchBar(searchEventsViewModel)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            SearchFilters(searchEventsViewModel)
+                            Spacer(modifier = Modifier.height(16.dp))
+                        }
+
+                        items(searchEventsViewModel.filteredEvents) { event ->
+                            EventCard(event)
+                        }
+
+                        if (isLoadingMore) {
+                            item {
+                                Box(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    CircularProgressIndicator()
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(16.dp)
+                    ) {
+                        SearchBar(searchEventsViewModel)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        EventSectionEmpty()
+                    }
+                }
+            }
         }
-    }
-}
-
-@SuppressLint("StateFlowValueCalledInComposition")
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun SearchEventContent(viewModel: SearchEventViewModel) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(16.dp)
-    ) {
-        SearchBar(viewModel)
-        Spacer(modifier = Modifier.height(16.dp))
-        SearchFilters(viewModel)
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // COMPLETAR
     }
 }
 
@@ -202,14 +243,13 @@ fun SearchBar(viewModel: SearchEventViewModel) {
 
 @SuppressLint("RestrictedApi")
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SearchFilters(viewModel: SearchEventViewModel) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
-                .horizontalScroll(rememberScrollState()) // scroll horizontal
+                .horizontalScroll(rememberScrollState())
                 .padding(8.dp)
         ) {
             val typesList = listOf("Free", "Paid")
@@ -455,7 +495,6 @@ fun EventCardPlaceholder() {
 @Composable
 fun EventSectionEmpty() {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Área centralizada para indicar "No Events Found"
         Box(
             modifier = Modifier
                 .fillMaxWidth()
