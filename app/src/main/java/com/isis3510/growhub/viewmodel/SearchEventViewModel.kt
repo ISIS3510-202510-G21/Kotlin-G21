@@ -56,9 +56,10 @@ class SearchEventViewModel : ViewModel() {
         isLoading.value = true
         viewModelScope.launch {
             Log.d("SearchEventsViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
-            val events = firebaseServicesFacade.fetchSearchEvents()
+            val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
             Log.d("SearchEventsViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
             searchEvents.value = events
+            lastSearchSnapshot = snapshot
             isLoading.value = false
             hasReachedEnd.value = events.isEmpty()
             Log.d("SearchEventsViewModel", "loadInitialSearchEvents: hasReachedEnd = $hasReachedEnd")

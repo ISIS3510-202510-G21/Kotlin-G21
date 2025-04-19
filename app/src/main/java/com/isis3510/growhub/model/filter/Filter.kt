@@ -225,35 +225,34 @@ class Filter(
         )
     }
 
-    suspend fun getSearchEventsData(limit: Long): List<Map<String, Any>> {
-        val cacheKey = "search_events_initial_${limit}" // Key for the initial cache
+    suspend fun getSearchEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val cacheKey = "search_events_initial_${limit}"
 
-        // 1. Verify if there are data in the initial cache
         val cachedEvents = searchEventsCache.get(cacheKey)
         if (cachedEvents != null) {
             Log.d("SearchEvents", "Get ${cachedEvents.size} events from Cache")
-            return cachedEvents
+            return Pair(cachedEvents, null) // Return null snapshot if cached
         }
 
-        // 2. Query Firebase if there are no cached data
         Log.d("SearchEvents", "Query for more events")
         val querySnapshot = db.collection("events")
-            .limit(limit) // Limit the initial query for faster performance
+            .orderBy("name", Query.Direction.ASCENDING) // ⬅️ Important for pagination
+            .limit(limit)
             .get()
             .await()
 
-        val events = mutableListOf<Map<String, Any>>()
-        for (eventDocument in querySnapshot.documents) {
-            val eventData = eventDocument.data ?: emptyMap()
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
             val eventMapWithId = eventData.toMutableMap()
-            eventMapWithId["id"] = eventDocument.id
-            events.add(eventMapWithId)
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
         }
 
-        // 3. Save the initial data on the cache
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
         searchEventsCache.put(cacheKey, events)
 
-        return events
+        return Pair(events, lastSnapshot)
     }
 
     suspend fun getNextSearchEventsData(

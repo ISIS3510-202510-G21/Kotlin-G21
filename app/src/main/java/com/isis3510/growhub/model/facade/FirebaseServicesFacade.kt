@@ -136,13 +136,13 @@ class FirebaseServicesFacade(
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchSearchEvents(limit: Long = 5): List<Event> {
-        try {
-            val filteredEvents = filter.getSearchEventsData(limit)
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchSearchEvents(limit: Long = 5): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getSearchEventsData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching search events", e)
-            return emptyList()
+            Pair(emptyList(), null)
         }
     }
 

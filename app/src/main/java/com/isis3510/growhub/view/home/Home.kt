@@ -1,11 +1,25 @@
 package com.isis3510.growhub.view.home
 
+// Import the specific ViewModels needed
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.material3.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material3.FabPosition
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,7 +33,6 @@ import androidx.navigation.compose.rememberNavController
 import com.isis3510.growhub.R
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
-// Import the specific ViewModels needed
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.CategoriesViewModel
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
@@ -52,13 +65,15 @@ fun MainView(
             FloatingActionButton(
                 onClick = { onClickChat() },
                 modifier = Modifier.size(60.dp).offset(y=(-20).dp),
+                shape = CircleShape,
                 containerColor = Color(0xFF5669FF),
                 contentColor = Color.White
             ) {
                 Icon(
                     painter = painterResource(id = R.drawable.chatbot),
                     contentDescription = "Chatbot",
-                    modifier = Modifier.size(28.dp),
+                    modifier = Modifier
+                        .fillMaxSize(),
                     tint = Color.Unspecified
                 )
             }
