@@ -36,7 +36,7 @@ import java.util.*
 /* ---------- Paleta / estilos ---------- */
 private val CardShape = RoundedCornerShape(12.dp)
 private val CardBg     = Color.White
-private val Accent     = Color(0xFF5669FF)
+private val Accent = Color(0xFF5669FF)
 private val ChipBg     = Color(0xFFF4F4F4)
 private val ChipLabel  = Color(0xFF9A9A9A)
 private val BodyText   = Color(0xFF191D17)
@@ -169,59 +169,75 @@ fun EventDetailView(
                         painter = rememberAsyncImagePainter(ev.imageUrl),
                         contentDescription = ev.name,
                         modifier = Modifier
+                            .padding(horizontal = 16.dp)
                             .fillMaxWidth()
                             .height(190.dp)
                             .clip(CardShape)
+                            .background(Color.LightGray, shape = CardShape)
                     )
                 }
+
 
                 /* ---------- Nombre ---------- */
                 item {
                     Card(
                         shape = CardShape,
-                        colors = CardDefaults.cardColors(CardBg),
+                        colors = CardDefaults.cardColors(containerColor = CardBg),
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
                     ) {
-                        Text(
-                            ev.name,
-                            fontSize = 18.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = BodyText,
-                            modifier = Modifier.padding(16.dp)
-                        )
+                        Column(
+                            modifier = Modifier
+                                .background(ChipBg, CardShape) // ← fondo gris aplicado a todo el bloque
+                                .padding(horizontal = 16.dp, vertical = 12.dp)
+                        ) {
+                            // Título dentro del gris
+                            Text(
+                                text = ev.name,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = BodyText
+                            )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            // Fila de chips
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                InfoChip(
+                                    label = "Cost",
+                                    value = if (ev.cost == 0) "FREE" else "\$${ev.cost}",
+                                    icon = painterResource(id = R.drawable.ic_money),
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                VerticalDivider()
+
+                                InfoChip(
+                                    label = "Category",
+                                    value = ev.category,
+                                    icon = painterResource(id = R.drawable.ic_category),
+                                    modifier = Modifier.weight(1f)
+                                )
+
+                                VerticalDivider()
+
+                                InfoChip(
+                                    label = "Location",
+                                    value = ev.location.ifBlank { "Unknown" },
+                                    icon = painterResource(id = R.drawable.ic_pin),
+                                    modifier = Modifier.weight(1f)
+                                )
+                            }
+                        }
                     }
                 }
 
-                /* ---------- Chips Cost/Category/Location ---------- */
-                item {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp),
-                        Arrangement.spacedBy(8.dp)
-                    ) {
-                        InfoChip(
-                            "Cost",
-                            if (ev.cost == 0) "FREE" else "\$${ev.cost}",
-                            painterResource(id = R.drawable.ic_money),
-                            Modifier.weight(1f)
-                        )
-                        InfoChip(
-                            "Category",
-                            ev.category,
-                            painterResource(id = R.drawable.ic_category),
-                            Modifier.weight(1f)
-                        )
-                        InfoChip(
-                            "Location",
-                            ev.location.ifBlank { "Unknown" },
-                            painterResource(id = R.drawable.ic_pin),
-                            Modifier.weight(1f)
-                        )
-                    }
-                }
+
+
 
                 /* ---------- Start / End ---------- */
                 item {
@@ -247,33 +263,37 @@ fun EventDetailView(
                 }
 
                 /* ---------- Description ---------- */
+                /* ---------- Description ---------- */
                 item {
                     SectionCard("Description") {
-                        Text(ev.description, fontSize = 14.sp, color = BodyText, lineHeight = 18.sp)
-                    }
-                }
+                        Column {
+                            Text(ev.description, fontSize = 14.sp, color = BodyText, lineHeight = 18.sp)
 
-                /* ---------- Skills ---------- */
-                if (ev.skills.isNotEmpty()) {
-                    item {
-                        SectionCard("Skills") {
-                            FlowRow(
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                ev.skills.forEach { s ->
-                                    AssistChip(
-                                        onClick = {},
-                                        label = { Text(s) },
-                                        colors = AssistChipDefaults.assistChipColors(
-                                            containerColor = ChipBg, labelColor = BodyText
+                            if (ev.skills.isNotEmpty()) {
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text("Skills", fontWeight = FontWeight.Bold, color = BodyText)
+                                Spacer(modifier = Modifier.height(6.dp))
+                                FlowRow(
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    ev.skills.forEach { s ->
+                                        AssistChip(
+                                            onClick = {},
+                                            label = { Text(s) },
+                                            colors = AssistChipDefaults.assistChipColors(
+
+                                                labelColor = BodyText
+                                            )
                                         )
-                                    )
+                                    }
                                 }
                             }
                         }
                     }
                 }
+
+
 
                 /* ---------- Speaker ---------- */
                 if (ev.attendees.isNotEmpty()) {
@@ -288,7 +308,7 @@ fun EventDetailView(
                 item {
                     Button(
                         onClick = {},
-                        enabled = false,
+                        enabled = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 16.dp)
@@ -311,25 +331,46 @@ private fun InfoChip(
     icon: Painter,
     modifier: Modifier = Modifier
 ) {
-    Column(
+    Row(
         modifier = modifier
             .background(ChipBg, CardShape)
-            .padding(vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .padding(vertical = 10.dp, horizontal = 4.dp)
+            .width(IntrinsicSize.Min),
+        verticalAlignment = Alignment.CenterVertically
     ) {
-        Icon(icon, null, tint = ChipLabel, modifier = Modifier.size(16.dp))
-        Spacer(Modifier.height(2.dp))
-        Text(label, fontSize = 10.sp, color = ChipLabel)
-        Text(
-            value,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-            color = BodyText,
-            overflow = TextOverflow.Ellipsis,
-            maxLines = 1
-        )
+        // Columna izquierda: Ícono
+        Column(
+            modifier = Modifier.padding(end = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                painter = icon,
+                contentDescription = null,
+                tint = ChipLabel,
+                modifier = Modifier.size(20.dp)
+            )
+        }
+
+        // Columna derecha: Texto
+        Column {
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = ChipLabel,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = value,
+                fontSize = 12.sp,
+                color = Accent,
+                fontWeight = FontWeight.Bold,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1
+            )
+        }
     }
 }
+
 
 @Composable
 private fun SectionCard(
@@ -338,18 +379,24 @@ private fun SectionCard(
 ) {
     Card(
         shape = CardShape,
-        colors = CardDefaults.cardColors(CardBg),
+        colors = CardDefaults.cardColors(containerColor = CardBg),
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 16.dp)
     ) {
-        Column(Modifier.padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(ChipBg, CardShape)
+                .padding(16.dp)
+        ) {
             Text(title, fontWeight = FontWeight.Bold, color = BodyText)
             Spacer(Modifier.height(8.dp))
             content()
         }
     }
 }
+
 
 /* ---------- PREVIEW ----------------------------------------------------- */
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
