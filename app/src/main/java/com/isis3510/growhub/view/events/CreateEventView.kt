@@ -850,9 +850,16 @@ fun CategoryDropdown(
     selectedCategory: String,
     placeholderText: String,
     onCategorySelected: (String) -> Unit,
-    isError: Boolean
+    isError: Boolean,
+    viewModel: CreateEventViewModel = viewModel(
+        factory = CreateEventViewModelFactory(LocalContext.current)
+    )
 ) {
+    /* La lista ahora viene de Firestore vía ViewModel ----------- */
+    val categories by viewModel.allCategories.collectAsState()
+
     var expanded by remember { mutableStateOf(false) }
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -878,27 +885,12 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        val categoryList = listOf(
-            "Leadership",
-            "Sports",
-            "Hackathons & Competitions",
-            "Career Fairs",
-            "Workshops",
-            "Technology",
-            "Science",
-            "Sustainability & Environment",
-            "Engineering",
-            "Networking",
-            "Entrepeneurship",
-            "SW Develop",
-            "Networking",
-            "Psychology")
 
         ExposedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false }
         ) {
-            categoryList.forEach { cat ->
+            categories.forEach { cat ->
                 DropdownMenuItem(
                     text = { Text(cat) },
                     onClick = {
@@ -910,3 +902,4 @@ fun CategoryDropdown(
         }
     }
 }
+

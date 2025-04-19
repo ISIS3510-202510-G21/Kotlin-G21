@@ -4,9 +4,11 @@ import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.offline.OfflineEventManager
 import com.isis3510.growhub.repository.CreateEventRepository
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -79,8 +81,17 @@ class CreateEventViewModel(
     private val _skillSelectionError = MutableStateFlow<String?>(null)
     val skillSelectionError: StateFlow<String?> = _skillSelectionError
 
+    /*  *** NEW – map <skillName, skillId>  */
+    private val skillNameToId: MutableMap<String, String> = mutableMapOf()
+
+    /*  *** OPTIONAL – map <categoryName, categoryId>  */
+    private val categoryNameToId: MutableMap<String, String> = mutableMapOf()
+
+    private val _allCategories = MutableStateFlow<List<String>>(emptyList())
+    val allCategories : StateFlow<List<String>> = _allCategories
+
     init {
-        fetchSkills()
+        fetchSkillsAndCategories()
         // Intentamos sincronizar eventos offline cada vez que se inicia el ViewModel
         syncOfflineEventsIfPossible()
     }
@@ -100,33 +111,51 @@ class CreateEventViewModel(
     fun onCityChange(value: String) { _city.value = value }
     fun onIsUniversityChange(value: Boolean) { _isUniversity.value = value }
 
-    fun toggleSkill(skill: String) {
-        if (_selectedSkills.value.contains(skill)) {
-            _selectedSkills.value = _selectedSkills.value.filter { it != skill }
+    fun toggleSkill(skillName: String) {
+        if (_selectedSkills.value.contains(skillName)) {
+            _selectedSkills.value = _selectedSkills.value - skillName
             _skillSelectionError.value = null
-        } else {
-            if (_selectedSkills.value.size < 3) {
-                _selectedSkills.value = _selectedSkills.value + skill
-                _skillSelectionError.value = null
-            } else {
-                _skillSelectionError.value = "You can select up to 3 skills only."
-            }
+            return
         }
+
+        if (_selectedSkills.value.size >= 3) {
+            _skillSelectionError.value = "You can select up to 3 skills only."
+            return
+        }
+
+        _selectedSkills.value = _selectedSkills.value + skillName
+        _skillSelectionError.value = null
     }
 
-    private fun fetchSkills() {
-        viewModelScope.launch {
-            try {
-                _isLoading.value = true
-                val firestore = com.google.firebase.firestore.FirebaseFirestore.getInstance()
-                val result = firestore.collection("skills").get().await()
-                val skillNames = result.documents.mapNotNull { it.getString("name") }
-                _allSkills.value = skillNames
-            } catch (e: Exception) {
-                _errorMessage.value = e.localizedMessage
-            } finally {
-                _isLoading.value = false
+    private fun fetchSkillsAndCategories() = viewModelScope.launch(Dispatchers.IO) {
+        try {
+            _isLoading.value = true
+            val db = FirebaseFirestore.getInstance()
+
+            /* skills -------------------------------------------------------- */
+            val skillDocs = db.collection("skills").get().await()
+            val skillsTmp = mutableListOf<String>()
+            for (doc in skillDocs.documents) {
+                val name = doc.getString("name") ?: continue
+                skillsTmp += name
+                skillNameToId[name] = doc.id
             }
+            _allSkills.value = skillsTmp
+
+            /* categories ---------------------------------------------------- */
+            val catDocs = db.collection("categories").get().await()
+            val catTmp  = mutableListOf<String>()
+            for (doc in catDocs.documents) {
+                val name = doc.getString("name") ?: continue
+                catTmp += name
+                categoryNameToId[name] = doc.id         // para uso futuro
+            }
+            _allCategories.value = catTmp
+
+        } catch (e: Exception) {
+            _errorMessage.value = e.localizedMessage
+        } finally {
+            _isLoading.value = false
         }
     }
 
@@ -163,6 +192,8 @@ class CreateEventViewModel(
                 val startTimestamp = parseStartDateTime()
                 val endTimestamp = parseEndDateTime()
 
+                val selectedSkillIds = _selectedSkills.value.mapNotNull { skillNameToId[it] }
+
                 val hasInternet = NetworkUtils.isNetworkAvailable(context)
                 if (!hasInternet) {
                     // Guardar offline
@@ -179,9 +210,9 @@ class CreateEventViewModel(
                         details = _details.value,
                         city = _city.value,
                         isUniversity = _isUniversity.value,
-                        skillIds = _selectedSkills.value
+                        skillIds = selectedSkillIds
                     )
-                    _errorMessage.value = "No tienes internet. El evento se subirá cuando estés en línea."
+                    _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
                 } else {
                     val success = offlineManager.uploadSingleEvent(
                         name = _name.value,
@@ -196,12 +227,12 @@ class CreateEventViewModel(
                         details = _details.value,
                         city = _city.value,
                         isUniversity = _isUniversity.value,
-                        skillIds = _selectedSkills.value
+                        skillIds = selectedSkillIds
                     )
                     if (success) {
                         clearForm()
                     } else {
-                        _errorMessage.value = "Could not create event"
+                        _errorMessage.value = "Could not create event. Please try again."
                     }
                 }
             } catch (e: Exception) {
