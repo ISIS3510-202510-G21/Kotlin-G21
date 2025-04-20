@@ -146,7 +146,8 @@ class MapViewModel(
 
             // Filter events whose location city is the same as the approx location city
             val filteredEvents = events.filter { event ->
-                event.city == approxCity
+                val locationCity = event.location.split(",")[1].trim()
+                locationCity.equals(approxCity, ignoreCase = true)
             }
 
             // Update the mutableStateListOf with the filtered events

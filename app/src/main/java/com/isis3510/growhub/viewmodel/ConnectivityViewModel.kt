@@ -10,6 +10,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
 class ConnectivityViewModel(application: Application) : AndroidViewModel(application) {
     private val connectivityObserver = ConnectivityObserver(application)
 

@@ -6,6 +6,8 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.tasks.await
 import android.util.LruCache
+import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.Query
 
 /**
  * Created by: Juan Manuel Jáuregui
@@ -16,10 +18,12 @@ class Filter(
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
     private val homeEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de la home
+    private val searchEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de búsqueda
 
     init {
         val maxCacheSize = 5 * 1024 * 1024 // 5MB de tamaño máximo para la caché
         homeEventsCache = LruCache(maxCacheSize)
+        searchEventsCache = LruCache(maxCacheSize)
     }
 
     suspend fun getProfileData(): Map<String, Any>? {
@@ -198,7 +202,115 @@ class Filter(
         }
 
         return categories
-
     }
 
+    suspend fun getRegistrationData(eventID: String): Map<String, Any> {
+        val eventDocRef = db.collection("events").document(eventID)
+        val eventDoc = eventDocRef.get().await()
+        val eventData = eventDoc.data ?: emptyMap()
+
+        return mapOf(
+            "attendees" to (eventData["attendees"] as List<DocumentReference>),
+            "category" to (eventData["category"] as DocumentReference),
+            "cost" to (eventData["cost"] as Long).toInt(),
+            "creator_id" to (eventData["creator_id"] as DocumentReference),
+            "description" to (eventData["description"] as String),
+            "end_date" to (eventData["end_date"] as com.google.firebase.Timestamp),
+            "image" to (eventData["image"] as String),
+            "location_id" to (eventData["location_id"] as DocumentReference),
+            "name" to (eventData["name"] as String),
+            "skills" to (eventData["skills"] as List<DocumentReference>),
+            "start_date" to (eventData["start_date"] as com.google.firebase.Timestamp),
+            "users_registered" to (eventData["users_registered"] as Long).toInt()
+        )
+    }
+
+    suspend fun getSearchEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val cacheKey = "search_events_initial_${limit}"
+
+        val cachedEvents = searchEventsCache.get(cacheKey)
+        if (cachedEvents != null) {
+            Log.d("SearchEvents", "Get ${cachedEvents.size} events from Cache")
+            return Pair(cachedEvents, null) // Return null snapshot if cached
+        }
+
+        Log.d("SearchEvents", "Query for more events")
+        val querySnapshot = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING) // ⬅️ Important for pagination
+            .limit(limit)
+            .get()
+            .await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
+        searchEventsCache.put(cacheKey, events)
+
+        return Pair(events, lastSnapshot)
+    }
+
+    suspend fun getNextSearchEventsData(
+        limit: Long = 5,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        Log.d("SearchEvents", "Querying next events with limit = $limit")
+
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
+
+        Log.d("SearchEvents", "Fetched ${events.size} events")
+
+        return Pair(events, newLastSnapshot)
+    }
+
+
+    suspend fun getSkillsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("skills")
+            .get()
+            .await()
+
+        val skills = mutableListOf<Map<String, Any>>()
+
+        for (skillDocument in querySnapshot.documents) {
+            skills.add(skillDocument.data ?: emptyMap())
+        }
+
+        return skills
+    }
+
+    suspend fun getLocationsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("locations")
+            .get()
+            .await()
+
+        val locations = mutableListOf<Map<String, Any>>()
+
+        for (locationDocument in querySnapshot.documents) {
+            locations.add(locationDocument.data ?: emptyMap())
+        }
+
+        return locations
+    }
 }

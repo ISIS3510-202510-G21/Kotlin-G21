@@ -4,12 +4,15 @@ import android.content.Context
 import androidx.room.Database
 import androidx.room.Room
 import androidx.room.RoomDatabase
+import androidx.room.TypeConverters
 // Import the classes related to the data persistence model
 import com.isis3510.growhub.local.data.CategoryDao
 import com.isis3510.growhub.local.data.CategoryEntity
+import com.isis3510.growhub.utils.Converters
 
 
-@Database(entities = [CategoryEntity::class], version = 2, exportSchema = false)
+@Database(entities = [CategoryEntity::class], version = 4, exportSchema = false)
+@TypeConverters(Converters::class)
 abstract class AppLocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
 

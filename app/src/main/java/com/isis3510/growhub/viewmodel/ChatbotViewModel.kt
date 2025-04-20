@@ -14,6 +14,10 @@ import com.isis3510.growhub.service.GeminiRequest
 import com.isis3510.growhub.service.Message
 import kotlinx.coroutines.launch
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
 class ChatbotViewModel : ViewModel() {
 
     private val _messages = mutableStateListOf<Message>()

@@ -7,6 +7,10 @@ import android.net.Network
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.*
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
 enum class ConnectionStatus {
     Available, Unavailable, Losing, Lost
 }
