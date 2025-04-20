@@ -44,6 +44,7 @@ import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.navigation.Destinations
 import com.isis3510.growhub.viewmodel.HomeViewModel
 import android.widget.Toast
+import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.utils.advancedShadow
@@ -52,16 +53,43 @@ import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
+import com.isis3510.growhub.offline.OfflineEventManager
+import com.isis3510.growhub.repository.CreateEventRepository
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MainView(navController: NavHostController, onLogout: () -> Unit) {
+    val context = LocalContext.current
+    /* remember{} para crear una sola instancia durante todo el
+       tiempo que MainView esté en el árbol de composición         */
+    val offlineManager = remember {
+        OfflineEventManager(
+            context = context,
+            createEventRepository = CreateEventRepository()
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (NetworkUtils.isNetworkAvailable(context)) {
+            val uploaded = offlineManager.tryUploadAllOfflineEvents()
+            if (uploaded > 0) {
+                Toast
+                    .makeText(
+                        context,
+                        "$uploaded pending event(s) were synchronized.",
+                        Toast.LENGTH_SHORT
+                    )
+                    .show()
+            }
+        }
+    }
+    /* ----------------------------------------------------------- */
+
     val systemUiController = rememberSystemUiController()
     val statusBarColor = Color(0xff4a43ec)
-    SideEffect {
-        systemUiController.setStatusBarColor(color = statusBarColor, darkIcons = false)
-    }
+    SideEffect { systemUiController.setStatusBarColor(statusBarColor, darkIcons = false) }
 
     Scaffold(
         topBar = { TopBoxRenderer(onLogout = onLogout) },
