@@ -61,13 +61,52 @@ class FirebaseServicesFacade(
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEvents(): List<Event> {
-        try {
-            val filteredEvents = filter.getEventsData()
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchMyEvents(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getMyEventsData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching my events", e)
-            return emptyList()
+            Pair(emptyList(), null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchNextMyEvents(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching next my events", e)
+            Pair(emptyList(), null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchMyEventsCreate(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getMyEventsCreateData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching my events", e)
+            Pair(emptyList(), null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchNextMyEventsCreate(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsCreateData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching next my events", e)
+            Pair(emptyList(), null)
         }
     }
 

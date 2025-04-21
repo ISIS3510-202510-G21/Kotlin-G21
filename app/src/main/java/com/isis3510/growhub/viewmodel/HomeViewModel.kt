@@ -22,26 +22,8 @@ class HomeViewModel(
     val categories = mutableStateListOf<Category>()
 
     init {
-        loadUpcomingEventsFromFirebase()
         loadEventsFromFirebase()
         loadCategoriesFromFirebase()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun loadUpcomingEventsFromFirebase() {
-        viewModelScope.launch {
-            val events = firebaseFacade.fetchMyEvents()
-
-            for (event in events) {
-                val startDate = event.startDate
-                val today = LocalDate.now()
-
-                val eventDate = LocalDate.parse(startDate, DateTimeFormatter.ofPattern("dd/MM/yyyy"))
-                if (eventDate.isAfter(today)) {
-                    upcomingEvents.add(event)
-                }
-            }
-        }
     }
 
     private fun loadEventsFromFirebase() {
