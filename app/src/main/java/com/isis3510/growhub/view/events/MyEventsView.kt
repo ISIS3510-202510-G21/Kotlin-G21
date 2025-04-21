@@ -1,35 +1,64 @@
 package com.isis3510.growhub.view.events
 
 import android.os.Build
+import android.util.Log
 import androidx.annotation.RequiresApi
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.*
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
-import com.isis3510.growhub.view.navigation.BottomNavigationBar
-import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.view.home.isScrolledNearEnd
+import com.isis3510.growhub.view.navigation.BottomNavigationBar
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 import com.isis3510.growhub.viewmodel.MyEventsViewModel
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.filter
 
 /**
  * Created by: Juan Manuel Jáuregui
@@ -38,17 +67,211 @@ import com.isis3510.growhub.viewmodel.MyEventsViewModel
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MyEventsView(
-    viewModel: MyEventsViewModel = viewModel(),
+    myEventsViewModel: MyEventsViewModel = viewModel(),
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     navController: NavController
 ) {
+    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+
+    val upcomingEvents by myEventsViewModel.upcomingEvents
+    val previousEvents by myEventsViewModel.previousEvents
+    val createdByMeEvents by myEventsViewModel.createdByMeEvents
+
+    val isLoadingUpcoming by myEventsViewModel.isLoadingUpcoming
+    val isLoadingMoreUpcoming by myEventsViewModel.isLoadingMoreUpcoming
+
+    val isLoadingPrevious by myEventsViewModel.isLoadingPrevious
+    val isLoadingMorePrevious by myEventsViewModel.isLoadingMorePrevious
+
+    val isLoadingCreatedByMe by myEventsViewModel.isLoadingCreatedByMe
+    val isLoadingMoreCreatedByMe by myEventsViewModel.isLoadingMoreCreatedByMe
+
+    val listStateUpcoming = rememberLazyListState()
+    val listStatePrevious = rememberLazyListState()
+    val listStateCreatedByMe = rememberLazyListState()
+
+    LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
+        snapshotFlow { listStateUpcoming.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("MyEventsView", "My Events - Scrolled near end detected")
+                if (!isLoadingMoreUpcoming && upcomingEvents.isNotEmpty() && !myEventsViewModel.hasReachedEnd.value) {
+                    Log.d("MyEventsView", "My Events - Loading more events")
+                    myEventsViewModel.loadMoreUpcomingEvents()
+                } else {
+                    Log.d(
+                        "MyEventsView",
+                        "Not loading more: isLoadingMore=$isLoadingMoreUpcoming, isEmpty=${upcomingEvents.isEmpty()}, hasReachedEnd=${myEventsViewModel.hasReachedEnd.value}"
+                    )
+                }
+            }
+    }
+
+    LaunchedEffect(listStatePrevious, previousEvents, isLoadingMorePrevious) {
+        snapshotFlow { listStatePrevious.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("MyEventsView", "My Events - Scrolled near end detected")
+                if (!isLoadingMorePrevious && previousEvents.isNotEmpty() && !myEventsViewModel.hasReachedEnd.value) {
+                    Log.d("MyEventsView", "My Events - Loading more events")
+                    myEventsViewModel.loadMorePreviousEvents()
+                } else {
+                    Log.d(
+                        "MyEventsView",
+                        "Not loading more: isLoadingMore=$isLoadingMorePrevious, isEmpty=${previousEvents.isEmpty()}, hasReachedEnd=${myEventsViewModel.hasReachedEnd.value}"
+                    )
+                }
+            }
+    }
+
+    LaunchedEffect(listStateCreatedByMe, createdByMeEvents, isLoadingMoreCreatedByMe) {
+        snapshotFlow { listStateCreatedByMe.isScrolledNearEnd() }
+            .distinctUntilChanged()
+            .filter { it }
+            .collect {
+                Log.d("MyEventsView", "My Events - Scrolled near end detected")
+                if (!isLoadingMoreCreatedByMe && createdByMeEvents.isNotEmpty() && !myEventsViewModel.hasReachedEnd.value) {
+                    Log.d("MyEventsView", "My Events - Loading more events")
+                    myEventsViewModel.loadMoreCreatedByMeEvents()
+                } else {
+                    Log.d(
+                        "MyEventsView",
+                        "Not loading more: isLoadingMore=$isLoadingMoreCreatedByMe, isEmpty=${createdByMeEvents.isEmpty()}, hasReachedEnd=${myEventsViewModel.hasReachedEnd.value}"
+                    )
+                }
+            }
+    }
+
     Scaffold(
         topBar = { MyEventsTopBar(onNavigateBack) },
-        containerColor = Color.White
-    ) { paddingValues ->
-        MyEventsContent(viewModel, paddingValues)
+        containerColor = MaterialTheme.colorScheme.background
+    ) { innerPadding ->
 
-        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            // --- UPCOMING EVENTS SECTION ---
+            item {
+                MyEventsSectionTitle(title = "Upcoming Events")
+            }
+
+            if (isLoadingUpcoming) {
+                item {
+                    MyEventsCardPlaceholder()
+                }
+            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+                items(upcomingEvents) { event ->
+                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                }
+
+                if (upcomingEvents.isEmpty()) {
+                    item {
+                        MyEventsSectionEmpty()
+                    }
+                }
+
+                if (isLoadingMoreUpcoming) {
+                    item {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(32.dp)
+                        )
+                    }
+                }
+            } else {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            }
+
+            // --- PREVIOUS EVENTS SECTION ---
+            item {
+                MyEventsSectionTitle(title = "Previous Events")
+            }
+
+            if (isLoadingPrevious) {
+                item {
+                    MyEventsCardPlaceholder()
+                }
+            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+                items(previousEvents) { event ->
+                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                }
+
+                if (previousEvents.isEmpty()) {
+                    item {
+                        MyEventsSectionEmpty()
+                    }
+                }
+
+                if (isLoadingMorePrevious) {
+                    item {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(32.dp)
+                        )
+                    }
+                }
+            } else {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            }
+
+            // --- CREATED BY ME EVENTS SECTION ---
+            item {
+                MyEventsSectionTitle(title = "Created By Me Events")
+            }
+
+            if (isLoadingCreatedByMe) {
+                item {
+                    MyEventsCardPlaceholder()
+                }
+            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+                items(createdByMeEvents) { event ->
+                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                }
+
+                if (createdByMeEvents.isEmpty()) {
+                    item {
+                        MyEventsSectionEmpty()
+                    }
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(16.dp))
+                }
+
+                if (isLoadingMoreCreatedByMe) {
+                    item {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(32.dp)
+                        )
+                    }
+                }
+            } else {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            }
+        }
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .offset(y = 50.dp),
+            contentAlignment = Alignment.BottomCenter
+        ) {
             BottomNavigationBar(navController = navController)
         }
     }
@@ -80,29 +303,6 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Composable
-fun MyEventsContent(viewModel: MyEventsViewModel, paddingValues: PaddingValues) {
-    val upcomingEvents = viewModel.upcomingEvents
-    val previousEvents = viewModel.previousEvents
-
-    LazyColumn(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(paddingValues)
-    ) {
-        item { MyEventsSectionTitle("Upcoming Events") }
-        items(upcomingEvents) { event ->
-            MyEventsCard(event)
-        }
-
-        item { MyEventsSectionTitle("Previous Events") }
-        items(previousEvents) { event ->
-            MyEventsCard(event)
-        }
-    }
-}
-
 @Composable
 fun MyEventsSectionTitle(title: String) {
     Text(
@@ -115,7 +315,7 @@ fun MyEventsSectionTitle(title: String) {
 }
 
 @Composable
-fun MyEventsCard(event: Event) {
+fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
@@ -164,7 +364,7 @@ fun MyEventsCard(event: Event) {
                 }
             }
             Row(modifier = Modifier.align(Alignment.BottomEnd)) {
-                IconButton(onClick = { /* Handle delete */ }) {
+                IconButton(onClick = { onDelete() }) {
                     Icon(Icons.Default.Delete, contentDescription = "Delete")
                 }
             }
@@ -172,19 +372,127 @@ fun MyEventsCard(event: Event) {
     }
 }
 
-@RequiresApi(Build.VERSION_CODES.O)
-@Preview(showBackground = true)
 @Composable
-fun MyEventsPreview() {
+fun MyEventsCardPlaceholder() {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(4.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(8.dp)
+    ) {
+        Box(modifier = Modifier.padding(8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Column(horizontalAlignment = Alignment.Start) {
+                    Box(
+                        modifier = Modifier
+                            .size(80.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.LightGray)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(20.dp)
+                            .background(Color.LightGray)
+                    )
+                }
 
-    val navController = rememberNavController()
+                Spacer(modifier = Modifier.width(12.dp))
 
-    GrowhubTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
+                Column(modifier = Modifier.weight(1f)) {
+                    Box(
+                        modifier = Modifier
+                            .height(18.dp)
+                            .fillMaxWidth(0.4f)
+                            .background(Color.LightGray)
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .fillMaxWidth(0.8f)
+                            .background(Color.LightGray)
+                    )
+                }
+            }
+
+            // Top-right icon placeholder
+            Row(modifier = Modifier.align(Alignment.TopEnd)) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                )
+            }
+
+            // Bottom-right icon placeholder
+            Row(modifier = Modifier.align(Alignment.BottomEnd)) {
+                Box(
+                    modifier = Modifier
+                        .size(24.dp)
+                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MyEventsSectionEmpty() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
         ) {
-            MyEventsView(navController = navController, onNavigateBack = {})
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No events found icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Events Found",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun MyEventsSectionEmptyConnection() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No internet connection icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Internet Connection",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }

@@ -7,6 +7,10 @@ import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Profile
 import kotlinx.coroutines.launch
 
+/**
+ * Created by: Juan Manuel Jáuregui
+ */
+
 class ProfileViewModel(
     private val firebaseFacade: FirebaseServicesFacade = FirebaseServicesFacade()
 ) : ViewModel() {

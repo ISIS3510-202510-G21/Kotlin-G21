@@ -43,11 +43,6 @@ class MapViewModel(
         private val firebaseFacade: FirebaseServicesFacade = FirebaseServicesFacade()
     ): ViewModel() {
 
-    private var vmApiKey : String? = null
-    fun obtainApiKey(key: String?) {
-        vmApiKey = key
-    }
-
     val nearbyEvents = mutableStateListOf<Event>()
 
     /*
@@ -151,47 +146,13 @@ class MapViewModel(
 
             // Filter events whose location city is the same as the approx location city
             val filteredEvents = events.filter { event ->
-                event.city == approxCity
+                val locationCity = event.location.split(",")[1].trim()
+                locationCity.equals(approxCity, ignoreCase = true)
             }
 
             // Update the mutableStateListOf with the filtered events
             nearbyEvents.clear()
             nearbyEvents.addAll(filteredEvents)
-        }
-    }
-
-    private suspend fun getDistanceFromMatrixApi(userLatLng: LatLng, eventAddress: String): Int? {
-        return withContext(Dispatchers.IO) {
-            try {
-                val apiKey = vmApiKey // Use key from manifest
-                val encodedAddress = URLEncoder.encode(eventAddress, "UTF-8")
-                val requestUrl = "https://maps.googleapis.com/maps/api/distancematrix/json" +
-                        "?origins=${userLatLng.latitude},${userLatLng.longitude}" +
-                        "&destinations=$encodedAddress" +
-                        "&units=metric" +
-                        "&key=$apiKey"
-
-                val client = OkHttpClient()
-                val request = Request.Builder().url(requestUrl).build()
-                val response = client.newCall(request).execute()
-
-                response.body?.string()?.let { responseBody ->
-                    val jsonObject = JSONObject(responseBody)
-                    val rows = jsonObject.getJSONArray("rows")
-                    if (rows.length() > 0) {
-                        val elements = rows.getJSONObject(0).getJSONArray("elements")
-                        if (elements.length() > 0) {
-                            val distanceObj = elements.getJSONObject(0).getJSONObject("distance")
-                            return@withContext distanceObj.getInt("value") // Distance in meters
-                        }
-                    }
-                }
-            } catch (e: IOException) {
-                Log.e("DistanceMatrixAPI", "Error fetching distance: ${e.localizedMessage}")
-            } catch (e: Exception) {
-                Log.e("DistanceMatrixAPI", "Unexpected error: ${e.localizedMessage}")
-            }
-            return@withContext null
         }
     }
 }
