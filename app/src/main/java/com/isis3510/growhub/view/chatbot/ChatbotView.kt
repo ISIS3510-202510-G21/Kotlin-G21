@@ -22,6 +22,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.FabPosition
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -69,7 +70,9 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
 
     LaunchedEffect(Unit) {
         chatbotViewModel.checkBotStatus()
-        chatbotViewModel.sendInitialBotMessage()
+        if (isNetworkAvailable == ConnectionStatus.Available) {
+            chatbotViewModel.sendInitialBotMessage()
+        }
     }
 
     Box {
@@ -112,17 +115,23 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
                     verticalArrangement = Arrangement.spacedBy(space = 8.dp),
                     horizontalAlignment = Alignment.End
                 ) {
-                    items(chatbotViewModel.messages) { message ->
-                        if (message.role == "user") {
-                            UserChat(
-                                modifier = Modifier.align(Alignment.End),
-                                message = message.content
-                            )
-                        } else {
-                            AssistantChat(message = message.content)
+                    if (isNetworkAvailable == ConnectionStatus.Available) {
+                        items(chatbotViewModel.messages) { message ->
+                            if (message.role == "user") {
+                                UserChat(
+                                    modifier = Modifier.align(Alignment.End),
+                                    message = message.content
+                                )
+                            } else {
+                                AssistantChat(message = message.content)
+                            }
                         }
                     }
-
+                    else {
+                        item {
+                            ChatBotSectionEmpty()
+                        }
+                    }
                 }
             }
         }
@@ -321,5 +330,34 @@ fun ChatBar(
             )
 
         )
+    }
+}
+
+@Composable
+fun ChatBotSectionEmpty() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No internet connection icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Internet Connection",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
     }
 }

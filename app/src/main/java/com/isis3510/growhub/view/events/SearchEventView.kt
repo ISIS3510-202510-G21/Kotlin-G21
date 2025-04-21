@@ -506,13 +506,13 @@ fun EventSectionEmpty() {
             ) {
                 Icon(
                     imageVector = Icons.Default.Info,
-                    contentDescription = "No events found icon",
+                    contentDescription = "No internet connection icon",
                     tint = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.size(48.dp)
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "No Events Found",
+                    text = "No Internet Connection",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

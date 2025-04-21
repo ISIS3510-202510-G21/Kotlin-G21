@@ -17,57 +17,74 @@ import java.time.ZoneId
  * Created by: Juan Manuel Jáuregui
  */
 
-class FirebaseServicesFacade(
-    private val filter: Filter = Filter(),
-) {
+class FirebaseServicesFacade(private val filter: Filter = Filter()) {
+
     suspend fun fetchUserProfile(): Profile? {
-        try {
-            val filteredData = filter.getProfileData()
+        return try {
+            val data = filter.getProfileData()
 
-            val interests = filteredData?.get("interests") as? List<DocumentReference>
-            val followers = filteredData?.get("followers") as? List<DocumentReference>
-            val following = filteredData?.get("following") as? List<DocumentReference>
-            val userRef = filteredData?.get("user_ref") as? DocumentReference
-
-            // Extract interests names
-            val interestsNames = interests?.mapNotNull { interestRef ->
-                val interestDoc = interestRef.get().await()
-                interestDoc.getString("name")
-            } ?: emptyList()
-
-            // Extract followers count
-            val followersCount = followers?.size ?: 0
-
-            // Extract following count
-            val followingCount = following?.size ?: 0
-
-            // Extract user name from users collection
-            val userDoc = userRef?.get()?.await()
-            val userName = userDoc?.getString("name") ?: ""
-
-            return Profile(
-                profilePicture = filteredData?.get("profilePicture") as? String ?: "",
-                description = filteredData?.get("description") as? String ?: "",
-                interests = interestsNames,
-                followers = followersCount,
-                following = followingCount,
-                name = userName
+            Profile(
+                profilePicture = data?.get("profilePicture") as? String ?: "",
+                description = data?.get("description") as? String ?: "",
+                interests = data?.get("interests") as? List<String> ?: emptyList(),
+                followers = data?.get("followers") as? Int ?: 0,
+                following = data?.get("following") as? Int ?: 0,
+                name = data?.get("name") as? String ?: ""
             )
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching user profile", e)
-            return null
+            null
+        }
+    }
 
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchMyEvents(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getMyEventsData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching my events", e)
+            Pair(emptyList(), null)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEvents(): List<Event> {
-        try {
-            val filteredEvents = filter.getEventsData()
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchNextMyEvents(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching next my events", e)
+            Pair(emptyList(), null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchMyEventsCreate(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getMyEventsCreateData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching my events", e)
-            return emptyList()
+            Pair(emptyList(), null)
+        }
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchNextMyEventsCreate(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsCreateData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
+        } catch (e: Exception) {
+            Log.e("FirebaseServicesFacade", "Error fetching next my events", e)
+            Pair(emptyList(), null)
         }
     }
 
