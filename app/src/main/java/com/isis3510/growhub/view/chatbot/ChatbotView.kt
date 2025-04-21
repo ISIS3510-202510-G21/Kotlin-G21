@@ -9,11 +9,14 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -84,52 +87,15 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
                 isBotActive = isBotActive,
                 onNavigateBack = { navController.popBackStack() }
             )
-        }
-    ) { paddingValues ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-        ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .imePadding()
-            ) {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    item {
-                        Spacer(modifier = Modifier.height(8.dp))
-                    }
-                    if (isNetworkAvailable == ConnectionStatus.Available) {
-                        items(chatbotViewModel.messages) { message ->
-                            if (message.role == "user") {
-                                UserChat(
-                                    modifier = Modifier.align(Alignment.End),
-                                    message = message.content
-                                )
-                            } else {
-                                AssistantChat(message = message.content)
-                            }
-                        }
-                    } else {
-                        item {
-                            ChatBotSectionEmpty()
-                        }
-                    }
-                }
-
+        },
+        bottomBar = {
+            if (isNetworkAvailable == ConnectionStatus.Available) {
                 ChatBar(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp)
-                        .offset(y = (60).dp),
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .offset(y = (40).dp),
                     value = userInput,
                     onValueChange = { userInput = it },
                     onClickSend = {
@@ -139,8 +105,37 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
                         }
                     },
                     isNetworkAvailable = isNetworkAvailable,
-                    isBotActive = isBotActive
+                    isBotActive = isBotActive,
                 )
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            if (isNetworkAvailable == ConnectionStatus.Available) {
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                    horizontalAlignment = Alignment.End
+                ) {
+                    items(chatbotViewModel.messages) { message ->
+                        if (message.role == "user") {
+                            UserChat(
+                                modifier = Modifier.align(Alignment.End),
+                                message = message.content
+                            )
+                        } else {
+                            AssistantChat(message = message.content)
+                        }
+                    }
+                }
+            } else {
+                ChatBotSectionEmpty()
             }
         }
     }
@@ -293,13 +288,17 @@ fun ChatBar(
     isBotActive: Boolean
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 8.dp),
         shadowElevation = 2.dp,
         color = MaterialTheme.colorScheme.surface,
-        shape = RoundedCornerShape(25.dp),
+        shape = RoundedCornerShape(25.dp)
     ) {
         TextField(
-            modifier = Modifier.background(color = MaterialTheme.colorScheme.surface),
+            modifier = Modifier
+                .background(color = MaterialTheme.colorScheme.surface)
+                .heightIn(min = 48.dp)
+                .wrapContentHeight(),
+            singleLine = true,
             value = value,
             onValueChange = { value ->
                 onValueChange(value)
