@@ -261,7 +261,7 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
                 startDate = formattedStartDate.toString(),
                 endDate = formattedEndDate.toString(),
                 category = categoryName,
-                location = locationCity,
+                location = locationName,
                 skills = skills,
                 creator = creatorName
             )
