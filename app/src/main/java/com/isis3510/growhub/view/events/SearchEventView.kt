@@ -189,7 +189,7 @@ fun SearchEventTopBar(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -203,7 +203,7 @@ fun SearchEventTopBar(onNavigateBack: () -> Unit = {}) {
                 text = "Search",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17),
+                color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
@@ -406,7 +406,7 @@ fun EventCard(event: Event) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
@@ -420,20 +420,21 @@ fun EventCard(event: Event) {
                 contentDescription = event.name,
                 modifier = Modifier
                     .size(80.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
+                    .fillMaxSize()
             )
 
             Spacer(modifier = Modifier.width(12.dp))
 
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = event.startDate, fontSize = 16.sp, color = Color(0xFF5669FF))
+                Text(text = event.startDate, fontSize = 16.sp, color = MaterialTheme.colorScheme.onSurface)
                 Text(
                     text = event.name,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xff191d17)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(text = event.location, fontSize = 14.sp, color = Color.Gray)
+                Text(text = event.location, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }
@@ -444,7 +445,7 @@ fun EventCardPlaceholder() {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp)
@@ -458,7 +459,7 @@ fun EventCardPlaceholder() {
             Box(
                 modifier = Modifier
                     .size(80.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -473,19 +474,19 @@ fun EventCardPlaceholder() {
                     modifier = Modifier
                         .height(16.dp)
                         .fillMaxWidth(0.4f)
-                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
                 Box(
                     modifier = Modifier
                         .height(18.dp)
                         .fillMaxWidth(0.7f)
-                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
                 Box(
                     modifier = Modifier
                         .height(14.dp)
                         .fillMaxWidth(0.3f)
-                        .background(Color(0xFFBDBDBD), shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
             }
         }

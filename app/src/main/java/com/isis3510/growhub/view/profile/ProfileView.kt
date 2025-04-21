@@ -26,6 +26,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -61,7 +62,7 @@ fun ProfileView(
 ) {
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Box(
             modifier = Modifier
@@ -110,7 +111,7 @@ fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -124,7 +125,7 @@ fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
                 text = "Profile",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
@@ -167,7 +168,7 @@ fun ProfileName(name: String) {
         Text(text = name.ifEmpty { "Loading..." },
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xff191d17))
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -180,20 +181,20 @@ fun ProfileStats(following: Int, followers: Int) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "$following",
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = "Following",
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         VerticalDivider(
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.height(32.dp).width(1.dp)
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "$followers",
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = "Followers",
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -206,16 +207,16 @@ fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
             modifier = Modifier.fillMaxWidth(0.5f).height(48.dp),
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(2.dp, Color(0xFF5669FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_edit),
                     contentDescription = "Edit Profile",
-                    tint = Color(0xFF5669FF)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Edit Profile", color = Color(0xFF5669FF), fontSize = 16.sp)
+                Text(text = "Edit Profile", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
             }
         }
     }
@@ -227,11 +228,11 @@ fun ProfileAbout(aboutMe: String) {
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         textAlign = TextAlign.Left,
-        color = Color(0xff191d17))
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(modifier = Modifier.height(8.dp))
     Text(text = aboutMe,
         textAlign = TextAlign.Justify,
-        color = Color(0xff191d17))
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -257,7 +258,7 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Left,
-                color = Color(0xff191d17)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             OutlinedButton(
@@ -269,8 +270,8 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 contentPadding = PaddingValues(0.dp),
                 border = null,
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color(0xFF5669FF).copy(alpha = 0.1f),
-                    contentColor = Color(0xFF5669FF)
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Row(modifier = Modifier.align(Alignment.CenterVertically)) {
@@ -278,7 +279,7 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                         painter = painterResource(id = R.drawable.ic_edit),
                         contentDescription = "Edit",
                         modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF5669FF)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))

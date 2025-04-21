@@ -41,7 +41,6 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -282,7 +281,7 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -297,7 +296,7 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 8.dp),
-                color = Color(0xff191d17)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -310,7 +309,7 @@ fun MyEventsSectionTitle(title: String) {
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
-        color = Color(0xff191d17)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -319,7 +318,7 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
@@ -333,6 +332,7 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(8.dp))
+                            .fillMaxSize()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (event.cost > 0.0) {
@@ -345,13 +345,13 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = event.startDate, fontSize = 18.sp, color = Color(0xFF5669FF))
+                    Text(text = event.startDate, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         text = event.name,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
-                        color = Color(0xff191d17)
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
@@ -377,7 +377,7 @@ fun MyEventsCardPlaceholder() {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
@@ -389,13 +389,13 @@ fun MyEventsCardPlaceholder() {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .size(20.dp)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
 
@@ -406,14 +406,14 @@ fun MyEventsCardPlaceholder() {
                         modifier = Modifier
                             .height(18.dp)
                             .fillMaxWidth(0.4f)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .height(20.dp)
                             .fillMaxWidth(0.8f)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -423,7 +423,7 @@ fun MyEventsCardPlaceholder() {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
             }
 
@@ -432,7 +432,7 @@ fun MyEventsCardPlaceholder() {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
             }
         }
