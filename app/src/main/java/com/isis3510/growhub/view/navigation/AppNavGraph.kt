@@ -132,7 +132,7 @@ fun AppNavGraph(
         }
 
         composable(Destinations.EDIT_PROFILE) {
-            PlaceholderScreen("EDIT_PROFILE")
+            PlaceholderScreen()
         }
 
         composable(Destinations.CREATE) {

@@ -26,10 +26,8 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -41,16 +39,13 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
-import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
-import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
 /**
@@ -321,22 +316,6 @@ fun ProfileInterestChip(text: String, backgroundColor: Color) {
     ) {
 
         Text(text = text, color = Color.White, fontSize = 14.sp)
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun ProfileViewPreview() {
-
-    val navController = rememberNavController()
-
-    GrowhubTheme {
-        Surface(
-            modifier = Modifier.fillMaxSize(),
-            color = MaterialTheme.colorScheme.background
-        ) {
-            ProfileView(navController = navController, onNavigateBack = {}, onNavigateToEditProfile = {})
-        }
     }
 }
 

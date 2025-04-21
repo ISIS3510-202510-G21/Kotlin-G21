@@ -8,6 +8,7 @@ import kotlinx.coroutines.tasks.await
 import android.util.LruCache
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.Query
+import com.isis3510.growhub.utils.ProfileCache
 
 /**
  * Created by: Juan Manuel Jáuregui
@@ -17,12 +18,12 @@ class Filter(
     private val auth: FirebaseAuth = FirebaseAuth.getInstance(),
     private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
 ) {
-    private val homeEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de la home
-    private val searchEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para eventos de búsqueda
-    private val myEventsCache: LruCache<String, List<Map<String, Any>>> // Cache para mis eventos
+    private val homeEventsCache: LruCache<String, List<Map<String, Any>>>
+    private val searchEventsCache: LruCache<String, List<Map<String, Any>>>
+    private val myEventsCache: LruCache<String, List<Map<String, Any>>>
 
     init {
-        val maxCacheSize = 5 * 1024 * 1024 // 5MB de tamaño máximo para la caché
+        val maxCacheSize = 5 * 1024 * 1024
         homeEventsCache = LruCache(maxCacheSize)
         searchEventsCache = LruCache(maxCacheSize)
         myEventsCache = LruCache(maxCacheSize)
@@ -30,6 +31,11 @@ class Filter(
 
     suspend fun getProfileData(): Map<String, Any>? {
         val userId = auth.currentUser?.uid ?: return null
+
+        val cachedProfile = ProfileCache.get("user_profile")
+        if (cachedProfile != null) {
+            return cachedProfile
+        }
 
         val userDocRef = db.collection("users").document(userId)
 
@@ -39,17 +45,32 @@ class Filter(
             .await()
 
         val profileDocument = querySnapshot.documents.firstOrNull()
-
         val profileData = profileDocument?.data ?: emptyMap()
 
-        return mapOf(
-            "profilePicture" to profileData["profile_picture"] as String,
-            "description" to profileData["description"] as String,
-            "interests" to (profileData["interests"] as List<DocumentReference>),
-            "followers" to (profileData["followers"] as List<DocumentReference>),
-            "following" to (profileData["following"] as List<DocumentReference>),
-            "user_ref" to profileData["user_ref"] as DocumentReference
+        val interestsRefs = profileData["interests"] as? List<DocumentReference> ?: emptyList()
+        val followersRefs = profileData["followers"] as? List<DocumentReference> ?: emptyList()
+        val followingRefs = profileData["following"] as? List<DocumentReference> ?: emptyList()
+
+        val interestsNames = interestsRefs.mapNotNull {
+            it.get().await().getString("name")
+        }
+
+        val userName = userDocRef.get().await().getString("name") ?: ""
+
+        val result = mapOf(
+            "profilePicture" to (profileData["profile_picture"] as? String ?: ""),
+            "description" to (profileData["description"] as? String ?: ""),
+            "interests" to interestsNames,
+            "followers" to followersRefs.size,
+            "following" to followingRefs.size,
+            "name" to userName
         )
+
+        ProfileCache.put("user_profile", result)
+        Log.d("Filter", "Profile data cached")
+        Log.d("Filter", "Profile data: $result")
+
+        return result
     }
 
     suspend fun getMyEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
