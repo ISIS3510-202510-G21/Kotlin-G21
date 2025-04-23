@@ -8,13 +8,16 @@ import androidx.room.TypeConverters
 // Import the classes related to the data persistence model
 import com.isis3510.growhub.local.data.CategoryDao
 import com.isis3510.growhub.local.data.CategoryEntity
+import com.isis3510.growhub.local.data.EventEntity
+import com.isis3510.growhub.local.data.EventDao
 import com.isis3510.growhub.utils.Converters
 
 
-@Database(entities = [CategoryEntity::class], version = 4, exportSchema = false)
+@Database(entities = [CategoryEntity::class, EventEntity::class], version = 5, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppLocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
+    abstract fun eventDao(): EventDao
 
     companion object {
         @Volatile

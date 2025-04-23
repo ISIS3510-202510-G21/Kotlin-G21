@@ -37,7 +37,6 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
         }
     }
 
-
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun fetchMyEvents(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
         return try {
@@ -131,7 +130,6 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             return emptyList()
         }
     }
-
 
     suspend fun fetchCategories(): List<Category> {
         try {

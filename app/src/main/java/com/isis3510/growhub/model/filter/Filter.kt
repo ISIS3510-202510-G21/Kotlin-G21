@@ -20,13 +20,11 @@ class Filter(
 ) {
     private val homeEventsCache: LruCache<String, List<Map<String, Any>>>
     private val searchEventsCache: LruCache<String, List<Map<String, Any>>>
-    private val myEventsCache: LruCache<String, List<Map<String, Any>>>
 
     init {
         val maxCacheSize = 5 * 1024 * 1024
         homeEventsCache = LruCache(maxCacheSize)
         searchEventsCache = LruCache(maxCacheSize)
-        myEventsCache = LruCache(maxCacheSize)
     }
 
     suspend fun getProfileData(): Map<String, Any>? {
@@ -76,14 +74,6 @@ class Filter(
     suspend fun getMyEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
         val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
 
-        val cacheKey = "my_events_initial_${limit}"
-
-        val cachedEvents = myEventsCache.get(cacheKey)
-        if (cachedEvents != null) {
-            Log.d("MyEvents", "Get ${cachedEvents.size} events from Cache")
-            return Pair(cachedEvents, null)
-        }
-
         Log.d("MyEvents", "Query for more events")
         val querySnapshot = db.collection("events")
             .orderBy("name", Query.Direction.ASCENDING)
@@ -104,8 +94,6 @@ class Filter(
         }
 
         val lastSnapshot = querySnapshot.documents.lastOrNull()
-
-        searchEventsCache.put(cacheKey, filteredEvents)
 
         return Pair(filteredEvents, lastSnapshot)
     }
@@ -150,14 +138,6 @@ class Filter(
     suspend fun getMyEventsCreateData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
         val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
 
-        val cacheKey = "my_events_initial_${limit}"
-
-        val cachedEvents = myEventsCache.get(cacheKey)
-        if (cachedEvents != null) {
-            Log.d("MyEvents", "Get ${cachedEvents.size} events from Cache")
-            return Pair(cachedEvents, null)
-        }
-
         Log.d("MyEvents", "Query for more events")
         val querySnapshot = db.collection("events")
             .orderBy("name", Query.Direction.ASCENDING)
@@ -178,8 +158,6 @@ class Filter(
         }
 
         val lastSnapshot = querySnapshot.documents.lastOrNull()
-
-        searchEventsCache.put(cacheKey, filteredEvents)
 
         return Pair(filteredEvents, lastSnapshot)
     }
@@ -310,7 +288,6 @@ class Filter(
         homeEventsCache.put(cacheKey, events)
         return events
     }
-
 
     suspend fun getNextHomeRecommendedEventsData(limit: Long = 3, offset: Long): List<Map<String, Any>> {
         // Bring the following recommended events

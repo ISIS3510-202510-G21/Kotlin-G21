@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -32,6 +33,11 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,7 +52,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
 /**
@@ -58,8 +66,22 @@ fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     navController: NavController
 ) {
+
+    val currentStatus by connectivityViewModel.networkStatus.collectAsState()
+    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(Unit) {
+
+        if (initialNetworkAvailable.value == null) {
+            initialNetworkAvailable.value = currentStatus == ConnectionStatus.Available
+        }
+    }
+
+    val profileList = viewModel.profile
+
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
         containerColor = MaterialTheme.colorScheme.background
@@ -69,39 +91,41 @@ fun ProfileView(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            ProfileContent(viewModel, onNavigateToEditProfile)
+            when {
+                profileList.isNotEmpty() -> {
+                    val profile = profileList[0]
+                    Column(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp),
+                    ) {
+                        Spacer(modifier = Modifier.height(32.dp))
+                        ProfileImage(profile.profilePicture)
+                        Spacer(modifier = Modifier.height(32.dp))
+                        ProfileName(profile.name)
+                        Spacer(modifier = Modifier.height(32.dp))
+                        ProfileStats(profile.following, profile.followers)
+                        Spacer(modifier = Modifier.height(32.dp))
+                        EditProfileButton(onNavigateToEditProfile)
+                        Spacer(modifier = Modifier.height(32.dp))
+                        ProfileAbout(profile.description)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
+                    }
+                }
+                initialNetworkAvailable.value == false -> {
+                    ProfileEmpty()
+                }
+            }
         }
-        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
-            BottomNavigationBar(navController = navController)
-        }
-    }
-}
 
-@Composable
-fun ProfileContent(
-    viewModel: ProfileViewModel,
-    onNavigateToEditProfile: () -> Unit
-) {
-    val profileList = viewModel.profile
-    if (profileList.isNotEmpty()) {
-        val profile = profileList[0]
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .offset(y = 50.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileImage(profile.profilePicture)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileName(profile.name)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileStats(profile.following, profile.followers)
-            Spacer(modifier = Modifier.height(32.dp))
-            EditProfileButton(onNavigateToEditProfile)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileAbout(profile.description)
-            Spacer(modifier = Modifier.height(16.dp))
-            ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
+            BottomNavigationBar(navController = navController)
         }
     }
 }
@@ -319,4 +343,41 @@ fun ProfileInterestChip(text: String, backgroundColor: Color) {
         Text(text = text, color = Color.White, fontSize = 14.sp)
     }
 }
+
+@Composable
+fun ProfileEmpty() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = "No Internet Connection",
+            modifier = Modifier.size(100.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "You're offline",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Please check your internet connection and try again.",
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+    }
+}
+
 

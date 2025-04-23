@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,14 +34,19 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -89,6 +95,9 @@ fun MyEventsView(
     val listStateUpcoming = rememberLazyListState()
     val listStatePrevious = rememberLazyListState()
     val listStateCreatedByMe = rememberLazyListState()
+
+    var showDialog by remember { mutableStateOf(false) }
+    var eventIdToDelete by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
         snapshotFlow { listStateUpcoming.isScrolledNearEnd() }
@@ -164,9 +173,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (upcomingEvents.isNotEmpty()) {
                 items(upcomingEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (upcomingEvents.isEmpty()) {
@@ -184,7 +196,7 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -199,9 +211,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (previousEvents.isNotEmpty()) {
                 items(previousEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (previousEvents.isEmpty()) {
@@ -219,7 +234,7 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -234,9 +249,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (createdByMeEvents.isNotEmpty()) {
                 items(createdByMeEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (createdByMeEvents.isEmpty()) {
@@ -258,11 +276,43 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }
             }
+        }
+
+        if (showDialog && eventIdToDelete != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDialog = false
+                    eventIdToDelete = null
+                },
+                title = { Text("Remove Event") },
+                text = { Text("Are you sure you want to remove this event from your list?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            eventIdToDelete?.let { myEventsViewModel.removeUserFromEvent(it) }
+                            showDialog = false
+                            eventIdToDelete = null
+                        }
+                    ) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showDialog = false
+                            eventIdToDelete = null
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         Box(
@@ -273,6 +323,7 @@ fun MyEventsView(
         ) {
             BottomNavigationBar(navController = navController)
         }
+
     }
 }
 
@@ -339,7 +390,8 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         Icon(
                             painter = painterResource(id = R.drawable.payments),
                             contentDescription = "Paid Event",
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(20.dp),
+                            tint = Color(0xFF8BC34A)
                         )
                     }
                 }
@@ -355,17 +407,12 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                     )
                 }
             }
-            Row(modifier = Modifier.align(Alignment.TopEnd)) {
-                IconButton(onClick = { /* Handle flag */ }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.flag),
-                        contentDescription = "Flag"
-                    )
-                }
-            }
             Row(modifier = Modifier.align(Alignment.BottomEnd)) {
                 IconButton(onClick = { onDelete() }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(
+                        0xFFBE2927
+                    )
+                    )
                 }
             }
         }

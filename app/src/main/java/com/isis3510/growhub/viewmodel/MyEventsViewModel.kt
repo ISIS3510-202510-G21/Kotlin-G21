@@ -1,17 +1,21 @@
 package com.isis3510.growhub.viewmodel
 
+import android.app.Application
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FieldValue
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -21,7 +25,7 @@ import java.time.format.DateTimeFormatter
  */
 
 @RequiresApi(Build.VERSION_CODES.O)
-class MyEventsViewModel : ViewModel() {
+class MyEventsViewModel(application: Application) : AndroidViewModel(application) {
 
     private val firebaseServicesFacade = FirebaseServicesFacade()
     val isLoadingUpcoming = mutableStateOf(false)
@@ -39,16 +43,28 @@ class MyEventsViewModel : ViewModel() {
     val isLoadingMoreCreatedByMe = mutableStateOf(false)
     val hasReachedEnd = mutableStateOf(false)
 
+    private val db = AppLocalDatabase.getDatabase(application)
+    private val eventRepository = EventRepository(db)
+    private val connectivityViewModel = ConnectivityViewModel(application)
+    private val isNetworkAvailable = connectivityViewModel.networkStatus
+
     init {
-        loadInitialMyEvents()
+        loadInitialMyEvents(isNetworkAvailable = isNetworkAvailable.value)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun loadInitialMyEvents() {
+    fun loadInitialMyEvents(isNetworkAvailable : ConnectionStatus) {
         Log.d("MyEventsViewModel", "loadInitialMyEvents: Start")
-        loadInitialUpcomingEvents()
-        loadInitialPreviousEvents()
-        loadInitialCreatedByMeEvents()
+        Log.d("MyEventsViewModel", "Network status: $isNetworkAvailable")
+        if (isNetworkAvailable == ConnectionStatus.Available) {
+            loadInitialUpcomingEvents()
+            loadInitialPreviousEvents()
+            loadInitialCreatedByMeEvents()
+        } else {
+            loadInitialUpcomingEventsLocal()
+            loadInitialPreviousEventsLocal()
+            loadInitialCreatedByMeEventsLocal()
+        }
         Log.d("MyEventsViewModel", "loadInitialMyEvents: End")
     }
 
@@ -69,12 +85,39 @@ class MyEventsViewModel : ViewModel() {
                 }
             Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Received ${filteredEvents.size} upcoming events from Facade")
             upcomingEvents.value = filteredEvents
+            eventRepository.storeEvents(filteredEvents)
+            // Check if events are being stored properly
+            val storedEvents = eventRepository.getEvents(5, 0)
+            Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Stored ${storedEvents.size} upcoming events")
             lastMyEventsSnapshot = snapshot
             isLoadingUpcoming.value = false
             hasReachedEnd.value = filteredEvents.isEmpty()
             Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: hasReachedEnd = $hasReachedEnd")
         }
         Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: End")
+
+        // Check if
+    }
+
+    private fun loadInitialUpcomingEventsLocal() {
+        Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: Start")
+        isLoadingUpcoming.value = true
+        viewModelScope.launch {
+            Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: Calling eventRepository.getEvents")
+            val events = eventRepository.getEvents(5, 0)
+            val filteredEvents = events.filter { event ->
+                val startDate = event.startDate
+                val today = LocalDate.now()
+                val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                val formattedDate = LocalDate.parse(startDate, formatter)
+                formattedDate.isAfter(today) || formattedDate == today
+            }
+            Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: Received ${filteredEvents.size} upcoming events from local storage")
+            upcomingEvents.value = filteredEvents
+            isLoadingUpcoming.value = false
+            hasReachedEnd.value = filteredEvents.isEmpty()
+            Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: hasReachedEnd = $hasReachedEnd")
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -132,12 +175,39 @@ class MyEventsViewModel : ViewModel() {
                 }
             Log.d("MyEventsViewModel", "loadInitialPreviousEvents: Received ${filteredEvents.size} previous events from Facade")
             previousEvents.value = filteredEvents
+            eventRepository.storeEvents(filteredEvents)
+            // Check if events are being stored properly
+            val storedEvents = eventRepository.getEvents(5, 0)
+            Log.d("MyEventsViewModel", "loadInitialPreviousEvents: Stored ${storedEvents.size} previous events")
             lastMyEventsSnapshot = snapshot
             isLoadingPrevious.value = false
             hasReachedEnd.value = filteredEvents.isEmpty()
             Log.d("MyEventsViewModel", "loadInitialPreviousEvents: hasReachedEnd = $hasReachedEnd")
         }
         Log.d("MyEventsViewModel", "loadInitialPreviousEvents: End")
+    }
+
+    private fun loadInitialPreviousEventsLocal() {
+        Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Start")
+        isLoadingPrevious.value = true
+        viewModelScope.launch {
+            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Calling eventRepository.getEvents")
+            val events = eventRepository.getEvents(5, 0)
+            val filteredEvents = events.filter { event ->
+                val startDate = event.startDate
+                val today = LocalDate.now()
+                val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                val formattedDate = LocalDate.parse(startDate, formatter)
+                formattedDate.isBefore(today) || formattedDate == today
+            }
+            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Received ${filteredEvents.size} previous events from local storage")
+            previousEvents.value = filteredEvents
+            // Log events
+            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Events: $filteredEvents")
+            isLoadingPrevious.value = false
+            hasReachedEnd.value = filteredEvents.isEmpty()
+            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: hasReachedEnd = $hasReachedEnd")
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -187,12 +257,30 @@ class MyEventsViewModel : ViewModel() {
             val (events, snapshot) = firebaseServicesFacade.fetchMyEventsCreate()
             Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: Received ${events.size} created by me events from Facade")
             createdByMeEvents.value = events
+            // Check if events are being stored properly
+            val storedEvents = eventRepository.getEvents(5, 0)
+            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: Stored ${storedEvents.size} created by me events")
             lastMyEventsSnapshot = snapshot
             isLoadingCreatedByMe.value = false
             hasReachedEnd.value = events.isEmpty()
             Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: hasReachedEnd = $hasReachedEnd")
         }
         Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: End")
+    }
+
+    private fun loadInitialCreatedByMeEventsLocal() {
+        Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Start")
+        isLoadingCreatedByMe.value = true
+        viewModelScope.launch {
+            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Calling eventRepository.getEventsCreate")
+            val events = eventRepository.getEvents(5, 0)
+            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Received ${events.size} created by me events from local storage")
+            createdByMeEvents.value = events
+            eventRepository.storeEvents(events)
+            isLoadingCreatedByMe.value = false
+            hasReachedEnd.value = events.isEmpty()
+            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: hasReachedEnd = $hasReachedEnd")
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -242,5 +330,4 @@ class MyEventsViewModel : ViewModel() {
         previousEvents.value = previousEvents.value.filterNot { it.id == eventId }
         createdByMeEvents.value = createdByMeEvents.value.filterNot { it.id == eventId }
     }
-
 }
