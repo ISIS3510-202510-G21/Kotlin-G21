@@ -99,6 +99,16 @@ fun MyEventsView(
     var showDialog by remember { mutableStateOf(false) }
     var eventIdToDelete by remember { mutableStateOf<String?>(null) }
 
+    val currentStatus by connectivityViewModel.networkStatus.collectAsState()
+    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(Unit) {
+
+        if (initialNetworkAvailable.value == null) {
+            initialNetworkAvailable.value = currentStatus == ConnectionStatus.Available
+        }
+    }
+
     LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
         snapshotFlow { listStateUpcoming.isScrolledNearEnd() }
             .distinctUntilChanged()
@@ -200,6 +210,10 @@ fun MyEventsView(
                 item {
                     MyEventsSectionEmptyConnection()
                 }
+            } else if (initialNetworkAvailable.value == false) {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
             }
 
             // --- PREVIOUS EVENTS SECTION ---
@@ -235,6 +249,10 @@ fun MyEventsView(
                     }
                 }
             } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (initialNetworkAvailable.value == false) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -277,6 +295,10 @@ fun MyEventsView(
                     }
                 }
             } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (initialNetworkAvailable.value == false) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }

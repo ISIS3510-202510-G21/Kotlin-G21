@@ -16,6 +16,7 @@ import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -46,10 +47,17 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
     private val connectivityViewModel = ConnectivityViewModel(application)
-    private val isNetworkAvailable = connectivityViewModel.networkStatus
 
     init {
-        loadInitialMyEvents(isNetworkAvailable = isNetworkAvailable.value)
+        observeNetworkStatus()
+    }
+
+    private fun observeNetworkStatus() {
+        viewModelScope.launch {
+            connectivityViewModel.networkStatus.collectLatest { status ->
+                loadInitialMyEvents(isNetworkAvailable = status)
+            }
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -95,8 +103,6 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
             Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: hasReachedEnd = $hasReachedEnd")
         }
         Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: End")
-
-        // Check if
     }
 
     private fun loadInitialUpcomingEventsLocal() {

@@ -88,42 +88,45 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeEvents(limit: Long = 5): List<Event> {
-        try {
-            val filteredEvents = filter.getHomeEventsData(limit)
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchHomeEvents(limit: Long = 5): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, lastSnapshot) = filter.getHomeEventsData(limit)
+            Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching home events", e)
-            return emptyList()
+            Pair(emptyList(), null)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchNextHomeEvents(limit: Long = 3, excludedIds: List<String>): List<Event> {
-        try {
-            val filteredEvents = filter.getNextHomeEventsData(limit, excludedIds)
-            return mapFilterEventsToEvents(filteredEvents)
+    suspend fun fetchNextHomeEvents(
+        limit: Long = 3,
+        lastSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Event>, DocumentSnapshot?> {
+        return try {
+            val (filteredEvents, newLastSnapshot) = filter.getNextHomeEventsData(limit, lastSnapshot)
+            Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching next home events", e)
-            return emptyList()
+            Pair(emptyList(), null)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeRecommendedEvents(limit: Long = 5): List<Event> {
+    suspend fun fetchHomeRecommendedEvents(limit: Long = 5): Pair<List<Event>, Set<String>> {
         try {
-            val filteredEvents = filter.getHomeRecommendedEventsData(limit)
-            return mapFilterEventsToEvents(filteredEvents)
+            val (filteredEvents, offsetIds) = filter.getHomeRecommendedEventsData(limit)
+            return Pair(mapFilterEventsToEvents(filteredEvents), offsetIds)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching recommended home events", e)
-            return emptyList()
+            return Pair(emptyList(), emptySet())
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchNextHomeRecommendedEvents(limit: Long = 3, offset: Long): List<Event> {
+    suspend fun fetchNextHomeRecommendedEvents(limit: Long = 3, offsetIds: Set<String>): List<Event> {
         try {
-            val filteredEvents = filter.getNextHomeRecommendedEventsData(limit, offset)
+            val filteredEvents = filter.getNextHomeRecommendedEventsData(limit, offsetIds)
             return mapFilterEventsToEvents(filteredEvents)
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching next recommended home events", e)
