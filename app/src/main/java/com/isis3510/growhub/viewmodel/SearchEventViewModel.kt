@@ -64,11 +64,11 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
             Log.d("SearchEventViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
             if (events.isEmpty()) {
-                Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
-                isLoading.value = false
-                hasReachedEnd.value = true
-                loadInitialSearchEventsLocal()
-                return@launch
+                //Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
+                //isLoading.value = false
+                //hasReachedEnd.value = true
+                //loadInitialSearchEventsLocal()
+                //return@launch
             }
             else {
                 Log.d("SearchEventViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")

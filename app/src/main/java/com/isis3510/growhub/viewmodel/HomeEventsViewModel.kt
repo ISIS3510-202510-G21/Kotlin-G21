@@ -58,18 +58,18 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun loadInitialUpcomingEvents() {
+    fun loadInitialUpcomingEvents() {
         Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Start")
         isLoadingUpcoming.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
             if (events.isEmpty()) {
-                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
-                isLoadingUpcoming.value = false
-                hasReachedEndUpcoming.value = true
-                loadInitialUpcomingEventsLocal()
-                return@launch
+                //Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
+                //isLoadingUpcoming.value = false
+                //hasReachedEndUpcoming.value = true
+                //loadInitialUpcomingEventsLocal()
+                //return@launch
             }
             else {
                 val filteredEvents = events.filter { event ->
@@ -81,10 +81,10 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 }
                 Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Received ${filteredEvents.size} upcoming events from Facade")
                 upcomingEvents.value = filteredEvents
-                eventRepository.storeEvents(filteredEvents)
+                //eventRepository.storeEvents(filteredEvents)
                 // Check if events are being stored properly
-                val storedEvents = eventRepository.getEvents(5, 0)
-                Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Stored ${storedEvents.size} upcoming events")
+                //val storedEvents = eventRepository.getEvents(5, 0)
+                //Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Stored ${storedEvents.size} upcoming events")
                 lastHomeEventsSnapshot = snapshot
                 isLoadingUpcoming.value = false
                 hasReachedEndUpcoming.value = filteredEvents.isEmpty()
@@ -154,11 +154,11 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
             if (events.isEmpty()) {
-                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
-                isLoadingNearby.value = false
-                hasReachedEndNearby.value = true
-                loadInitialNearbyEventsLocal()
-                return@launch
+                //Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
+                //isLoadingNearby.value = false
+                //hasReachedEndNearby.value = true
+                //loadInitialNearbyEventsLocal()
+                //return@launch
             }
             else {
                 Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Received ${events.size} nearby events from Facade")
@@ -219,18 +219,18 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Calling firebaseServicesFacade.fetchHomeRecommendedEvents")
             val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
             if (events.isEmpty()) {
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
-                isLoadingRecommended.value = false
-                hasReachedEndRecommended.value = true
-                loadInitialRecommendedEventsLocal()
-                return@launch
+                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
+                //isLoadingRecommended.value = false
+                //hasReachedEndRecommended.value = true
+                //loadInitialRecommendedEventsLocal()
+                //return@launch
             } else {
                 Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Received ${events.size} recommended events from Facade")
                 recommendedEvents.value = events
-                eventRepository.storeEvents(events)
+                //eventRepository.storeEvents(events)
                 // Check if events are being stored properly
-                val storedEvents = eventRepository.getEvents(5, 0)
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Stored ${storedEvents.size} recommended events")
+                //val storedEvents = eventRepository.getEvents(5, 0)
+                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Stored ${storedEvents.size} recommended events")
                 val newIds = events.map { it.id }
                 currentRecommendedIds.addAll(newIds)
                 isLoadingRecommended.value = false
