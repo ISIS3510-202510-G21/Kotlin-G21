@@ -12,9 +12,9 @@ import com.isis3510.growhub.Repository.EventRepository
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
-import com.isis3510.growhub.utils.ConnectionStatus
-import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 
 @RequiresApi(Build.VERSION_CODES.O)
 class HomeEventsViewModel(application: Application) : AndroidViewModel(application) {
@@ -30,7 +30,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     val isLoadingRecommended = mutableStateOf(false)
 
     private var lastHomeEventsSnapshot: DocumentSnapshot? = null
-    private var currentRecommendedIds = emptySet<String>()
+    private var currentRecommendedIds = mutableSetOf<String>()
 
     // States for paginated loading
     val isLoadingMoreUpcoming = mutableStateOf(false)
@@ -43,36 +43,19 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
 
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
-    private val connectivityViewModel = ConnectivityViewModel(application)
 
     init {
-        observeNetworkStatus()
-    }
-
-    private fun observeNetworkStatus() {
-        viewModelScope.launch {
-            connectivityViewModel.networkStatus.collectLatest { status ->
-                loadInitialHomeEvents(isNetworkAvailable = status)
-            }
-        }
+        loadInitialHomeEvents()
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    fun loadInitialHomeEvents(isNetworkAvailable : ConnectionStatus) {
+    fun loadInitialHomeEvents() {
         Log.d("HomeEventsViewModel", "loadInitialHomeEvents: Start")
-        Log.d("HomeEventsViewModel", "Network status: $isNetworkAvailable")
-        if (isNetworkAvailable == ConnectionStatus.Available) {
-            loadInitialUpcomingEvents()
-            loadInitialNearbyEvents()
-            loadInitialRecommendedEvents()
-        } else {
-            loadInitialUpcomingEventsLocal()
-            loadInitialNearbyEventsLocal()
-            loadInitialRecommendedEventsLocal()
-        }
+        loadInitialUpcomingEvents()
+        loadInitialNearbyEvents()
+        loadInitialRecommendedEvents()
         Log.d("HomeEventsViewModel", "loadInitialHomeEvents: End")
     }
-
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialUpcomingEvents() {
@@ -81,12 +64,28 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Received ${events.size} upcoming events from Facade")
-            upcomingEvents.value = events
-            lastHomeEventsSnapshot = snapshot
-            isLoadingUpcoming.value = false
-            hasReachedEndUpcoming.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: hasReachedEndUpcoming = $hasReachedEndUpcoming")
+            if (events.isEmpty()) {
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
+                isLoadingUpcoming.value = false
+                hasReachedEndUpcoming.value = true
+                loadInitialUpcomingEventsLocal()
+                return@launch
+            }
+            else {
+                val filteredEvents = events.filter { event ->
+                    val startDate = event.startDate
+                    val today = LocalDate.now()
+                    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                    val formattedDate = LocalDate.parse(startDate, formatter)
+                    formattedDate.isAfter(today) || formattedDate == today
+                }
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Received ${filteredEvents.size} upcoming events from Facade")
+                upcomingEvents.value = filteredEvents
+                lastHomeEventsSnapshot = snapshot
+                isLoadingUpcoming.value = false
+                hasReachedEndUpcoming.value = filteredEvents.isEmpty()
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: hasReachedEndUpcoming = $hasReachedEndUpcoming")
+            }
         }
         Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: End")
     }
@@ -97,10 +96,17 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Calling eventRepository.getEvents")
             val events = eventRepository.getEvents(5, 0)
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Received ${events.size} upcoming events from local storage")
-            upcomingEvents.value = events
+            val filteredEvents = events.filter { event ->
+                val startDate = event.startDate
+                val today = LocalDate.now()
+                val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                val formattedDate = LocalDate.parse(startDate, formatter)
+                formattedDate.isAfter(today) || formattedDate == today
+            }
+            Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Received ${filteredEvents.size} upcoming events from local storage")
+            upcomingEvents.value = filteredEvents
             isLoadingUpcoming.value = false
-            hasReachedEndUpcoming.value = events.isEmpty()
+            hasReachedEndUpcoming.value = filteredEvents.isEmpty()
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: hasReachedEndUpcoming = $hasReachedEndUpcoming")
         }
     }
@@ -114,9 +120,17 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Calling firebaseServicesFacade.fetchNextHomeEvents")
             val (nextEvents, newLastSnapshot) = firebaseServicesFacade.fetchNextHomeEvents(lastSnapshot = lastHomeEventsSnapshot)
-            Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Received ${nextEvents.size} next upcoming events from Facade")
-            if (nextEvents.isNotEmpty()) {
-                upcomingEvents.value += nextEvents
+            val filteredNextEvents = nextEvents
+                .filter { event ->
+                    val startDate = event.startDate
+                    val today = LocalDate.now()
+                    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+                    val formattedDate = LocalDate.parse(startDate, formatter)
+                    formattedDate.isAfter(today) || formattedDate == today
+                }
+            Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Received ${filteredNextEvents.size} next upcoming events from Facade")
+            if (filteredNextEvents.isNotEmpty()) {
+                upcomingEvents.value += filteredNextEvents
                 lastHomeEventsSnapshot = newLastSnapshot
             } else {
                 hasReachedEndUpcoming.value = true
@@ -128,7 +142,6 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: End")
     }
 
-
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialNearbyEvents() {
         Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Start")
@@ -136,12 +149,21 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Received ${events.size} nearby events from Facade")
-            nearbyEvents.value = events
-            lastHomeEventsSnapshot = snapshot
-            isLoadingNearby.value = false
-            hasReachedEndNearby.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: hasReachedEndNearby = $hasReachedEndNearby")
+            if (events.isEmpty()) {
+                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
+                isLoadingNearby.value = false
+                hasReachedEndNearby.value = true
+                loadInitialNearbyEventsLocal()
+                return@launch
+            }
+            else {
+                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Received ${events.size} nearby events from Facade")
+                nearbyEvents.value = events
+                lastHomeEventsSnapshot = snapshot
+                isLoadingNearby.value = false
+                hasReachedEndNearby.value = events.isEmpty()
+                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: hasReachedEndNearby = $hasReachedEndNearby")
+            }
         }
         Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: End")
     }
@@ -191,17 +213,25 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         isLoadingRecommended.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Calling firebaseServicesFacade.fetchHomeRecommendedEvents")
-            val (events, offsetIds) = firebaseServicesFacade.fetchHomeRecommendedEvents()
-            currentRecommendedIds = offsetIds
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Received ${events.size} recommended events from Facade")
-            recommendedEvents.value = events
-            isLoadingRecommended.value = false
-            hasReachedEndRecommended.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: hasReachedEndRecommended = $hasReachedEndRecommended")
+            val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
+            if (events.isEmpty()) {
+                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
+                isLoadingRecommended.value = false
+                hasReachedEndRecommended.value = true
+                loadInitialRecommendedEventsLocal()
+                return@launch
+            } else {
+                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Received ${events.size} recommended events from Facade")
+                recommendedEvents.value = events
+                val newIds = events.map { it.id }
+                currentRecommendedIds.addAll(newIds)
+                isLoadingRecommended.value = false
+                hasReachedEndRecommended.value = events.isEmpty()
+                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: hasReachedEndRecommended = $hasReachedEndRecommended")
             }
+        }
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: End")
     }
-
 
     private fun loadInitialRecommendedEventsLocal() {
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Start")
@@ -221,7 +251,6 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     fun loadMoreRecommendedEvents() {
         Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Start - isLoadingMoreRecommended = ${isLoadingMoreRecommended.value}, hasReachedEndRecommended = ${hasReachedEndRecommended.value}")
         if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
-
         isLoadingMoreRecommended.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Calling firebaseServicesFacade.fetchNextHomeRecommendedEvents, currentRecommendedIds size = ${currentRecommendedIds.size}")
@@ -229,6 +258,9 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Received ${nextEvents.size} next recommended events from Facade")
             if (nextEvents.isNotEmpty()) {
                 recommendedEvents.value += nextEvents
+                val newIds = nextEvents.map { it.id }
+                currentRecommendedIds.addAll(newIds)
+                Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Updated currentRecommendedIds to ${currentRecommendedIds.size} elements")
             } else {
                 hasReachedEndRecommended.value = true
                 Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: No more recommended events, hasReachedEndRecommended set to true")

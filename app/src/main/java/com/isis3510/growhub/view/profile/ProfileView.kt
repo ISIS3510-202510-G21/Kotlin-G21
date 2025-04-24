@@ -33,11 +33,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -52,9 +49,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
-import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.viewmodel.ConnectivityViewModel
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
 /**
@@ -64,23 +61,16 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
 @Composable
 fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
-    connectivityViewModel: ConnectivityViewModel = viewModel(),
     navController: NavController
 ) {
 
-    val currentStatus by connectivityViewModel.networkStatus.collectAsState()
-    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
-
-    LaunchedEffect(Unit) {
-
-        if (initialNetworkAvailable.value == null) {
-            initialNetworkAvailable.value = currentStatus == ConnectionStatus.Available
-        }
-    }
-
     val profileList = viewModel.profile
+    val profile = profileList.firstOrNull()
+    val isLoading = viewModel.isLoading.value
+    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
 
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
@@ -91,31 +81,29 @@ fun ProfileView(
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            when {
-                profileList.isNotEmpty() -> {
-                    val profile = profileList[0]
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp),
-                    ) {
-                        Spacer(modifier = Modifier.height(32.dp))
-                        ProfileImage(profile.profilePicture)
-                        Spacer(modifier = Modifier.height(32.dp))
-                        ProfileName(profile.name)
-                        Spacer(modifier = Modifier.height(32.dp))
-                        ProfileStats(profile.following, profile.followers)
-                        Spacer(modifier = Modifier.height(32.dp))
-                        EditProfileButton(onNavigateToEditProfile)
-                        Spacer(modifier = Modifier.height(32.dp))
-                        ProfileAbout(profile.description)
-                        Spacer(modifier = Modifier.height(16.dp))
-                        ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
-                    }
+            if (isLoading) {
+                ProfilePlaceholder()
+            } else if (profile != null){
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileImage(profile.profilePicture)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileName(profile.name)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileStats(profile.following, profile.followers)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    EditProfileButton(onNavigateToEditProfile)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileAbout(profile.description)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
                 }
-                initialNetworkAvailable.value == false -> {
-                    ProfileEmpty()
-                }
+            } else if (isNetworkAvailable != ConnectionStatus.Available) {
+                ProfileEmpty()
             }
         }
 
@@ -380,4 +368,115 @@ fun ProfileEmpty() {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProfilePlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Profile Image
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Name
+        Box(
+            modifier = Modifier
+                .height(24.dp)
+                .width(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Stats
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            repeat(2) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .width(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(16.dp)
+                            .width(60.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Button
+        Box(
+            modifier = Modifier
+                .height(48.dp)
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for About Me
+        Box(
+            modifier = Modifier
+                .height(20.dp)
+                .width(100.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        repeat(3) {
+            Box(
+                modifier = Modifier
+                    .height(16.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Gray.copy(alpha = 0.3f))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Placeholder for Interests
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(6) {
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .width(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Gray.copy(alpha = 0.3f))
+                )
+            }
+        }
+    }
+}
 
