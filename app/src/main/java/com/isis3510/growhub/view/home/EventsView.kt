@@ -25,8 +25,11 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -36,7 +39,8 @@ import kotlinx.coroutines.flow.filter
 @Composable
 fun EventsView(
     modifier: Modifier = Modifier,
-    eventsViewModel: HomeEventsViewModel,
+    eventsViewModel: HomeEventsViewModel = viewModel(),
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     onEventClick: (Event) -> Unit
 ) {
     val upcomingEvents by eventsViewModel.upcomingEvents
@@ -53,6 +57,8 @@ fun EventsView(
     val listStateUpcoming = rememberLazyListState()
     val listStateNearby = rememberLazyListState()
     val listStateRecommended = rememberLazyListState()
+
+    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
 
     // Effects for pagination
     LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
@@ -108,52 +114,46 @@ fun EventsView(
         // --- Upcoming Events Section ---
         if (isLoadingUpcoming) {
             EventSectionPlaceholder()
-        } else {
-            if (upcomingEvents.isNotEmpty()) {
-                EventSection(
-                    title = "Upcoming Events",
-                    events = upcomingEvents,
-                    onEventClick = onEventClick,
-                    listState = listStateUpcoming,
-                    isLoadingMore = isLoadingMoreUpcoming
-                )
-            } else {
-                EventSectionEmpty(title = "Upcoming Events")
-            }
+        } else if (upcomingEvents.isNotEmpty()) {
+            EventSection(
+                title = "Upcoming Events",
+                events = upcomingEvents,
+                onEventClick = onEventClick,
+                listState = listStateUpcoming,
+                isLoadingMore = isLoadingMoreUpcoming
+            )
+        } else if (isNetworkAvailable != ConnectionStatus.Available) {
+            EventSectionEmpty(title = "Upcoming Events")
         }
 
         // --- Nearby Events Section ---
         if (isLoadingNearby) {
             EventSectionPlaceholder()
-        } else {
-            if (nearbyEvents.isNotEmpty()) {
-                EventSection(
-                    title = "Nearby Events",
-                    events = nearbyEvents,
-                    onEventClick = onEventClick,
-                    listState = listStateNearby,
-                    isLoadingMore = isLoadingMoreNearby
-                )
-            } else {
-                EventSectionEmpty(title = "Nearby Events")
-            }
+        } else if (nearbyEvents.isNotEmpty()){
+            EventSection(
+                title = "Nearby Events",
+                events = nearbyEvents,
+                onEventClick = onEventClick,
+                listState = listStateNearby,
+                isLoadingMore = isLoadingMoreNearby
+            )
+        } else if (isNetworkAvailable != ConnectionStatus.Available){
+            EventSectionEmpty(title = "Nearby Events")
         }
 
         // --- Recommended Events Section ---
         if (isLoadingRecommended) {
             EventSectionPlaceholder()
-        } else {
-            if (recommendedEvents.isNotEmpty()) {
-                EventSection(
-                    title = "You may like",
-                    events = recommendedEvents,
-                    onEventClick = onEventClick,
-                    listState = listStateRecommended,
-                    isLoadingMore = isLoadingMoreRecommended
-                )
-            } else {
-                EventSectionEmpty(title = "You may like")
-            }
+        } else if (recommendedEvents.isNotEmpty()) {
+            EventSection(
+                title = "You may like",
+                events = recommendedEvents,
+                onEventClick = onEventClick,
+                listState = listStateRecommended,
+                isLoadingMore = isLoadingMoreRecommended
+            )
+        } else if (isNetworkAvailable != ConnectionStatus.Available) {
+            EventSectionEmpty(title = "You may like")
         }
     }
 }
@@ -163,7 +163,6 @@ fun EventSectionEmpty(
     title: String
 ) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Sección con el encabezado
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -177,7 +176,6 @@ fun EventSectionEmpty(
                 fontWeight = FontWeight.Bold
             )
         }
-        // Área centralizada para indicar "No Events Found"
         Box(
             modifier = Modifier
                 .fillMaxWidth()

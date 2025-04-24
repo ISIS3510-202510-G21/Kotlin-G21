@@ -25,6 +25,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,10 +34,14 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -90,6 +95,19 @@ fun MyEventsView(
     val listStateUpcoming = rememberLazyListState()
     val listStatePrevious = rememberLazyListState()
     val listStateCreatedByMe = rememberLazyListState()
+
+    var showDialog by remember { mutableStateOf(false) }
+    var eventIdToDelete by remember { mutableStateOf<String?>(null) }
+
+    val currentStatus by connectivityViewModel.networkStatus.collectAsState()
+    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(Unit) {
+
+        if (initialNetworkAvailable.value == null) {
+            initialNetworkAvailable.value = currentStatus == ConnectionStatus.Available
+        }
+    }
 
     LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
         snapshotFlow { listStateUpcoming.isScrolledNearEnd() }
@@ -165,9 +183,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (upcomingEvents.isNotEmpty()) {
                 items(upcomingEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (upcomingEvents.isEmpty()) {
@@ -185,7 +206,11 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (initialNetworkAvailable.value == false) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -200,9 +225,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (previousEvents.isNotEmpty()) {
                 items(previousEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (previousEvents.isEmpty()) {
@@ -220,7 +248,11 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (initialNetworkAvailable.value == false) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -235,9 +267,12 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Available) {
+            } else if (createdByMeEvents.isNotEmpty()) {
                 items(createdByMeEvents) { event ->
-                    MyEventsCard(event, onDelete = { myEventsViewModel.removeUserFromEvent(event.id) })
+                    MyEventsCard(event, onDelete = {
+                        eventIdToDelete = event.id
+                        showDialog = true
+                    })
                 }
 
                 if (createdByMeEvents.isEmpty()) {
@@ -259,11 +294,47 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (initialNetworkAvailable.value == false) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
             }
+        }
+
+        if (showDialog && eventIdToDelete != null) {
+            AlertDialog(
+                onDismissRequest = {
+                    showDialog = false
+                    eventIdToDelete = null
+                },
+                title = { Text("Remove Event") },
+                text = { Text("Are you sure you want to remove this event from your list?") },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            eventIdToDelete?.let { myEventsViewModel.removeUserFromEvent(it) }
+                            showDialog = false
+                            eventIdToDelete = null
+                        }
+                    ) {
+                        Text("Yes")
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            showDialog = false
+                            eventIdToDelete = null
+                        }
+                    ) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         Box(
@@ -274,6 +345,7 @@ fun MyEventsView(
         ) {
             BottomNavigationBar(navController = navController)
         }
+
     }
 }
 
@@ -282,7 +354,7 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -297,7 +369,7 @@ fun MyEventsTopBar(onNavigateBack: () -> Unit = {}) {
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.padding(start = 8.dp),
-                color = Color(0xff191d17)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }
     }
@@ -310,7 +382,7 @@ fun MyEventsSectionTitle(title: String) {
         fontSize = 20.sp,
         fontWeight = FontWeight.Bold,
         modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 8.dp),
-        color = Color(0xff191d17)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
 }
 
@@ -319,7 +391,7 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
@@ -333,39 +405,36 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(8.dp))
+                            .fillMaxSize()
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (event.cost > 0.0) {
                         Icon(
                             painter = painterResource(id = R.drawable.payments),
                             contentDescription = "Paid Event",
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(20.dp),
+                            tint = Color(0xFF8BC34A)
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(12.dp))
                 Column(modifier = Modifier.weight(1f)) {
-                    Text(text = event.startDate, fontSize = 18.sp, color = Color(0xFF5669FF))
+                    Text(text = event.startDate, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(
                         text = event.name,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Normal,
                         textAlign = TextAlign.Center,
-                        color = Color(0xff191d17)
-                    )
-                }
-            }
-            Row(modifier = Modifier.align(Alignment.TopEnd)) {
-                IconButton(onClick = { /* Handle flag */ }) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.flag),
-                        contentDescription = "Flag"
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
             Row(modifier = Modifier.align(Alignment.BottomEnd)) {
                 IconButton(onClick = { onDelete() }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete")
+                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(
+                        0xFFBE2927
+                    )
+                    )
                 }
             }
         }
@@ -377,7 +446,7 @@ fun MyEventsCardPlaceholder() {
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant),
         modifier = Modifier
             .fillMaxWidth()
             .padding(8.dp)
@@ -389,13 +458,13 @@ fun MyEventsCardPlaceholder() {
                         modifier = Modifier
                             .size(80.dp)
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .size(20.dp)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
 
@@ -406,14 +475,14 @@ fun MyEventsCardPlaceholder() {
                         modifier = Modifier
                             .height(18.dp)
                             .fillMaxWidth(0.4f)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Box(
                         modifier = Modifier
                             .height(20.dp)
                             .fillMaxWidth(0.8f)
-                            .background(Color.LightGray)
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant)
                     )
                 }
             }
@@ -423,7 +492,7 @@ fun MyEventsCardPlaceholder() {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
             }
 
@@ -432,7 +501,7 @@ fun MyEventsCardPlaceholder() {
                 Box(
                     modifier = Modifier
                         .size(24.dp)
-                        .background(Color.LightGray, shape = RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(4.dp))
                 )
             }
         }
