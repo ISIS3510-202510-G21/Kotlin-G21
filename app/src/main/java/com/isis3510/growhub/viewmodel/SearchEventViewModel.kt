@@ -1,21 +1,24 @@
 package com.isis3510.growhub.viewmodel
 
+import android.app.Application
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentSnapshot
+import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
-class SearchEventViewModel : ViewModel() {
+class SearchEventViewModel(application: Application) : AndroidViewModel(application) {
 
     private val firebaseServicesFacade = FirebaseServicesFacade()
 
@@ -38,6 +41,9 @@ class SearchEventViewModel : ViewModel() {
     val isLoadingMore = mutableStateOf(false)
     val hasReachedEnd = mutableStateOf(false)
 
+    private val db = AppLocalDatabase.getDatabase(application)
+    private val eventRepository = EventRepository(db)
+
     init {
         loadInitialEvents()
     }
@@ -52,19 +58,43 @@ class SearchEventViewModel : ViewModel() {
 
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialSearchEvents() {
-        Log.d("SearchEventsViewModel", "loadInitialSearchEvents: Start")
+        Log.d("SearchEventViewModel", "loadInitialSearchEvents: Start")
         isLoading.value = true
         viewModelScope.launch {
-            Log.d("SearchEventsViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
+            Log.d("SearchEventViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
-            Log.d("SearchEventsViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
-            searchEvents.value = events
-            lastSearchSnapshot = snapshot
-            isLoading.value = false
-            hasReachedEnd.value = events.isEmpty()
-            Log.d("SearchEventsViewModel", "loadInitialSearchEvents: hasReachedEnd = $hasReachedEnd")
+            if (events.isEmpty()) {
+                //Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
+                //isLoading.value = false
+                //hasReachedEnd.value = true
+                //loadInitialSearchEventsLocal()
+                //return@launch
+            }
+            else {
+                Log.d("SearchEventViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
+                searchEvents.value = events
+                lastSearchSnapshot = snapshot
+                isLoading.value = false
+                hasReachedEnd.value = events.isEmpty()
+                Log.d("SearchEventViewModel", "loadInitialSearchEvents: hasReachedEnd = $hasReachedEnd")
+            }
         }
         Log.d("SearchEventsViewModel", "loadInitialSearchEvents: End")
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun loadInitialSearchEventsLocal() {
+        Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Start")
+        isLoading.value = true
+        viewModelScope.launch {
+            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Calling eventRepository.getEvents")
+            val events = eventRepository.getEvents(5, 0)
+            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${filteredEvents.size} search events from local storage")
+            searchEvents.value = events
+            isLoading.value = false
+            hasReachedEnd.value = events.isEmpty()
+            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: hasReachedEnd = $hasReachedEnd")
+        }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)

@@ -9,21 +9,25 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.FabPosition
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -45,6 +49,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,24 +75,27 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
 
     LaunchedEffect(Unit) {
         chatbotViewModel.checkBotStatus()
-        if (isNetworkAvailable == ConnectionStatus.Available) {
-            chatbotViewModel.sendInitialBotMessage()
-        }
+        chatbotViewModel.sendInitialBotMessage()
     }
 
-    Box {
-        Scaffold(
-            containerColor = Color.White,
-            topBar = {
-                TopBar(
-                    modifier = Modifier,
-                    isNetworkAvailable = isNetworkAvailable,
-                    isBotActive = isBotActive,
-                    onNavigateBack = { navController.popBackStack() })
-            },
-            floatingActionButton = {
+    Scaffold(
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopBar(
+                modifier = Modifier,
+                isNetworkAvailable = isNetworkAvailable,
+                isBotActive = isBotActive,
+                onNavigateBack = { navController.popBackStack() }
+            )
+        },
+        bottomBar = {
+            if (isNetworkAvailable == ConnectionStatus.Available) {
                 ChatBar(
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp).offset(y = 60.dp),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .navigationBarsPadding()
+                        .imePadding()
+                        .offset(y = (40).dp),
                     value = userInput,
                     onValueChange = { userInput = it },
                     onClickSend = {
@@ -97,42 +105,37 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
                         }
                     },
                     isNetworkAvailable = isNetworkAvailable,
-                    isBotActive = isBotActive
+                    isBotActive = isBotActive,
                 )
-            },
-            floatingActionButtonPosition = FabPosition.Center
-        ) { paddingValues ->
-            Column(
-                modifier = Modifier
-                    .padding(paddingValues = paddingValues)
-                    .fillMaxSize()
-                    .imePadding()
-            ) {
+            }
+        }
+    ) { paddingValues ->
+        Column(
+            modifier = Modifier
+                .padding(paddingValues)
+                .fillMaxSize()
+        ) {
+            if (isNetworkAvailable == ConnectionStatus.Available) {
                 LazyColumn(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(top = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(space = 8.dp),
+                        .weight(1f)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
                     horizontalAlignment = Alignment.End
                 ) {
-                    if (isNetworkAvailable == ConnectionStatus.Available) {
-                        items(chatbotViewModel.messages) { message ->
-                            if (message.role == "user") {
-                                UserChat(
-                                    modifier = Modifier.align(Alignment.End),
-                                    message = message.content
-                                )
-                            } else {
-                                AssistantChat(message = message.content)
-                            }
-                        }
-                    }
-                    else {
-                        item {
-                            ChatBotSectionEmpty()
+                    items(chatbotViewModel.messages) { message ->
+                        if (message.role == "user") {
+                            UserChat(
+                                modifier = Modifier.align(Alignment.End),
+                                message = message.content
+                            )
+                        } else {
+                            AssistantChat(message = message.content)
                         }
                     }
                 }
+            } else {
+                ChatBotSectionEmpty()
             }
         }
     }
@@ -151,7 +154,7 @@ fun TopBar(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(color = Color.White)
+                .background(color = MaterialTheme.colorScheme.background)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         ) {
             IconButton(onClick = { onNavigateBack() })
@@ -165,7 +168,7 @@ fun TopBar(
                 Text(
                     text = "GrowHubGPT",
                     fontSize = 20.sp,
-                    color = Color(0xFF5669FF),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                     fontWeight = FontWeight.Medium,
                 )
 
@@ -207,7 +210,7 @@ fun TopBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(1.dp),
-            color = Color(0xFFDCD9D9)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
@@ -219,7 +222,7 @@ fun UserChat(
 ) {
     Surface(
         modifier = modifier,
-        color = Color(0xFF5669FF),
+        color = MaterialTheme.colorScheme.primary,
         shape = RoundedCornerShape(topStart = 25.dp, bottomEnd = 25.dp, bottomStart = 25.dp)
     ) {
         Text(
@@ -246,7 +249,7 @@ fun AssistantChat(
                 .wrapContentSize()
                 .align(Alignment.Bottom),
             shape = CircleShape,
-            color = Color.White,
+            color = MaterialTheme.colorScheme.primary,
             shadowElevation = 4.dp
         ) {
             Icon(
@@ -264,12 +267,12 @@ fun AssistantChat(
                 .fillMaxWidth()
                 .padding(bottom = 24.dp),
             shape = RoundedCornerShape(topStart = 25.dp, topEnd = 25.dp, bottomEnd = 25.dp),
-            color = Color(0xFFA9B2C9)
+            color = MaterialTheme.colorScheme.surfaceVariant
         ) {
             Text(
                 modifier = Modifier.padding(horizontal = 14.dp, vertical = 24.dp),
                 text = message,
-                style = MaterialTheme.typography.labelLarge.copy(color = Color(0xFF505050))
+                style = MaterialTheme.typography.labelLarge.copy(color = MaterialTheme.colorScheme.onSurfaceVariant)
             )
         }
     }
@@ -285,22 +288,36 @@ fun ChatBar(
     isBotActive: Boolean
 ) {
     Surface(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth().wrapContentHeight().padding(horizontal = 8.dp),
         shadowElevation = 2.dp,
-        color = Color.White,
-        shape = RoundedCornerShape(25.dp),
+        color = MaterialTheme.colorScheme.surface,
+        shape = RoundedCornerShape(25.dp)
     ) {
         TextField(
-            modifier = Modifier.background(color = Color.White),
+            modifier = Modifier
+                .background(color = MaterialTheme.colorScheme.surface)
+                .heightIn(min = 48.dp)
+                .wrapContentHeight(),
+            singleLine = true,
             value = value,
             onValueChange = { value ->
                 onValueChange(value)
             },
+            keyboardOptions = KeyboardOptions.Default.copy(
+                imeAction = ImeAction.Send
+            ),
+            keyboardActions = KeyboardActions(
+                onSend = {
+                    if (value.isNotEmpty()) {
+                        onClickSend()
+                    }
+                }
+            ),
             placeholder = {
                 Text(
                     text = "Ask a question...",
                     fontWeight = FontWeight.Bold,
-                    color = Color(0xFFDCD9D9)
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             },
             trailingIcon = {
@@ -319,10 +336,10 @@ fun ChatBar(
 
             },
             colors = TextFieldDefaults.colors(
-                focusedContainerColor = Color.White,
-                unfocusedContainerColor = Color.White,
-                disabledContainerColor = Color.White,
-                errorContainerColor = Color.White,
+                focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceVariant,
+                errorContainerColor = MaterialTheme.colorScheme.surfaceVariant,
                 focusedIndicatorColor = Color.Transparent,
                 unfocusedIndicatorColor = Color.Transparent,
                 disabledIndicatorColor = Color.Transparent,

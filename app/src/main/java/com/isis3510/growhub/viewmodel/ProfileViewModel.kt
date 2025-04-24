@@ -1,6 +1,7 @@
 package com.isis3510.growhub.viewmodel
 
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
@@ -16,17 +17,20 @@ class ProfileViewModel(
 ) : ViewModel() {
 
     val profile = mutableStateListOf<Profile>()
+    val isLoading = mutableStateOf(false)
 
     init {
         loadProfileFromFirebase()
     }
 
     private fun loadProfileFromFirebase() {
+        isLoading.value = true
         viewModelScope.launch {
             val profile = firebaseFacade.fetchUserProfile()
             if (profile != null) {
                 this@ProfileViewModel.profile.add(profile)
             }
+            isLoading.value = false
         }
     }
 }

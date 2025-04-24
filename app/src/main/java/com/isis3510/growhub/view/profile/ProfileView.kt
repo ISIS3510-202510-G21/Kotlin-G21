@@ -23,14 +23,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,6 +50,8 @@ import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
 /**
@@ -55,52 +61,59 @@ import com.isis3510.growhub.viewmodel.ProfileViewModel
 @Composable
 fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
+    connectivityViewModel: ConnectivityViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     onNavigateToEditProfile: () -> Unit = {},
     navController: NavController
 ) {
+
+    val profileList = viewModel.profile
+    val profile = profileList.firstOrNull()
+    val isLoading = viewModel.isLoading.value
+    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
-        containerColor = Color.White
+        containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            ProfileContent(viewModel, onNavigateToEditProfile)
+            if (isLoading) {
+                ProfilePlaceholder()
+            } else if (profile != null){
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp),
+                ) {
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileImage(profile.profilePicture)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileName(profile.name)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileStats(profile.following, profile.followers)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    EditProfileButton(onNavigateToEditProfile)
+                    Spacer(modifier = Modifier.height(32.dp))
+                    ProfileAbout(profile.description)
+                    Spacer(modifier = Modifier.height(16.dp))
+                    ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
+                }
+            } else if (isNetworkAvailable != ConnectionStatus.Available) {
+                ProfileEmpty()
+            }
         }
-        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
-            BottomNavigationBar(navController = navController)
-        }
-    }
-}
 
-@Composable
-fun ProfileContent(
-    viewModel: ProfileViewModel,
-    onNavigateToEditProfile: () -> Unit
-) {
-    val profileList = viewModel.profile
-    if (profileList.isNotEmpty()) {
-        val profile = profileList[0]
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(horizontal = 16.dp),
+                .offset(y = 50.dp),
+            contentAlignment = Alignment.BottomCenter
         ) {
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileImage(profile.profilePicture)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileName(profile.name)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileStats(profile.following, profile.followers)
-            Spacer(modifier = Modifier.height(32.dp))
-            EditProfileButton(onNavigateToEditProfile)
-            Spacer(modifier = Modifier.height(32.dp))
-            ProfileAbout(profile.description)
-            Spacer(modifier = Modifier.height(16.dp))
-            ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
+            BottomNavigationBar(navController = navController)
         }
     }
 }
@@ -110,7 +123,7 @@ fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -124,7 +137,7 @@ fun ProfileTopBar(onNavigateBack: () -> Unit = {}) {
                 text = "Profile",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
@@ -167,7 +180,7 @@ fun ProfileName(name: String) {
         Text(text = name.ifEmpty { "Loading..." },
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            color = Color(0xff191d17))
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
@@ -180,20 +193,20 @@ fun ProfileStats(following: Int, followers: Int) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "$following",
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = "Following",
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         VerticalDivider(
-            color = Color.Gray,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.height(32.dp).width(1.dp)
         )
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(text = "$followers",
                 fontWeight = FontWeight.Bold,
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(text = "Followers",
-                color = Color(0xff191d17))
+                color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -206,16 +219,16 @@ fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
             modifier = Modifier.fillMaxWidth(0.5f).height(48.dp),
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(2.dp, Color(0xFF5669FF)),
-            colors = ButtonDefaults.outlinedButtonColors(contentColor = Color(0xFF5669FF))
+            colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_edit),
                     contentDescription = "Edit Profile",
-                    tint = Color(0xFF5669FF)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Edit Profile", color = Color(0xFF5669FF), fontSize = 16.sp)
+                Text(text = "Edit Profile", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
             }
         }
     }
@@ -227,11 +240,11 @@ fun ProfileAbout(aboutMe: String) {
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         textAlign = TextAlign.Left,
-        color = Color(0xff191d17))
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(modifier = Modifier.height(8.dp))
     Text(text = aboutMe,
         textAlign = TextAlign.Justify,
-        color = Color(0xff191d17))
+        color = MaterialTheme.colorScheme.onSurfaceVariant)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -257,7 +270,7 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
                 textAlign = TextAlign.Left,
-                color = Color(0xff191d17)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
             )
 
             OutlinedButton(
@@ -269,8 +282,8 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 contentPadding = PaddingValues(0.dp),
                 border = null,
                 colors = ButtonDefaults.outlinedButtonColors(
-                    containerColor = Color(0xFF5669FF).copy(alpha = 0.1f),
-                    contentColor = Color(0xFF5669FF)
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.1f),
+                    contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
                 Row(modifier = Modifier.align(Alignment.CenterVertically)) {
@@ -278,7 +291,7 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                         painter = painterResource(id = R.drawable.ic_edit),
                         contentDescription = "Edit",
                         modifier = Modifier.size(16.dp),
-                        tint = Color(0xFF5669FF)
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
                     )
 
                     Spacer(modifier = Modifier.width(4.dp))
@@ -316,6 +329,154 @@ fun ProfileInterestChip(text: String, backgroundColor: Color) {
     ) {
 
         Text(text = text, color = Color.White, fontSize = 14.sp)
+    }
+}
+
+@Composable
+fun ProfileEmpty() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Icon(
+            imageVector = Icons.Default.Info,
+            contentDescription = "No Internet Connection",
+            modifier = Modifier.size(100.dp),
+            tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Text(
+            text = "You're offline",
+            fontSize = 20.sp,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        Spacer(modifier = Modifier.height(8.dp))
+
+        Text(
+            text = "Please check your internet connection and try again.",
+            fontSize = 16.sp,
+            textAlign = TextAlign.Center,
+            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+        )
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+fun ProfilePlaceholder() {
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
+        verticalArrangement = Arrangement.Top,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Profile Image
+        Box(
+            modifier = Modifier
+                .size(120.dp)
+                .clip(CircleShape)
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Name
+        Box(
+            modifier = Modifier
+                .height(24.dp)
+                .width(180.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Stats
+        Row(
+            horizontalArrangement = Arrangement.SpaceEvenly,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            repeat(2) {
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Box(
+                        modifier = Modifier
+                            .height(20.dp)
+                            .width(40.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Box(
+                        modifier = Modifier
+                            .height(16.dp)
+                            .width(60.dp)
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color.Gray.copy(alpha = 0.3f))
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for Button
+        Box(
+            modifier = Modifier
+                .height(48.dp)
+                .fillMaxWidth(0.5f)
+                .clip(RoundedCornerShape(16.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        // Placeholder for About Me
+        Box(
+            modifier = Modifier
+                .height(20.dp)
+                .width(100.dp)
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color.Gray.copy(alpha = 0.3f))
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        repeat(3) {
+            Box(
+                modifier = Modifier
+                    .height(16.dp)
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color.Gray.copy(alpha = 0.3f))
+            )
+            Spacer(modifier = Modifier.height(8.dp))
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // Placeholder for Interests
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            repeat(6) {
+                Box(
+                    modifier = Modifier
+                        .height(32.dp)
+                        .width(80.dp)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color.Gray.copy(alpha = 0.3f))
+                )
+            }
+        }
     }
 }
 
