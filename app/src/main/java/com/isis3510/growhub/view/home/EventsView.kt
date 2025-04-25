@@ -318,7 +318,7 @@ private fun EventCard(event: Event, onClick: () -> Unit) {
                         )
                         Spacer(modifier = Modifier.width(4.dp))
                         Text(
-                            text = event.location, // Assume location is usually present
+                            text = event.location.getInfo(), // Assume location is usually present
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                             maxLines = 1,

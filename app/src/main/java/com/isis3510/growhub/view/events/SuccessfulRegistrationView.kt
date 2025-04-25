@@ -92,7 +92,7 @@ fun EventRegistrationContent(
             SuccessBanner()
             EventRegistrationDetailsTitle()
             EventCard(eventR.name, eventR.creator, eventR.cost, eventR.attendees)
-            InfoSection(eventR.startDate, eventR.category, eventR.skills, eventR.location)
+            InfoSection(eventR.startDate, eventR.category, eventR.skills, eventR.location.getInfo())
             Spacer(modifier = Modifier.height(16.dp))
             MyEventsButton()
             Spacer(modifier = Modifier.height(32.dp))
