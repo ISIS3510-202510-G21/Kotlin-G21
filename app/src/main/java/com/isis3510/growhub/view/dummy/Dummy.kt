@@ -10,7 +10,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
 @Composable
-fun PlaceholderScreen(title: String) {
+fun PlaceholderScreen() {
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -18,14 +18,8 @@ fun PlaceholderScreen(title: String) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "This is a placeholder for route testing: $title",
+            text = "Coming Soon!",
             fontSize = 18.sp
         )
     }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun PlaceholderScreenPreview() {
-    PlaceholderScreen(title = "Test Screen")
 }

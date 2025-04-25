@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.jetbrains.kotlin.android)
     id("com.google.gms.google-services")
     id("com.google.android.libraries.mapsplatform.secrets-gradle-plugin")
+    id("com.google.devtools.ksp") version "1.9.0-1.0.12"
 }
 
 android {
@@ -73,6 +74,8 @@ dependencies {
     implementation ("androidx.compose.ui:ui")
     implementation ("androidx.compose.ui:ui-tooling-preview")
     implementation ("androidx.compose.material3:material3")
+    implementation(libs.androidx.runtime.livedata)
+    implementation(libs.generativeai)
     var composeBomVersion = "2023.08.00"
     implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
 
@@ -100,8 +103,10 @@ dependencies {
     androidTestImplementation ("androidx.compose.ui:ui-test-junit4:1.6.0")
     implementation ("androidx.activity:activity-compose:<versión>")
 
-
-
+    // Chatbot
+    implementation("com.squareup.retrofit2:retrofit:2.9.0")
+    implementation("com.squareup.retrofit2:converter-gson:2.9.0")
+    implementation("com.squareup.okhttp3:okhttp:4.10.0")
 
     // Google Maps Compose library
     val mapsComposeVersion = "4.4.1"
@@ -110,6 +115,15 @@ dependencies {
     implementation("com.google.maps.android:maps-compose-utils:$mapsComposeVersion")
     // Google Maps Compose widgets library
     implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
+
+    // Local database ROOM
+    implementation(libs.room.runtime)
+    implementation(libs.room.ktx)
+    ksp(libs.room.compiler)
+
+    // Local Storage
+    implementation("androidx.datastore:datastore-preferences:1.0.0")
+    implementation("com.google.code.gson:gson:2.10.1")
 
 }
 
