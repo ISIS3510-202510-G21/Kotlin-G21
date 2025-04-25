@@ -39,9 +39,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     // *** Nuevos Estados para Conectividad y Carga ***
     private val _isLoading = mutableStateOf(true) // Empieza cargando
     val isLoading: State<Boolean> = _isLoading
-
     private val _errorMessage = mutableStateOf<String?>(null)
-    val errorMessage: State<String?> = _errorMessage
 
     // --- Internals ---
     private var pollingJob: Job? = null // Job para la consulta periódica
@@ -140,7 +138,6 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     // Helper para procesar marcadores en Dispatchers.Default
     private suspend fun processMarkersInBackground(events: List<Event>): List<MarkerData> {
         return withContext(Dispatchers.Default) {
-            Log.d(logTag, "Procesando ${events.size} marcadores en Dispatchers.Default...")
             events.mapNotNull { event ->
                 runCatching {
                     // Asumiendo que MarkerData tiene id y los métodos de location existen
@@ -176,7 +173,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
 
                         val currentGlobalEvents = GlobalData.nearbyEvents
                         if (currentGlobalEvents.isNotEmpty()) {
-                            Log.i(logTag, "Polling: ¡Data found in GlobalData! (${currentGlobalEvents.size} eventos)")
+                            Log.i(logTag, "Polling: ¡Data found in GlobalData! (${currentGlobalEvents.size} events)")
                             // ======= MULTITHREADING ADDED =======:
                             val markers = processMarkersInBackground(currentGlobalEvents)
                             // Actualiza la UI en el hilo principal
@@ -192,7 +189,7 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                             Log.d(logTag, "Polling: GlobalData still empty.")
                         }
                     } catch (e: Exception) {
-                        Log.e(logTag, "Polling: Error durante polling", e)
+                        Log.e(logTag, "Polling: Error during polling", e)
                     }
                     delay(pollingIntervalMillis) // Espera antes de la siguiente consulta
                 }
