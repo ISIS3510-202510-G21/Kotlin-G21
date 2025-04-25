@@ -1,4 +1,4 @@
-package com.isis3510.growhub.repository
+package com.isis3510.growhub.Repository
 
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
