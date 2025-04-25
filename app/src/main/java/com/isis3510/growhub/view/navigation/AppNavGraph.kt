@@ -168,12 +168,16 @@ fun AppNavGraph(
         }
 
         composable(Destinations.SEARCH) {
+            val context = LocalContext.current
+            val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
             SearchEventView(
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.SEARCH) { inclusive = true }
                     }
-                }
+                },
+                firebaseAnalytics = firebaseAnalytics
             )
         }
     }
