@@ -89,13 +89,12 @@ fun CreateEventView(
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    // Usamos el factory que recibe un Context
     val factory = remember { CreateEventViewModelFactory(context) }
-    // Instanciamos el ViewModel con factory
     val viewModel: CreateEventViewModel = viewModel(factory = factory)
 
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val eventCreated by viewModel.eventCreated.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -104,6 +103,13 @@ fun CreateEventView(
     ) { uri ->
         if (uri != null) {
             viewModel.onImageUrlChange(uri.toString())
+        }
+    }
+
+    LaunchedEffect(eventCreated) {
+        if (eventCreated == true) {
+            onNavigateBack()
+            viewModel.resetEventCreated()
         }
     }
 
@@ -117,10 +123,7 @@ fun CreateEventView(
                 .padding(innerPadding)
         ) {
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
@@ -134,9 +137,7 @@ fun CreateEventView(
 
         LaunchedEffect(errorMessage) {
             errorMessage?.let { msg ->
-                scope.launch {
-                    snackbarHostState.showSnackbar(msg)
-                }
+                scope.launch { snackbarHostState.showSnackbar(msg) }
             }
         }
     }
@@ -307,6 +308,7 @@ fun CreateEventContent(
 
             if (!hasError) {
                 viewModel.createEvent()
+                // onNavigateBack()
             }
         },
         onNavigateBack = onNavigateBack

@@ -60,12 +60,6 @@ class CreateEventViewModel(
     private val _locationId = MutableStateFlow("/locations/j5XQsX5v0ln9FGWXd4v5")
     val locationId: StateFlow<String> = _locationId
 
-    private val _isLoading = MutableStateFlow(false)
-    val isLoading: StateFlow<Boolean> = _isLoading
-
-    private val _errorMessage = MutableStateFlow<String?>(null)
-    val errorMessage: StateFlow<String?> = _errorMessage
-
     private val _city = MutableStateFlow("")
     val city: StateFlow<String> = _city
 
@@ -81,21 +75,27 @@ class CreateEventViewModel(
     private val _skillSelectionError = MutableStateFlow<String?>(null)
     val skillSelectionError: StateFlow<String?> = _skillSelectionError
 
-    /*  *** NEW – map <skillName, skillId>  */
     private val skillNameToId: MutableMap<String, String> = mutableMapOf()
 
-    /*  *** OPTIONAL – map <categoryName, categoryId>  */
     private val categoryNameToId: MutableMap<String, String> = mutableMapOf()
 
     private val _allCategories = MutableStateFlow<List<String>>(emptyList())
     val allCategories : StateFlow<List<String>> = _allCategories
 
+    private val _isLoading = MutableStateFlow(false)
+    val isLoading: StateFlow<Boolean> = _isLoading
+    private val _errorMessage = MutableStateFlow<String?>(null)
+    val errorMessage: StateFlow<String?> = _errorMessage
+
+    private val _eventCreated = MutableStateFlow<Boolean?>(null)
+    val eventCreated: StateFlow<Boolean?> = _eventCreated
+
     init {
         fetchSkillsAndCategories()
-        // Intentamos sincronizar eventos offline cada vez que se inicia el ViewModel
         syncOfflineEventsIfPossible()
     }
 
+    fun resetEventCreated() { _eventCreated.value = null }
     fun onNameChange(value: String) { _name.value = value }
     fun onCostChange(value: String) { _cost.value = value }
     fun onCategoryChange(value: String) { _category.value = value }
@@ -148,7 +148,7 @@ class CreateEventViewModel(
             for (doc in catDocs.documents) {
                 val name = doc.getString("name") ?: continue
                 catTmp += name
-                categoryNameToId[name] = doc.id         // para uso futuro
+                categoryNameToId[name] = doc.id
             }
             _allCategories.value = catTmp
 
@@ -212,6 +212,7 @@ class CreateEventViewModel(
                         isUniversity = _isUniversity.value,
                         skillIds = selectedSkillIds
                     )
+                    _eventCreated.value = true
                     _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
                 } else {
                     val success = offlineManager.uploadSingleEvent(
@@ -229,6 +230,7 @@ class CreateEventViewModel(
                         isUniversity = _isUniversity.value,
                         skillIds = selectedSkillIds
                     )
+                    _eventCreated.value = success
                     if (success) {
                         clearForm()
                     } else {
@@ -249,7 +251,7 @@ class CreateEventViewModel(
             if (hasInternet) {
                 val uploadedCount = offlineManager.tryUploadAllOfflineEvents()
                 if (uploadedCount > 0) {
-                    _errorMessage.value = "Se han sincronizado $uploadedCount evento(s) que estaban pendientes."
+                    _errorMessage.value = "You have synced $uploadedCount event(s) that were pending."
                 }
             }
         }

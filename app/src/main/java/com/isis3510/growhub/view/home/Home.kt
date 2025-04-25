@@ -62,8 +62,6 @@ import com.isis3510.growhub.repository.CreateEventRepository
 @Composable
 fun MainView(navController: NavHostController, onLogout: () -> Unit) {
     val context = LocalContext.current
-    /* remember{} para crear una sola instancia durante todo el
-       tiempo que MainView esté en el árbol de composición         */
     val offlineManager = remember {
         OfflineEventManager(
             context = context,
