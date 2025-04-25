@@ -141,7 +141,7 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
                         (selectedType.isBlank() || (selectedType == "Free" && it.cost.toDouble() == 0.0) || (selectedType == "Paid" && it.cost > 0.0)) &&
                         (selectedCategory.isBlank() || it.category == selectedCategory) &&
                         (selectedSkill.isBlank() || it.skills.contains(selectedSkill)) &&
-                        (selectedLocation.isBlank() || it.location == selectedLocation) &&
+                        (selectedLocation.isBlank() || it.location.city == selectedLocation) &&
                         (selectedDate.isBlank() || (it.startDate >= selectedDate && it.endDate <= selectedDate))
             }
 

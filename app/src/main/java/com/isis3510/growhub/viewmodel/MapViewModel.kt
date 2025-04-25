@@ -127,7 +127,7 @@ class MapViewModel(
 
                 // Filter events whose location city is the same as the approx location city
                 val filteredEvents = events.filter { event ->
-                    val locationParts = event.location.split(",")
+                    val locationParts = event.location.city.split(",")
                     val locationCity = locationParts.getOrNull(1)?.trim() ?: ""
                     locationCity.equals(approxCity, ignoreCase = true)
                 }

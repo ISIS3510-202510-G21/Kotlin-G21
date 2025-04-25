@@ -38,6 +38,7 @@ import com.google.maps.android.compose.GoogleMapComposable
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.google.maps.android.compose.Marker
 import com.google.maps.android.compose.MarkerState
+import com.isis3510.growhub.view.events.EventCard
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -170,43 +171,5 @@ fun EventsList(events: List<Event>) {
             EventCard(event)
         }
 
-    }
-}
-
-@Composable
-fun EventCard(event: Event) {
-    Card(
-        shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(4.dp),
-        colors = CardDefaults.cardColors(containerColor = Color.White),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-    ) {
-        Row(
-            modifier = Modifier.padding(16.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            // Imagen del evento
-            Image(
-                painter = rememberAsyncImagePainter(event.imageUrl),
-                contentDescription = event.name,
-                modifier = Modifier
-                    .size(80.dp)
-                    .background(Color.LightGray, shape = RoundedCornerShape(8.dp))
-            )
-            Spacer(modifier = Modifier.width(12.dp))
-            // Detalles del evento
-            Column(modifier = Modifier.weight(1f)) {
-                Text(text = event.startDate, fontSize = 16.sp, color = Color(0xFF5669FF))
-                Text(
-                    text = event.name,
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xff191d17)
-                )
-                Text(text = event.location, fontSize = 14.sp, color = Color.Gray)
-            }
-        }
     }
 }

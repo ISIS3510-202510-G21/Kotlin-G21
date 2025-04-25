@@ -434,7 +434,7 @@ fun EventCard(event: Event) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                Text(text = event.location, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(text = event.location.getInfo(), fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
     }

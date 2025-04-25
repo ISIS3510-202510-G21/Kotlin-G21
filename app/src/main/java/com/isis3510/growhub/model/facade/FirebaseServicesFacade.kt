@@ -9,6 +9,7 @@ import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.model.filter.Filter
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.model.objects.Location
 import com.isis3510.growhub.model.objects.Profile
 import kotlinx.coroutines.tasks.await
 import java.time.ZoneId
@@ -205,21 +206,18 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
                 ""
             }
 
-            // Extract the location address from the locations collection
+            // Extract the location data from the locations collection
             val locationRef = event["location_id"] as? DocumentReference
-            val locationName = if (locationRef != null) {
+            var locationName = ""
+            var locationCity = ""
+            var locationLatitude = 0.0
+            var locationLongitude = 0.0
+            if (locationRef != null) {
                 val locationDoc = locationRef.get().await()
-                locationDoc.getString("address") ?: ""
-            } else {
-                ""
-            }
-
-            // Extract city from the locations collection
-            val locationCity = if (locationRef != null) {
-                val locationDoc = locationRef.get().await()
-                locationDoc.getString("city") ?: ""
-            } else {
-                ""
+                locationName = locationDoc.getString("address") ?: ""
+                locationCity = locationDoc.getString("city") ?: ""
+                locationLatitude = locationDoc.getDouble("latitude") ?: 0.0
+                locationLongitude = locationDoc.getDouble("longitude") ?: 0.0
             }
 
             // Extract the attendees name from the users collection
@@ -252,6 +250,14 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             val formattedStartDate = startDateTime?.format(dateFormatter)
             val formattedEndDate = endDateTime?.format(dateFormatter)
 
+            val locationExtracted = Location(
+                id = locationRef.toString(),
+                address = locationName,
+                city = locationCity,
+                latitude = locationLatitude,
+                longitude = locationLongitude
+            )
+
             val eventExtracted = Event(
                 id = eventId,
                 name = name,
@@ -262,7 +268,7 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
                 startDate = formattedStartDate.toString(),
                 endDate = formattedEndDate.toString(),
                 category = categoryName,
-                location = locationName,
+                location = locationExtracted,
                 skills = skills,
                 creator = creatorName
             )
@@ -320,16 +326,15 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             val locationRef = filteredData["location_id"] as? DocumentReference
             val locationDoc = locationRef?.get()?.await()
             val locationName = locationDoc?.getString("address") ?: ""
-            val locationDetails = locationDoc?.getString("details") ?: ""
-
-            // Mix the location name and details as a single string
-            val locationString = "$locationName, $locationDetails"
+            val locationCity = locationDoc?.getString("city") ?: ""
+            val locationLatitude = locationDoc?.getDouble("latitude") ?: 0.0
+            val locationLongitude = locationDoc?.getDouble("longitude") ?: 0.0
 
             return Event(
                 id = eventID,
                 name = eventName,
                 description = filteredData["description"] as? String ?: "",
-                location = locationString,
+                location = Location(id = locationRef.toString(), address = locationName, city = locationCity, latitude = locationLatitude, longitude = locationLongitude),
                 startDate = startDateTime.toString(),
                 endDate = endDateTime.toString(),
                 category = categoryName,
