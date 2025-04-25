@@ -29,6 +29,7 @@ import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.R
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.model.objects.Location
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
@@ -57,18 +58,18 @@ fun EventDetailView(
     val inPreview = LocalInspectionMode.current
     if (inPreview && event == null) {
         event = Event(
+            id = "SAMPLE",
             name = "IA Prompt Engineering",
             description = "En un mundo donde la inteligencia artificial ...",
-            location = "Cra. 1 #18a‑12",
-            city = "Bogotá",
+            location = Location(id = "SAMPLE", address = "Cra. 1 #18a‑12", city = "Bogotá", latitude = 0.0, longitude = 0.0),
             startDate = "24 Nov 2025",
             endDate = "24 Nov 2025",
             category = "IA Engineers",
             imageUrl = "https://placehold.co/600x400/png",
             cost = 0,
             attendees = listOf("Miguel Durán"),
-            isUniversity = false,
-            skills = listOf("Programming")
+            skills = listOf("Programming"),
+            creator = "Jefferson Gutierritos"
         )
         loading = false
     }
@@ -95,10 +96,14 @@ fun EventDetailView(
                 this?.get()?.await()?.getBoolean(field) ?: false
 
             val categoryName = d.getDocumentReference("category").string("name")
+            val eventId = d.id
+            val creator = d.getString("creator") ?: ""
             val locationRef  = d.getDocumentReference("location_id")
             val address      = locationRef.string("address")
             val cityName     = locationRef.string("city")
-            val univFlag     = locationRef.bool("university")
+            val latitude = locationRef.string("latitude").toDouble()
+            val longitude = locationRef.string("longitude").toDouble()
+            val locationId = locationRef.toString()
 
             val attendees = (d["attendees"] as? List<*>)?.mapNotNull {
                 (it as? DocumentReference)?.string("name")
@@ -109,10 +114,10 @@ fun EventDetailView(
             } ?: emptyList()
 
             event = Event(
+                id = eventId,
                 name         = d.getString("name") ?: "",
                 description  = d.getString("description") ?: "",
-                location     = address,
-                city         = cityName,
+                location     = Location(id = locationId, address = address, city = cityName, latitude = latitude, longitude = longitude),
                 startDate    = d.getTimestamp("start_date")?.toDate()
                     ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
                 endDate      = d.getTimestamp("end_date")?.toDate()
@@ -121,8 +126,8 @@ fun EventDetailView(
                 imageUrl     = d.getString("image") ?: "",
                 cost         = d.getDouble("cost")?.toInt() ?: 0,
                 attendees    = attendees,
-                isUniversity = univFlag,
-                skills       = skills
+                skills       = skills,
+                creator = creator
             )
         }
         loading = false
@@ -227,7 +232,7 @@ fun EventDetailView(
 
                                 InfoChip(
                                     label = "Location",
-                                    value = ev.location.ifBlank { "Unknown" },
+                                    value = ev.location.getInfo().ifBlank { "Unknown" },
                                     icon = painterResource(id = R.drawable.ic_pin),
                                     modifier = Modifier.weight(1f)
                                 )
@@ -399,6 +404,7 @@ private fun SectionCard(
 
 
 /* ---------- PREVIEW ----------------------------------------------------- */
+@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
 fun EventDetailPreview() {
