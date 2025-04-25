@@ -1,8 +1,12 @@
 package com.isis3510.growhub.model.filter
 
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
+import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.Query
+import com.isis3510.growhub.utils.ProfileCache
 import kotlinx.coroutines.tasks.await
 
 /**
@@ -17,6 +21,11 @@ class Filter(
     suspend fun getProfileData(): Map<String, Any>? {
         val userId = auth.currentUser?.uid ?: return null
 
+        val cachedProfile = ProfileCache.get("user_profile")
+        if (cachedProfile != null) {
+            return cachedProfile
+        }
+
         val userDocRef = db.collection("users").document(userId)
 
         val querySnapshot = db.collection("profiles")
@@ -25,70 +34,275 @@ class Filter(
             .await()
 
         val profileDocument = querySnapshot.documents.firstOrNull()
-
         val profileData = profileDocument?.data ?: emptyMap()
 
-        return mapOf(
-            "profilePicture" to profileData["profile_picture"] as String,
-            "description" to profileData["description"] as String,
-            "interests" to (profileData["interests"] as List<DocumentReference>),
-            "followers" to (profileData["followers"] as List<DocumentReference>),
-            "following" to (profileData["following"] as List<DocumentReference>),
-            "user_ref" to profileData["user_ref"] as DocumentReference
+        val interestsRefs = profileData["interests"] as? List<DocumentReference> ?: emptyList()
+        val followersRefs = profileData["followers"] as? List<DocumentReference> ?: emptyList()
+        val followingRefs = profileData["following"] as? List<DocumentReference> ?: emptyList()
+
+        val interestsNames = interestsRefs.mapNotNull {
+            it.get().await().getString("name")
+        }
+
+        val userName = userDocRef.get().await().getString("name") ?: ""
+
+        val result = mapOf(
+            "profilePicture" to (profileData["profile_picture"] as? String ?: ""),
+            "description" to (profileData["description"] as? String ?: ""),
+            "interests" to interestsNames,
+            "followers" to followersRefs.size,
+            "following" to followingRefs.size,
+            "name" to userName
         )
+
+        ProfileCache.put("user_profile", result)
+        Log.d("Filter", "Profile data cached")
+        Log.d("Filter", "Profile data: $result")
+
+        return result
     }
 
-    suspend fun getEventsData(): List<Map<String, Any>> {
-        val userId = auth.currentUser?.uid ?: return emptyList()
+    suspend fun getMyEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
 
+        Log.d("MyEvents", "Query for more events")
         val querySnapshot = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
             .get()
             .await()
 
-        val attendedEvents = mutableListOf<Map<String, Any>>()
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
 
-        for (eventDocument in querySnapshot.documents) {
-            val attendees = eventDocument.get("attendees") as? List<DocumentReference> ?: emptyList()
+        val filteredEvents = events.filter { event ->
+            val attendees = event["attendees"] as? List<DocumentReference>
+            attendees?.any { attendeeRef -> attendeeRef.id == userId } ?: false
+        }
 
-            // Check if the user is in the attendees list
-            if (attendees.any { it.id == userId }) {
-                attendedEvents.add(eventDocument.data ?: emptyMap())
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
+        return Pair(filteredEvents, lastSnapshot)
+    }
+
+    suspend fun getNextMyEventsData(
+        limit: Long = 3,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
+
+        Log.d("MyEvents", "Querying next events with limit = $limit")
+
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val filteredEvents = events.filter { event ->
+            val attendees = event["attendees"] as? List<DocumentReference>
+            attendees?.any { attendeeRef -> attendeeRef.id == userId } ?: false
+        }
+
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
+
+        Log.d("MyEvents", "Fetched ${filteredEvents.size} events")
+
+        return Pair(filteredEvents, newLastSnapshot)
+    }
+
+    suspend fun getMyEventsCreateData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
+
+        Log.d("MyEvents", "Query for more events")
+        val querySnapshot = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+            .get()
+            .await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val filteredEvents = events.filter { event ->
+            val creatorRef = event["creator_id"] as? DocumentReference
+            creatorRef?.id == userId
+        }
+
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
+        return Pair(filteredEvents, lastSnapshot)
+    }
+
+    suspend fun getNextMyEventsCreateData(
+        limit: Long = 3,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        val userId = auth.currentUser?.uid ?: return Pair(emptyList(), null)
+
+        Log.d("MyEvents", "Querying next events with limit = $limit")
+
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val filteredEvents = events.filter { event ->
+            val creatorRef = event["creator_id"] as? DocumentReference
+            creatorRef?.id == userId
+        }
+
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
+
+        Log.d("MyEvents", "Fetched ${filteredEvents.size} events")
+
+        return Pair(filteredEvents, newLastSnapshot)
+    }
+
+    suspend fun getHomeEventsData(limit: Long): Pair<List<MutableMap<String, Any>>, DocumentSnapshot?> {
+
+        Log.d("HomeEvents", "Query for more events")
+        val querySnapshot = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+            .get()
+            .await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
+        return Pair(events, lastSnapshot)
+    }
+
+    suspend fun getNextHomeEventsData(
+        limit: Long = 3,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+
+        Log.d("HomeEvents", "Querying next events with limit = $limit")
+
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
+
+        Log.d("HomeEvents", "Fetched ${events.size} events")
+
+        return Pair(events, newLastSnapshot)
+    }
+
+
+    suspend fun getHomeRecommendedEventsData(limit: Long): Pair<List<Map<String, Any>>, Set<String>> {
+
+        Log.d("Filter", "Had to send a query to Firebase for Recommended Events")
+        val userId = auth.currentUser?.uid ?: return Pair(emptyList(), emptySet())
+        val querySnapshot = db.collection("users").document(userId)
+            .get()
+            .await()
+
+        val recommendedEventsIds = querySnapshot.get("recommended_events") as? List<String> ?: emptyList()
+
+        val events = mutableListOf<Map<String, Any>>()
+        val shownEvents = mutableSetOf<String>()
+
+        // Show the first 'limit' recommended events
+        for (eventId in recommendedEventsIds.take(limit.toInt())) {
+            if (shownEvents.contains(eventId)) continue
+            shownEvents.add(eventId)
+            val eventDocument = db.collection("events").document(eventId).get().await()
+            if (eventDocument.exists()) { // Check if document exists before accessing data
+                val eventData = eventDocument.data ?: emptyMap()
+                val eventMapWithId = eventData.toMutableMap() // Convert to mutable map
+                eventMapWithId["id"] = eventDocument.id // Add document ID to the map
+                events.add(eventMapWithId)
             }
         }
 
-        return attendedEvents
+        // Return the shown events along with the events fetched
+        return Pair(events, shownEvents)
     }
 
-    suspend fun getHomeEventsData(): List<Map<String, Any>> {
+    suspend fun getNextHomeRecommendedEventsData(
+        limit: Long = 3,
+        offsetIds: Set<String>
+    ): List<Map<String, Any>> {
 
-        val querySnapshot = db.collection("events")
-            .get()
-            .await()
-
+        Log.d("Filter", "Querying more recommended events -> End of Row")
         val events = mutableListOf<Map<String, Any>>()
-
-        for (eventDocument in querySnapshot.documents) {
-            events.add(eventDocument.data ?: emptyMap())
-        }
-
-        return events
-    }
-
-    suspend fun getHomeRecommendedEventsData(): List<Map<String, Any>> {
         val userId = auth.currentUser?.uid ?: return emptyList()
 
-        val querySnapshot = db.collection("recommendations")
+        // Fetch user recommended events
+        val userSnapshot = db.collection("users").document(userId)
             .get()
             .await()
 
-        // Get the document that matches the user ID
-        val recommendationDocument = querySnapshot.documents.firstOrNull { it.id == userId } ?: return emptyList()
+        val recommendedEventsIds = userSnapshot.get("recommended_events") as? List<String> ?: emptyList()
 
-        val events = mutableListOf<Map<String, Any>>()
-        val recommendedEvents = recommendationDocument.get("events") as? List<String> ?: emptyList()
-        for (eventId in recommendedEvents) {
+        // Skip events that have already been shown based on the provided offsetIds
+        val newRecommendedIds = recommendedEventsIds.filterNot { offsetIds.contains(it) }
+
+        var count = 0
+        for (eventId in newRecommendedIds) {
+            if (count >= limit) break
             val eventDocument = db.collection("events").document(eventId).get().await()
-            events.add(eventDocument.data ?: emptyMap())
+            if (eventDocument.exists()) {
+                val eventData = eventDocument.data ?: emptyMap()
+                val eventMapWithId = eventData.toMutableMap()
+                eventMapWithId["id"] = eventDocument.id
+                events.add(eventMapWithId)
+                count++
+            }
         }
 
         return events
@@ -106,7 +320,105 @@ class Filter(
         }
 
         return categories
-
     }
 
+    suspend fun getRegistrationData(eventID: String): Map<String, Any> {
+        val eventDocRef = db.collection("events").document(eventID)
+        val eventDoc = eventDocRef.get().await()
+        val eventData = eventDoc.data ?: emptyMap()
+
+        return mapOf(
+            "attendees" to (eventData["attendees"] as List<DocumentReference>),
+            "category" to (eventData["category"] as DocumentReference),
+            "cost" to (eventData["cost"] as Long).toInt(),
+            "creator_id" to (eventData["creator_id"] as DocumentReference),
+            "description" to (eventData["description"] as String),
+            "end_date" to (eventData["end_date"] as com.google.firebase.Timestamp),
+            "image" to (eventData["image"] as String),
+            "location_id" to (eventData["location_id"] as DocumentReference),
+            "name" to (eventData["name"] as String),
+            "skills" to (eventData["skills"] as List<DocumentReference>),
+            "start_date" to (eventData["start_date"] as com.google.firebase.Timestamp),
+            "users_registered" to (eventData["users_registered"] as Long).toInt()
+        )
+    }
+
+    suspend fun getSearchEventsData(limit: Long): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+
+        Log.d("SearchEvents", "Query for more events")
+        val querySnapshot = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+            .get()
+            .await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val lastSnapshot = querySnapshot.documents.lastOrNull()
+
+        return Pair(events, lastSnapshot)
+    }
+
+    suspend fun getNextSearchEventsData(
+        limit: Long = 5,
+        lastDocumentSnapshot: DocumentSnapshot? = null
+    ): Pair<List<Map<String, Any>>, DocumentSnapshot?> {
+        Log.d("SearchEvents", "Querying next events with limit = $limit")
+
+        val baseQuery = db.collection("events")
+            .orderBy("name", Query.Direction.ASCENDING)
+            .limit(limit)
+
+        val query = lastDocumentSnapshot?.let {
+            baseQuery.startAfter(it)
+        } ?: baseQuery
+
+        val querySnapshot = query.get().await()
+
+        val events = querySnapshot.documents.map { doc ->
+            val eventData = doc.data ?: emptyMap()
+            val eventMapWithId = eventData.toMutableMap()
+            eventMapWithId["id"] = doc.id
+            eventMapWithId
+        }
+
+        val newLastSnapshot = querySnapshot.documents.lastOrNull()
+
+        Log.d("SearchEvents", "Fetched ${events.size} events")
+
+        return Pair(events, newLastSnapshot)
+    }
+
+    suspend fun getSkillsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("skills")
+            .get()
+            .await()
+
+        val skills = mutableListOf<Map<String, Any>>()
+
+        for (skillDocument in querySnapshot.documents) {
+            skills.add(skillDocument.data ?: emptyMap())
+        }
+
+        return skills
+    }
+
+    suspend fun getLocationsData(): List<Map<String, Any>> {
+        val querySnapshot = db.collection("locations")
+            .get()
+            .await()
+
+        val locations = mutableListOf<Map<String, Any>>()
+
+        for (locationDocument in querySnapshot.documents) {
+            locations.add(locationDocument.data ?: emptyMap())
+        }
+
+        return locations
+    }
 }

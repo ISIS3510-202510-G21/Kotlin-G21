@@ -35,6 +35,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable

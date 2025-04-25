@@ -3,7 +3,6 @@ package com.isis3510.growhub.viewmodel
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
-//import android.location.Geocoder
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.State
@@ -12,57 +11,34 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import androidx.viewbinding.BuildConfig
-//import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.model.LatLng
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
 import kotlinx.coroutines.launch
-import okhttp3.*
+import kotlinx.coroutines.suspendCancellableCoroutine
+import okhttp3.Call
+import okhttp3.Callback
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
 import org.json.JSONException
 import org.json.JSONObject
 import java.io.IOException
-import java.net.URLEncoder
-import kotlinx.coroutines.withContext
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
-
-/*
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.async
-import kotlinx.coroutines.awaitAll
-import org.json.JSONObject
-import java.util.concurrent.TimeUnit
-*/
 
 @RequiresApi(Build.VERSION_CODES.O)
 class MapViewModel(
         private val firebaseFacade: FirebaseServicesFacade = FirebaseServicesFacade()
     ): ViewModel() {
 
-    private var vmApiKey : String? = null
-    fun obtainApiKey(key: String?) {
-        vmApiKey = key
-    }
-
     val nearbyEvents = mutableStateListOf<Event>()
-
-    /*
-    private val _eventCoordinates = MutableStateFlow<List<LatLng>>(emptyList())
-    val eventCoordinates: StateFlow<List<LatLng>> = _eventCoordinates
-     */
 
     // State to hold the user's location as LatLng (latitude and longitude)
     private val _userLocation = mutableStateOf<LatLng?>(null)
     val userLocation: State<LatLng?> = _userLocation
 
-    // State to hold the user's location as LatLng (latitude and longitude)
-    private val _userApproxLocation = mutableStateOf<LatLng?>(null)
-    val userApproxLocation: State<LatLng?> = _userApproxLocation
-    var approxCity: String = ""
+    private var approxCity: String = ""
 
     // Function to fetch the user's location and update the state
     fun fetchUserLocation(context: Context, fusedLocationClient: FusedLocationProviderClient) {
@@ -92,7 +68,7 @@ class MapViewModel(
         }
     }
 
-    suspend fun fetchApproximateCity(): String? = suspendCancellableCoroutine { continuation ->
+    private suspend fun fetchApproximateCity(): String? = suspendCancellableCoroutine { continuation ->
         val client = OkHttpClient()
         val request = Request.Builder()
             .url("http://ip-api.com/json/")
@@ -145,53 +121,24 @@ class MapViewModel(
     }
 
     private fun loadNearbyEventsFromFirebase() {
-
         viewModelScope.launch {
-            val events = firebaseFacade.fetchHomeEvents()
-
-            // Filter events whose location city is the same as the approx location city
-            val filteredEvents = events.filter { event ->
-                event.city == approxCity
-            }
-
-            // Update the mutableStateListOf with the filtered events
-            nearbyEvents.clear()
-            nearbyEvents.addAll(filteredEvents)
-        }
-    }
-
-    private suspend fun getDistanceFromMatrixApi(userLatLng: LatLng, eventAddress: String): Int? {
-        return withContext(Dispatchers.IO) {
             try {
-                val apiKey = vmApiKey // Use key from manifest
-                val encodedAddress = URLEncoder.encode(eventAddress, "UTF-8")
-                val requestUrl = "https://maps.googleapis.com/maps/api/distancematrix/json" +
-                        "?origins=${userLatLng.latitude},${userLatLng.longitude}" +
-                        "&destinations=$encodedAddress" +
-                        "&units=metric" +
-                        "&key=$apiKey"
+                val (events, _) = firebaseFacade.fetchHomeEvents() // Unpack the pair, ignore lastSnapshot
 
-                val client = OkHttpClient()
-                val request = Request.Builder().url(requestUrl).build()
-                val response = client.newCall(request).execute()
-
-                response.body?.string()?.let { responseBody ->
-                    val jsonObject = JSONObject(responseBody)
-                    val rows = jsonObject.getJSONArray("rows")
-                    if (rows.length() > 0) {
-                        val elements = rows.getJSONObject(0).getJSONArray("elements")
-                        if (elements.length() > 0) {
-                            val distanceObj = elements.getJSONObject(0).getJSONObject("distance")
-                            return@withContext distanceObj.getInt("value") // Distance in meters
-                        }
-                    }
+                // Filter events whose location city is the same as the approx location city
+                val filteredEvents = events.filter { event ->
+                    val locationParts = event.location.split(",")
+                    val locationCity = locationParts.getOrNull(1)?.trim() ?: ""
+                    locationCity.equals(approxCity, ignoreCase = true)
                 }
-            } catch (e: IOException) {
-                Log.e("DistanceMatrixAPI", "Error fetching distance: ${e.localizedMessage}")
+
+                // Update the mutableStateListOf with the filtered events
+                nearbyEvents.clear()
+                nearbyEvents.addAll(filteredEvents)
+
             } catch (e: Exception) {
-                Log.e("DistanceMatrixAPI", "Unexpected error: ${e.localizedMessage}")
+                Log.e("NearbyEvents", "Error loading nearby events", e)
             }
-            return@withContext null
         }
     }
 }

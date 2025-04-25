@@ -42,13 +42,10 @@ import com.google.maps.android.compose.MarkerState
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MapView(
-    manifestApiKey: String?,
     mapViewModel: MapViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
     navController: NavController
 ) {
-    // Embed the API Key in the ViewModel
-    mapViewModel.obtainApiKey(manifestApiKey)
 
     // Initialize the camera position state, which controls the camera's position on the map
     val cameraPositionState = rememberCameraPositionState()
