@@ -12,9 +12,10 @@ data class Event(
     val category: String,
     val imageUrl: String,
     val cost: Int,
+    val city: String,
     val attendees: List<String>,
     val isUniversity: Boolean,
-    val skills: List<String>
+    val skills: List<String>,
     val creator: String
 )
 
@@ -30,6 +31,8 @@ fun Event.toEntity(): EventEntity {
         imageUrl = imageUrl,
         cost = cost,
         attendees = attendees,
+        city = city,
+        isUniversity = isUniversity,
         skills = skills,
         creator = creator
     )
@@ -47,6 +50,8 @@ fun EventEntity.toModel(): Event {
         imageUrl = imageUrl,
         cost = cost,
         attendees = attendees,
+        city = city,
+        isUniversity = false,
         skills = skills,
         creator = creator
     )

@@ -14,304 +14,232 @@ import kotlinx.coroutines.tasks.await
 import java.time.ZoneId
 
 /**
- * Facade central para todas las lecturas a Firestore.
+ * Facade central – unifica lo que había en HEAD y develop.
  *
- * ▸ Mantiene los métodos **simples** usados por tu versión HEAD (devuelven List\<Event>)  
- * ▸ Incluye los métodos **paginados** y helpers añadidos en la rama develop  
- * ▸ No rompe ningún código existente.
+ *  • Todos los métodos “paginados” devuelven **Pair<List<Event>, DocumentSnapshot?>**.
+ *  • Se mantienen los wrappers simples (`fetchHomeEvents()`, `fetchMyEvents()`, …)
+ *    que sólo retornan la `List<Event>` para no romper código previo.
+ *  • El modelo `Event` **ya no** lleva `city`; la ciudad sigue estando en `Location`.
  */
-class FirebaseServicesFacade(private val filter: Filter = Filter()) {
+class FirebaseServicesFacade(
+    private val filter: Filter = Filter()
+) {
 
     /* ------------------------------------------------------------------ */
     /*  PERFIL                                                            */
     /* ------------------------------------------------------------------ */
-    suspend fun fetchUserProfile(): Profile? = try {
-        val data = filter.getProfileData()      // develop
-        if (data == null) return null
+    suspend fun fetchUserProfile(): Profile? {
+        return try {
+            val data = filter.getProfileData() ?: return null
 
-        // Si existen referencias de intereses / followers, las resolvemos como en HEAD
-        val interestsNames: List<String> = when (val interests = data["interests"]) {
-            is List<*> && interests.firstOrNull() is DocumentReference -> {
-                interests.mapNotNull { (it as DocumentReference).get().await().getString("name") }
+            /* intereses: pueden ser refs (HEAD antiguo) o Strings (develop) */
+            val interests: List<String> = when (val raw = data["interests"]) {
+                is List<*> -> if (raw.firstOrNull() is DocumentReference)
+                    raw.mapNotNull { (it as DocumentReference).get().await().getString("name") }
+                else raw.filterIsInstance<String>()
+                else      -> emptyList()
             }
-            is List<*> -> interests.filterIsInstance<String>()
-            else -> emptyList()
-        }
 
-        val followersCount: Int = when (val followers = data["followers"]) {
-            is List<*> -> followers.size                               // HEAD
-            is Int     -> followers                                    // develop
-            else       -> 0
-        }
+            val followers = (data["followers"] as? List<*>)?.size
+                ?: data["followers"] as? Int ?: 0
+            val following = (data["following"] as? List<*>)?.size
+                ?: data["following"] as? Int ?: 0
 
-        val followingCount: Int = when (val following = data["following"]) {
-            is List<*> -> following.size
-            is Int     -> following
-            else       -> 0
-        }
+            val name = (data["name"] as? String)
+                ?: (data["user_ref"] as? DocumentReference)
+                    ?.get()?.await()?.getString("name") ?: ""
 
-        val name: String = when (val maybeName = data["name"]) {
-            is String -> maybeName
-            else -> {
-                // HEAD guardaba el nombre dentro de user_ref
-                (data["user_ref"] as? DocumentReference)
-                    ?.get()
-                    ?.await()
-                    ?.getString("name") ?: ""
-            }
+            Profile(
+                profilePicture = data["profilePicture"] as? String ?: "",
+                description    = data["description"]    as? String ?: "",
+                interests      = interests,
+                followers      = followers,
+                following      = following,
+                name           = name
+            )
+        } catch (e: Exception) {
+            Log.e("FirebaseFacade", "fetchUserProfile", e)
+            null
         }
-
-        Profile(
-            profilePicture = data["profilePicture"] as? String ?: "",
-            description    = data["description"]    as? String ?: "",
-            interests      = interestsNames,
-            followers      = followersCount,
-            following      = followingCount,
-            name           = name
-        )
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching user profile", e)
-        null
     }
 
     /* ------------------------------------------------------------------ */
-    /*  EVENTOS – helpers comunes                                          */
+    /*  EVENTOS – helper mapper                                            */
     /* ------------------------------------------------------------------ */
     @RequiresApi(Build.VERSION_CODES.O)
-    private suspend fun mapFilterEventsToEvents(filteredEvents: List<Map<String, Any>>): List<Event> {
-        val events = mutableListOf<Event>()
-        for (event in filteredEvents) {
-            val id          = event["id"]       as? String ?: ""
-            val name        = event["name"]     as? String ?: ""
-            val imageUrl    = event["image"]    as? String ?: ""
-            val description = event["description"] as? String ?: ""
-            val cost        = (event["cost"]    as? Number)?.toInt() ?: 0
+    private suspend fun map(raw: List<Map<String, Any>>): List<Event> {
+        val fmt = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        return raw.map { e ->
+            val locRef = e["location_id"] as? DocumentReference
+            val locDoc = locRef?.get()?.await()
 
-            /* asistentes ------------------------------------------------- */
-            val attendeesRefs = (event["attendees"] as? List<DocumentReference>) ?: emptyList()
-            val attendeesNames = attendeesRefs.mapNotNull {
-                it.get().await().getString("name")
-            }
+            val start = (e["start_date"] as? Timestamp)
+                ?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
+            val end   = (e["end_date"]   as? Timestamp)
+                ?.toDate()?.toInstant()?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
 
-            /* creador ---------------------------------------------------- */
-            val creatorName = (event["creator_id"] as? DocumentReference)
-                ?.get()
-                ?.await()
-                ?.getString("name") ?: ""
-
-            /* categoría -------------------------------------------------- */
-            val categoryName = (event["category"] as? DocumentReference)
-                ?.get()
-                ?.await()
-                ?.getString("name") ?: ""
-
-            /* ubicación -------------------------------------------------- */
-            val locationRef = event["location_id"] as? DocumentReference
-            val locationDoc = locationRef?.get()?.await()
-            val locationName = locationDoc?.getString("address") ?: ""
-            val locationCity = locationDoc?.getString("city") ?: ""
-            val isUniversity = locationDoc?.getBoolean("university") ?: false
-
-            /* skills ----------------------------------------------------- */
-            val skillRefs = (event["skills"] as? List<DocumentReference>) ?: emptyList()
-            val skills = skillRefs.mapNotNull {
-                it.get().await().getString("name")
-            }
-
-            /* fechas ----------------------------------------------------- */
-            val fmt     = java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy")
-            val startTs = event["start_date"] as? Timestamp
-            val endTs   = event["end_date"]   as? Timestamp
-            val start   = startTs?.toDate()?.toInstant()
-                ?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
-            val end     = endTs?.toDate()?.toInstant()
-                ?.atZone(ZoneId.systemDefault())?.toLocalDateTime()
-
-            events += Event(
-                id          = id,
-                name        = name,
-                imageUrl    = imageUrl,
-                description = description,
-                cost        = cost,
-                attendees   = attendeesNames,
-                startDate   = start?.format(fmt).toString(),
-                endDate     = end?.format(fmt).toString(),
-                category    = categoryName,
-                location    = locationName,
-                city        = locationCity,
-                isUniversity= isUniversity,
-                skills      = skills,
-                creator     = creatorName
+            Event(
+                id          = e["id"]   as? String ?: "",
+                name        = e["name"] as? String ?: "",
+                city        = e["name"] as? String ?: "",
+                description = e["description"] as? String ?: "",
+                location    = locDoc?.getString("address") ?: "",
+                startDate   = start?.format(fmt).orEmpty(),
+                endDate     = end?.format(fmt).orEmpty(),
+                category    = (e["category"] as? DocumentReference)
+                    ?.get()?.await()?.getString("name") ?: "",
+                imageUrl    = e["image"] as? String ?: "",
+                cost        = (e["cost"] as? Number)?.toInt() ?: 0,
+                attendees   = (e["attendees"] as? List<DocumentReference>)
+                    ?.mapNotNull { it.get().await().getString("name") } ?: emptyList(),
+                isUniversity= locDoc?.getBoolean("university") ?: false,
+                skills      = (e["skills"] as? List<DocumentReference>)
+                    ?.mapNotNull { it.get().await().getString("name") } ?: emptyList(),
+                creator     = (e["creator_id"] as? DocumentReference)
+                    ?.get()?.await()?.getString("name") ?: ""
             )
         }
-        return events
     }
 
     /* ------------------------------------------------------------------ */
-    /*  EVENTOS – versiones paginadas (develop)                            */
+    /*  EVENTOS – métodos paginados                                        */
     /* ------------------------------------------------------------------ */
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeEvents(
-        limit: Long = 5
-    ): Pair<List<Event>, DocumentSnapshot?> = try {
+    suspend fun fetchHomeEvents(limit: Long = 5)
+            : Pair<List<Event>, DocumentSnapshot?> = try {
         val (raw, last) = filter.getHomeEventsData(limit)
-        Pair(mapFilterEventsToEvents(raw), last)
+        Pair(map(raw), last)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching home events", e)
-        Pair(emptyList(), null)
+        Log.e("FirebaseFacade", "fetchHomeEvents", e); Pair(emptyList(), null)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun fetchNextHomeEvents(
-        limit: Long = 3,
-        lastSnapshot: DocumentSnapshot?
+        limit: Long = 3, lastSnapshot: DocumentSnapshot?
     ): Pair<List<Event>, DocumentSnapshot?> = try {
         val (raw, last) = filter.getNextHomeEventsData(limit, lastSnapshot)
-        Pair(mapFilterEventsToEvents(raw), last)
+        Pair(map(raw), last)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching next home events", e)
-        Pair(emptyList(), null)
+        Log.e("FirebaseFacade", "fetchNextHomeEvents", e); Pair(emptyList(), null)
+    }
+
+    /* -------- MY EVENTS (asistente / creador) -------- */
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchMyEvents(limit: Long = 25)
+            : Pair<List<Event>, DocumentSnapshot?> = try {
+        val (raw, last) = filter.getMyEventsData(limit)
+        Pair(map(raw), last)
+    } catch (e: Exception) {
+        Log.e("FirebaseFacade", "fetchMyEvents", e); Pair(emptyList(), null)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeRecommendedEvents(
-        limit: Long = 5
-    ): Pair<List<Event>, Set<String>> = try {
-        val (raw, offsetIds) = filter.getHomeRecommendedEventsData(limit)
-        Pair(mapFilterEventsToEvents(raw), offsetIds)
+    suspend fun fetchNextMyEvents(
+        limit: Long = 3, lastSnapshot: DocumentSnapshot?
+    ): Pair<List<Event>, DocumentSnapshot?> = try {
+        val (raw, last) = filter.getNextMyEventsData(limit, lastSnapshot)
+        Pair(map(raw), last)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching recommended events", e)
+        Log.e("FirebaseFacade", "fetchNextMyEvents", e); Pair(emptyList(), null)
+    }
+
+    /* -------- eventos que YO creé -------- */
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchMyEventsCreate(limit: Long = 25)
+            : Pair<List<Event>, DocumentSnapshot?> = try {
+        val (raw, last) = filter.getMyEventsCreateData(limit)
+        Pair(map(raw), last)
+    } catch (e: Exception) {
+        Log.e("FirebaseFacade", "fetchMyEventsCreate", e); Pair(emptyList(), null)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchNextMyEventsCreate(
+        limit: Long = 3, lastSnapshot: DocumentSnapshot?
+    ): Pair<List<Event>, DocumentSnapshot?> = try {
+        val (raw, last) = filter.getNextMyEventsCreateData(limit, lastSnapshot)
+        Pair(map(raw), last)
+    } catch (e: Exception) {
+        Log.e("FirebaseFacade", "fetchNextMyEventsCreate", e); Pair(emptyList(), null)
+    }
+
+    /* -------- recomendados -------- */
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchHomeRecommendedEvents(limit: Long = 5)
+            : Pair<List<Event>, Set<String>> = try {
+        val (raw, ids) = filter.getHomeRecommendedEventsData(limit)
+        Pair(map(raw), ids)
+    } catch (e: Exception) {
+        Log.e("FirebaseFacade", "fetchHomeRecommendedEvents", e)
         Pair(emptyList(), emptySet())
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun fetchNextHomeRecommendedEvents(
-        limit: Long = 3,
-        offsetIds: Set<String>
+        limit: Long = 3, offsetIds: Set<String>
     ): List<Event> = try {
-        mapFilterEventsToEvents(filter.getNextHomeRecommendedEventsData(limit, offsetIds))
+        map(filter.getNextHomeRecommendedEventsData(limit, offsetIds))
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching next recommended events", e)
-        emptyList()
+        Log.e("FirebaseFacade", "fetchNextHomeRecommendedEvents", e); emptyList()
     }
 
+    /* -------- SEARCH -------- */
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEvents(
-        limit: Long = 25
-    ): Pair<List<Event>, DocumentSnapshot?> = try {
-        val (raw, last) = filter.getMyEventsData(limit)
-        Pair(mapFilterEventsToEvents(raw), last)
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching my events", e)
-        Pair(emptyList(), null)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchNextMyEvents(
-        limit: Long = 3,
-        lastSnapshot: DocumentSnapshot?
-    ): Pair<List<Event>, DocumentSnapshot?> = try {
-        val (raw, last) = filter.getNextMyEventsData(limit, lastSnapshot)
-        Pair(mapFilterEventsToEvents(raw), last)
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching next my events", e)
-        Pair(emptyList(), null)
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  EVENTOS – métodos *compatibles* con HEAD (sin paginación)         */
-    /*  (simplemente devuelven el .first de los métodos superiores)       */
-    /* ------------------------------------------------------------------ */
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeEvents(): List<Event> =
-        fetchHomeEvents(limit = 5).first
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchHomeRecommendedEvents(): List<Event> =
-        fetchHomeRecommendedEvents(limit = 5).first
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEvents(): List<Event> =
-        fetchMyEvents(limit = 25).first
-
-    /* ------------------------------------------------------------------ */
-    /*  EVENTOS – create / registration extras (develop)                  */
-    /* ------------------------------------------------------------------ */
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEventsCreate(
-        limit: Long = 25
-    ): Pair<List<Event>, DocumentSnapshot?> = try {
-        val (raw, last) = filter.getMyEventsCreateData(limit)
-        Pair(mapFilterEventsToEvents(raw), last)
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching my events create", e)
-        Pair(emptyList(), null)
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchRegistrationData(eventID: String): Event = try {
-        val raw = filter.getRegistrationData(eventID)
-
-        /* Re-uso del mapper para no duplicar lógica */
-        mapFilterEventsToEvents(listOf(raw)).first().copy(id = eventID)
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching registration data", e)
-        throw e
-    }
-
-    /* ------------------------------------------------------------------ */
-    /*  SEARCH (develop)                                                  */
-    /* ------------------------------------------------------------------ */
-    @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchSearchEvents(
-        limit: Long = 5
-    ): Pair<List<Event>, DocumentSnapshot?> = try {
+    suspend fun fetchSearchEvents(limit: Long = 5)
+            : Pair<List<Event>, DocumentSnapshot?> = try {
         val (raw, last) = filter.getSearchEventsData(limit)
-        Pair(mapFilterEventsToEvents(raw), last)
+        Pair(map(raw), last)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching search events", e)
-        Pair(emptyList(), null)
+        Log.e("FirebaseFacade", "fetchSearchEvents", e); Pair(emptyList(), null)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     suspend fun fetchNextSearchEvents(
-        limit: Long = 3,
-        lastSnapshot: DocumentSnapshot?
+        limit: Long = 3, lastSnapshot: DocumentSnapshot?
     ): Pair<List<Event>, DocumentSnapshot?> = try {
         val (raw, last) = filter.getNextSearchEventsData(limit, lastSnapshot)
-        Pair(mapFilterEventsToEvents(raw), last)
+        Pair(map(raw), last)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching next search events", e)
-        Pair(emptyList(), null)
+        Log.e("FirebaseFacade", "fetchNextSearchEvents", e); Pair(emptyList(), null)
     }
 
     /* ------------------------------------------------------------------ */
-    /*  CATEGORÍAS, HABILIDADES, UBICACIONES                              */
+    /*  WRAPPERS COMPATIBLES (sin paginación)                             */
+    /* ------------------------------------------------------------------ */
+    @RequiresApi(Build.VERSION_CODES.O) suspend fun fetchHomeEvents(): List<Event> =
+        fetchHomeEvents(5).first
+    @RequiresApi(Build.VERSION_CODES.O) suspend fun fetchMyEvents():  List<Event> =
+        fetchMyEvents(25).first
+    @RequiresApi(Build.VERSION_CODES.O) suspend fun fetchHomeRecommendedEvents(): List<Event> =
+        fetchHomeRecommendedEvents(5).first
+
+    /* ------------------------------------------------------------------ */
+    /*  LISTADOS SENCILLOS: categorías, skills, locations                 */
     /* ------------------------------------------------------------------ */
     suspend fun fetchCategories(): List<Category> = try {
-        filter.getCategoriesData().mapNotNull { map ->
-            (map["name"] as? String)?.let { Category(it) }
+        filter.getCategoriesData().mapNotNull {
+            (it["name"] as? String)?.let(::Category)
         }
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching categories", e)
-        emptyList()
-    }
+    } catch (e: Exception) { Log.e("FirebaseFacade", "fetchCategories", e); emptyList() }
 
     suspend fun fetchSkills(): List<String> = try {
         filter.getSkillsData().mapNotNull { it["name"] as? String }
-    } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching skills", e)
-        emptyList()
-    }
+    } catch (e: Exception) { Log.e("FirebaseFacade", "fetchSkills", e); emptyList() }
 
     suspend fun fetchLocations(): List<String> = try {
-        val cities = mutableSetOf<String>()
-        filter.getLocationsData().forEach { loc ->
-            (loc["city"] as? String)?.let { cities.add(it) }
-        }
-        cities.toList()
+        filter.getLocationsData()
+            .mapNotNull { it["city"] as? String }
+            .toSet()      // únicos
+            .toList()
+    } catch (e: Exception) { Log.e("FirebaseFacade", "fetchLocations", e); emptyList() }
+
+    /* ------------------------------------------------------------------ */
+    /*  REGISTRATION DETAIL                                               */
+    /* ------------------------------------------------------------------ */
+    @RequiresApi(Build.VERSION_CODES.O)
+    suspend fun fetchRegistrationData(eventID: String): Event = try {
+        map(listOf(filter.getRegistrationData(eventID))).first().copy(id = eventID)
     } catch (e: Exception) {
-        Log.e("FirebaseServicesFacade", "Error fetching locations", e)
-        emptyList()
+        Log.e("FirebaseFacade", "fetchRegistrationData", e); throw e
     }
 }

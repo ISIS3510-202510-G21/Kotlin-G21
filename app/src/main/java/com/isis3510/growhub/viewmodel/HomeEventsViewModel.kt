@@ -63,7 +63,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         isLoadingUpcoming.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchHomeEvents")
-            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents(limit = 5)
             if (events.isEmpty()) {
                 //Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
                 //isLoadingUpcoming.value = false
@@ -152,7 +152,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         isLoadingNearby.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
-            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents(limit = 5)
             if (events.isEmpty()) {
                 //Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
                 //isLoadingNearby.value = false
@@ -217,7 +217,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         isLoadingRecommended.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Calling firebaseServicesFacade.fetchHomeRecommendedEvents")
-            val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
+            val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents(limit = 5)
             if (events.isEmpty()) {
                 //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
                 //isLoadingRecommended.value = false

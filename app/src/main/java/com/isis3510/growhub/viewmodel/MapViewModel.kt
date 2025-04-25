@@ -123,7 +123,7 @@ class MapViewModel(
     private fun loadNearbyEventsFromFirebase() {
         viewModelScope.launch {
             try {
-                val (events, _) = firebaseFacade.fetchHomeEvents() // Unpack the pair, ignore lastSnapshot
+                val (events, _) = firebaseFacade.fetchHomeEvents(limit = 5) // Unpack the pair, ignore lastSnapshot
 
                 // Filter events whose location city is the same as the approx location city
                 val filteredEvents = events.filter { event ->

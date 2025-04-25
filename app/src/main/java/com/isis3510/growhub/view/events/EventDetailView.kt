@@ -57,6 +57,7 @@ fun EventDetailView(
     val inPreview = LocalInspectionMode.current
     if (inPreview && event == null) {
         event = Event(
+            id           = "",
             name = "IA Prompt Engineering",
             description = "En un mundo donde la inteligencia artificial ...",
             location = "Cra. 1 #18a‑12",
@@ -68,7 +69,8 @@ fun EventDetailView(
             cost = 0,
             attendees = listOf("Miguel Durán"),
             isUniversity = false,
-            skills = listOf("Programming")
+            skills = listOf("Programming"),
+            creator      = ""
         )
         loading = false
     }
@@ -109,6 +111,7 @@ fun EventDetailView(
             } ?: emptyList()
 
             event = Event(
+                id           = d.id,
                 name         = d.getString("name") ?: "",
                 description  = d.getString("description") ?: "",
                 location     = address,
@@ -122,7 +125,8 @@ fun EventDetailView(
                 cost         = d.getDouble("cost")?.toInt() ?: 0,
                 attendees    = attendees,
                 isUniversity = univFlag,
-                skills       = skills
+                skills       = skills,
+                creator      = d.getString("creator") ?: ""
             )
         }
         loading = false

@@ -15,6 +15,8 @@ data class EventEntity(
     val imageUrl: String,
     val cost: Int,
     val attendees: List<String>,
+    val city: String,
+    val isUniversity: Boolean,
     val skills: List<String>,
     val creator: String
 )

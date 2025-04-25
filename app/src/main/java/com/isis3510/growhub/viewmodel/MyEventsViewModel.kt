@@ -45,6 +45,8 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
 
+    private var lastSnapshot : DocumentSnapshot? = null
+
     init {
         loadInitialMyEvents()
     }
@@ -65,6 +67,10 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchMyEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchMyEvents()
+            lastSnapshot = snap
+            upcomingEvents.value = events.filter(::isUpcoming)
+            isLoadingUpcoming.value = false
+            hasReachedEnd.value = upcomingEvents.value.isEmpty()
             if (events.isEmpty()) {
                 //Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
                 //isLoadingUpcoming.value = false

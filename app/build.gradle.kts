@@ -74,8 +74,10 @@ dependencies {
     implementation ("androidx.compose.ui:ui")
     implementation ("androidx.compose.ui:ui-tooling-preview")
     implementation ("androidx.compose.material3:material3")
+    implementation("androidx.compose.material:material-icons-extended:1.6.0")
     implementation(libs.androidx.runtime.livedata)
     implementation(libs.generativeai)
+    // implementation(libs.androidx.room.common.jvm)
     var composeBomVersion = "2023.08.00"
     implementation(platform("androidx.compose:compose-bom:$composeBomVersion"))
     implementation("com.google.accompanist:accompanist-systemuicontroller:0.30.1")

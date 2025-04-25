@@ -48,7 +48,7 @@ fun MainView(
 
     Scaffold(
         topBar = {
-            TopBarView(
+            SimpleTopBar(
                 authViewModel = authViewModel,
                 locationViewModel = locationViewModel,
                 onLogout = onLogout,
@@ -79,7 +79,7 @@ fun MainView(
         ) {
             /* 1) Categorías ------------------------------------------------ */
             items(listOf(Unit)) {                     // sección única
-                CategoriesView(
+                SimpleCategoriesView(
                     categoriesViewModel = categoriesViewModel,
                     modifier = Modifier.fillMaxWidth(),
                     onCategoryClick = { /* TODO navegación futura */ }
@@ -112,8 +112,9 @@ fun MainView(
 /*  Si ya existen en tu código, puedes eliminar estas versiones.      */
 /* ------------------------------------------------------------------ */
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun TopBarView(
+private fun SimpleTopBar(
     authViewModel: AuthViewModel,
     locationViewModel: LocationViewModel,
     onLogout: () -> Unit,
@@ -131,7 +132,7 @@ private fun TopBarView(
 }
 
 @Composable
-private fun CategoriesView(
+private fun SimpleCategoriesView(
     categoriesViewModel: CategoriesViewModel,
     modifier: Modifier = Modifier,
     onCategoryClick: (Category) -> Unit = {}
@@ -158,12 +159,14 @@ private fun EventsView(
     onEventClick: (Event) -> Unit = {}
 ) {
     val sample = listOf(
-        Event(name = "Concert", imageUrl = "", description = "",
+        Event(id = "", name = "Concert", imageUrl = "", description = "",
             cost = 0, attendees = emptyList(), startDate = "", endDate = "",
-            category = "", location = "", city = "", skills = emptyList()),
-        Event(name = "Hackathon", imageUrl = "", description = "",
+            category = "", location = "", city = "", skills = emptyList(),
+            isUniversity = true, creator = ""),
+        Event(id = "", name = "Hackathon", imageUrl = "", description = "",
             cost = 0, attendees = emptyList(), startDate = "", endDate = "",
-            category = "", location = "", city = "", skills = emptyList())
+            category = "", location = "", city = "", skills = emptyList(),
+            isUniversity = true, creator = ""),
     )
     LazyColumn(modifier = modifier) {
         items(sample) { ev ->
