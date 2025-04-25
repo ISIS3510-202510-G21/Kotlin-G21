@@ -9,6 +9,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
@@ -153,6 +154,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            GlobalData.nearbyEvents = events
             if (events.isEmpty()) {
                 //Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
                 //isLoadingNearby.value = false
