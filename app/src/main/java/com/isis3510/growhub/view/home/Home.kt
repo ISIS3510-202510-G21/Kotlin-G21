@@ -53,6 +53,7 @@ fun MainView(
     categoriesViewModel: CategoriesViewModel = viewModel(),
     eventsViewModel: HomeEventsViewModel = viewModel(),
     locationViewModel: LocationViewModel = viewModel()
+){
     // CHANGES THAT MAKE THE BATTERY STRIPE CHANGE COLOR -> BROUGHT FROM BRANCH 41
     val systemUiController = rememberSystemUiController()
     val statusBarColor = Color(0xff4a43ec)
@@ -63,7 +64,7 @@ fun MainView(
             darkIcons = false // false = iconos en blanco; true = iconos oscuros
         )
     }
-) {
+
     Scaffold(
         topBar = {
             TopBarView(
@@ -73,7 +74,7 @@ fun MainView(
                 onSearch = onSearch
             )
         },
-        bottomBar = { BottomNavigationBar(navController = navController) }
+        //bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
@@ -130,10 +131,10 @@ fun MainView(
                 )
             }
         }
-        
-        // Box(modifier = Modifier.fillMaxSize().padding(innerPadding), contentAlignment = Alignment.BottomCenter) {
-        //     BottomNavigationBar(navController = navController)
-        // }
+
+        Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
+            BottomNavigationBar(navController = navController)
+        }
     }
 }
 

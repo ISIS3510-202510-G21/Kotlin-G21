@@ -5,7 +5,7 @@ import android.content.SharedPreferences
 import com.google.firebase.Timestamp
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
-import com.isis3510.growhub.repository.CreateEventRepository
+import com.isis3510.growhub.Repository.CreateEventRepository
 
 class OfflineEventManager(
     context: Context,

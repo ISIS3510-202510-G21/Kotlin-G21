@@ -1,6 +1,5 @@
 package com.isis3510.growhub.view.navigation // Ensure this package is correct
 
-import android.widget.Toast
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -16,28 +15,18 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.NavigationBarItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.runtime.State // Import State if using derivedStateOf explicitly
-import androidx.compose.runtime.derivedStateOf // Import derivedStateOf
-import androidx.compose.runtime.getValue // Import getValue extension
-import androidx.compose.runtime.remember // Import remember
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color // Keep for transparent color if needed
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.compose.collectAsStateWithLifecycle // Use lifecycle-aware collect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
-import androidx.navigation.NavDestination // Import NavDestination
-import androidx.navigation.NavGraph.Companion.findStartDestination // Import for popUpTo logic
+import androidx.navigation.NavDestination
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import com.isis3510.growhub.R
 import com.isis3510.growhub.offline.NetworkUtils
 
