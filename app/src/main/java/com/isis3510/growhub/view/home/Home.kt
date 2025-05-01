@@ -37,6 +37,9 @@ import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.CategoriesViewModel
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
 import com.isis3510.growhub.viewmodel.LocationViewModel
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
+import androidx.compose.runtime.SideEffect
+
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -50,7 +53,18 @@ fun MainView(
     categoriesViewModel: CategoriesViewModel = viewModel(),
     eventsViewModel: HomeEventsViewModel = viewModel(),
     locationViewModel: LocationViewModel = viewModel()
-) {
+){
+    // CHANGES THAT MAKE THE BATTERY STRIPE CHANGE COLOR -> BROUGHT FROM BRANCH 41
+    val systemUiController = rememberSystemUiController()
+    val statusBarColor = Color(0xff4a43ec)
+    SideEffect {
+        // Cambia el color de la barra de estado
+        systemUiController.setStatusBarColor(
+            color = statusBarColor,
+            darkIcons = false // false = iconos en blanco; true = iconos oscuros
+        )
+    }
+
     Scaffold(
         topBar = {
             TopBarView(
@@ -60,6 +74,7 @@ fun MainView(
                 onSearch = onSearch
             )
         },
+        //bottomBar = { BottomNavigationBar(navController = navController) },
         containerColor = MaterialTheme.colorScheme.background,
         floatingActionButton = {
             FloatingActionButton(
@@ -116,6 +131,7 @@ fun MainView(
                 )
             }
         }
+
         Box(modifier = Modifier.fillMaxSize().offset(y = 50.dp), contentAlignment = Alignment.BottomCenter) {
             BottomNavigationBar(navController = navController)
         }

@@ -4,33 +4,27 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
-import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
-import androidx.navigation.navArgument
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.view.auth.InterestsScreen
-import com.google.firebase.analytics.FirebaseAnalytics
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
 import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
-import com.isis3510.growhub.view.home.MainView
-import com.isis3510.growhub.view.map.MapView
-import com.isis3510.growhub.view.profile.ProfileView
-import com.isis3510.growhub.view.detail.EventDetailView
-import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.view.events.SearchEventView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
+import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
 
 object Destinations {
@@ -42,8 +36,9 @@ object Destinations {
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
     const val CREATE = "create"
+
+    // Ya no usamos userId en la ruta:
     const val INTERESTS = "interestsScreen"
-    const val EVENT_DETAIL = "event_detail"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
     const val SEARCH = "search"
@@ -101,12 +96,10 @@ fun AppNavGraph(
                                     popUpTo(Destinations.LOGIN) { inclusive = true }
                                 }
                             }
-                        navController.navigate(Destinations.HOME) {
-                            popUpTo(Destinations.LOGIN) { inclusive = true }
-                        }
                     }
                 },
                 onNavigateToRegister = {
+                    authViewModel.startFreshRegistration()
                     navController.navigate(Destinations.REGISTER)
                 }
             )
@@ -118,7 +111,9 @@ fun AppNavGraph(
                 viewModel = authViewModel,
                 onNavigateToInterests = {
                     // Al terminar, pasamos a InterestsScreen
-                    navController.navigate(Destinations.INTERESTS)
+                    navController.navigate(Destinations.INTERESTS) {
+                        popUpTo(Destinations.REGISTER) { inclusive = true }
+                    }
                 },
                 onNavigateBack = {
                     navController.popBackStack()
@@ -215,18 +210,6 @@ fun AppNavGraph(
                     }
                 }
             )
-        }
-
-        composable(
-            route = "${Destinations.EVENT_DETAIL}/{eventName}",
-            arguments = listOf(
-                navArgument("eventName") { type = NavType.StringType }
-            )
-        ) { backStackEntry ->
-            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
-            EventDetailView(
-                eventName = eventName,
-                navController = navController)
         }
 
         composable(Destinations.CHATBOT) {
