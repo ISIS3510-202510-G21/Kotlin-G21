@@ -9,7 +9,6 @@ class CreateEventViewModelFactory(
     private val appContext: Context,
     private val createEventRepository: CreateEventRepository = CreateEventRepository()
 ) : ViewModelProvider.Factory {
-
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
         if (modelClass.isAssignableFrom(CreateEventViewModel::class.java)) {

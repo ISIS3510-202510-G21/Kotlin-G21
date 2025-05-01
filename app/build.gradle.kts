@@ -118,6 +118,8 @@ dependencies {
     implementation("com.google.maps.android:maps-compose-widgets:$mapsComposeVersion")
     implementation("com.google.code.gson:gson:2.10.1")
     implementation("androidx.compose.ui:ui-text:1.6.0")
+    implementation ("com.google.accompanist:accompanist-flowlayout:0.32.0")
+
 
     // Local database ROOM
     implementation(libs.room.runtime)

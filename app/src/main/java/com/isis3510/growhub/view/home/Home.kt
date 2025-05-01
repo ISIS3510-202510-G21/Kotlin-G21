@@ -3,6 +3,7 @@ package com.isis3510.growhub.view.home
 // Import the specific ViewModels needed
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -21,24 +22,30 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
+import com.google.accompanist.systemuicontroller.rememberSystemUiController
 import com.isis3510.growhub.R
+import com.isis3510.growhub.Repository.CreateEventRepository
+import com.isis3510.growhub.offline.NetworkUtils
+import com.isis3510.growhub.offline.OfflineEventManager
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.CategoriesViewModel
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
 import com.isis3510.growhub.viewmodel.LocationViewModel
-import com.google.accompanist.systemuicontroller.rememberSystemUiController
-import androidx.compose.runtime.SideEffect
 
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -54,6 +61,29 @@ fun MainView(
     eventsViewModel: HomeEventsViewModel = viewModel(),
     locationViewModel: LocationViewModel = viewModel()
 ){
+    val context = LocalContext.current
+    val offlineManager = remember {
+        OfflineEventManager(
+            context = context,
+            createEventRepository = CreateEventRepository()
+        )
+    }
+
+    LaunchedEffect(Unit) {
+        if (NetworkUtils.isNetworkAvailable(context)) {
+            val uploaded = offlineManager.tryUploadAllOfflineEvents()
+            if (uploaded > 0) {
+                Toast
+                    .makeText(
+                        context,
+                        "$uploaded pending event(s) were synchronized.",
+                        Toast.LENGTH_SHORT
+                    )
+                    .show()
+            }
+        }
+    }
+
     // CHANGES THAT MAKE THE BATTERY STRIPE CHANGE COLOR -> BROUGHT FROM BRANCH 41
     val systemUiController = rememberSystemUiController()
     val statusBarColor = Color(0xff4a43ec)
