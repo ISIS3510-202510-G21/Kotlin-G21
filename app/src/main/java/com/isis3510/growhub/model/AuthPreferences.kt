@@ -6,8 +6,13 @@ import android.content.SharedPreferences
 private const val PREFS_NAME = "auth_prefs"
 private const val KEY_IS_LOGGED_IN = "is_user_logged_in"
 
+// Claves para credenciales email & password
 private const val KEY_SAVED_EMAIL = "saved_email"
 private const val KEY_SAVED_PASSWORD = "saved_password"
+
+// Claves adicionales para almacenar userId y nombre
+private const val KEY_USER_ID = "user_id"
+private const val KEY_USER_NAME = "user_name"
 
 class AuthPreferences(context: Context) {
 
@@ -43,5 +48,24 @@ class AuthPreferences(context: Context) {
             .remove(KEY_SAVED_EMAIL)
             .remove(KEY_SAVED_PASSWORD)
             .apply()
+    }
+
+    /**
+     * Guarda datos adicionales del usuario: ID, nombre y email (para acceso rápido en local).
+     */
+    fun saveUserData(userId: String, userName: String, userEmail: String) {
+        sharedPrefs.edit()
+            .putString(KEY_USER_ID, userId)
+            .putString(KEY_USER_NAME, userName)
+            .putString(KEY_SAVED_EMAIL, userEmail) // Reutiliza la clave de email si quieres
+            .apply()
+    }
+
+    fun getUserId(): String? {
+        return sharedPrefs.getString(KEY_USER_ID, null)
+    }
+
+    fun getUserName(): String? {
+        return sharedPrefs.getString(KEY_USER_NAME, null)
     }
 }
