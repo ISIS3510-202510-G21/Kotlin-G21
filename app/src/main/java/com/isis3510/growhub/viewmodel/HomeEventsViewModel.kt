@@ -233,7 +233,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 // Check if events are being stored properly
                 //val storedEvents = eventRepository.getEvents(5, 0)
                 //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Stored ${storedEvents.size} recommended events")
-                val newIds = events.map { it.id }
+                val newIds = events.map { it.name }
                 currentRecommendedIds.addAll(newIds)
                 isLoadingRecommended.value = false
                 hasReachedEndRecommended.value = events.isEmpty()
@@ -268,7 +268,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Received ${nextEvents.size} next recommended events from Facade")
             if (nextEvents.isNotEmpty()) {
                 recommendedEvents.value += nextEvents
-                val newIds = nextEvents.map { it.id }
+                val newIds = nextEvents.map { it.name }
                 currentRecommendedIds.addAll(newIds)
                 Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Updated currentRecommendedIds to ${currentRecommendedIds.size} elements")
             } else {

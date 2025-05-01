@@ -3,7 +3,6 @@ package com.isis3510.growhub.model.objects
 import com.isis3510.growhub.local.data.EventEntity
 
 data class Event(
-    val id: String,
     val name: String,
     val description: String,
     val location: Location,
@@ -19,10 +18,8 @@ data class Event(
 
 fun Event.toEntity(): EventEntity {
     return EventEntity(
-        id = id,
         name = name,
         description = description,
-        locationId = location.id,
         locationInfo = location.getInfo(),
         locationLatitude = location.latitude,
         locationLongitude = location.longitude,
@@ -39,10 +36,9 @@ fun Event.toEntity(): EventEntity {
 
 fun EventEntity.toModel(): Event {
     return Event(
-        id = id,
         name = name,
         description = description,
-        location = Location(id = locationId, address = locationInfo, latitude = locationLatitude, longitude = locationLongitude),
+        location = Location(address = locationInfo, latitude = locationLatitude, longitude = locationLongitude),
         startDate = startDate,
         endDate = endDate,
         category = category,

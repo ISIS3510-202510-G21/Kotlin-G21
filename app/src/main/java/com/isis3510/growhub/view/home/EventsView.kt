@@ -1,7 +1,9 @@
 package com.isis3510.growhub.view.home
 
+import android.net.Uri
 import android.os.Build
 import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -22,14 +24,18 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.navigation.NavHostController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.view.navigation.Destinations
 import com.isis3510.growhub.viewmodel.HomeEventsViewModel
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
@@ -41,7 +47,7 @@ fun EventsView(
     modifier: Modifier = Modifier,
     eventsViewModel: HomeEventsViewModel = viewModel(),
     connectivityViewModel: ConnectivityViewModel = viewModel(),
-    onEventClick: (Event) -> Unit
+    navController: NavHostController
 ) {
     val upcomingEvents by eventsViewModel.upcomingEvents
     val nearbyEvents by eventsViewModel.nearbyEvents
@@ -118,7 +124,7 @@ fun EventsView(
             EventSection(
                 title = "Upcoming Events",
                 events = upcomingEvents,
-                onEventClick = onEventClick,
+                navController = navController,
                 listState = listStateUpcoming,
                 isLoadingMore = isLoadingMoreUpcoming
             )
@@ -133,7 +139,7 @@ fun EventsView(
             EventSection(
                 title = "Nearby Events",
                 events = nearbyEvents,
-                onEventClick = onEventClick,
+                navController = navController,
                 listState = listStateNearby,
                 isLoadingMore = isLoadingMoreNearby
             )
@@ -148,7 +154,7 @@ fun EventsView(
             EventSection(
                 title = "You may like",
                 events = recommendedEvents,
-                onEventClick = onEventClick,
+                navController = navController,
                 listState = listStateRecommended,
                 isLoadingMore = isLoadingMoreRecommended
             )
@@ -206,7 +212,7 @@ fun EventSectionEmpty(
 private fun EventSection(
     title: String,
     events: List<Event>,
-    onEventClick: (Event) -> Unit,
+    navController: NavHostController,
     listState: LazyListState,
     isLoadingMore: Boolean
 ) {
@@ -239,7 +245,7 @@ private fun EventSection(
             ) { event ->
                 EventCard(
                     event = event,
-                    onClick = { onEventClick(event) }
+                    navController = navController
                 )
             }
             if (isLoadingMore) {
@@ -255,12 +261,23 @@ private fun EventSection(
 }
 
 @Composable
-private fun EventCard(event: Event, onClick: () -> Unit) {
+private fun EventCard(event: Event, navController: NavHostController) {
+    val context = LocalContext.current
+
     Card(
         modifier = Modifier
             .width(240.dp)
             .height(215.dp)
-            .clickable { onClick() },
+            .clickable {
+                if (NetworkUtils.isNetworkAvailable(context)) {
+                    val encoded = Uri.encode(event.name)
+                    navController.navigate("${Destinations.EVENT_DETAIL}/$encoded")
+                } else {
+                    Toast
+                        .makeText(context, "Please check your internet connection", Toast.LENGTH_SHORT)
+                        .show()
+                }
+            },
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)

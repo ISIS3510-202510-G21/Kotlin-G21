@@ -3,7 +3,6 @@ package com.isis3510.growhub.model.objects
 import com.google.android.gms.maps.model.LatLng
 
 data class Location(
-    val id: String,
     val address : String = "",
     val city: String = "",
     val details: String = "",

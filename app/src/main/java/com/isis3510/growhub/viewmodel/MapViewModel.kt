@@ -142,13 +142,13 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
                 runCatching {
                     // Asumiendo que MarkerData tiene id y los métodos de location existen
                     MarkerData(
-                        id = event.id,
+                        id = event.name,
                         position = event.location.getCoordinates(),
                         title = event.name,
                         snippet = event.location.getInfo()
                     )
                 }.onFailure { e ->
-                    Log.e(logTag, "Error creando MarkerData para evento ${event.id}", e)
+                    Log.e(logTag, "Error creando MarkerData para evento ${event.name}", e)
                 }.getOrNull()
             }
         }

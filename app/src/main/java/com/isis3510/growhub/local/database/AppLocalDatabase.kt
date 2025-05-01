@@ -13,7 +13,7 @@ import com.isis3510.growhub.local.data.EventDao
 import com.isis3510.growhub.utils.Converters
 
 
-@Database(entities = [CategoryEntity::class, EventEntity::class], version = 6, exportSchema = false)
+@Database(entities = [CategoryEntity::class, EventEntity::class], version = 7, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppLocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao

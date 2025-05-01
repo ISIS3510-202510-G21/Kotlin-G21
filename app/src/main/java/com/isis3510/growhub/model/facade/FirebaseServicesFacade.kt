@@ -251,7 +251,6 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             val formattedEndDate = endDateTime?.format(dateFormatter)
 
             val locationExtracted = Location(
-                id = locationRef.toString(),
                 address = locationName,
                 city = locationCity,
                 latitude = locationLatitude,
@@ -259,7 +258,6 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             )
 
             val eventExtracted = Event(
-                id = eventId,
                 name = name,
                 imageUrl = imageUrl,
                 description = description,
@@ -331,10 +329,9 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             val locationLongitude = locationDoc?.getDouble("longitude") ?: 0.0
 
             return Event(
-                id = eventID,
                 name = eventName,
                 description = filteredData["description"] as? String ?: "",
-                location = Location(id = locationRef.toString(), address = locationName, city = locationCity, latitude = locationLatitude, longitude = locationLongitude),
+                location = Location(address = locationName, city = locationCity, latitude = locationLatitude, longitude = locationLongitude),
                 startDate = startDateTime.toString(),
                 endDate = endDateTime.toString(),
                 category = categoryName,

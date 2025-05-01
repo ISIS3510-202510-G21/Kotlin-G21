@@ -306,12 +306,12 @@ fun EventsList(
             .padding(horizontal = 16.dp),
         contentPadding = PaddingValues(bottom = 80.dp) // Aumentar padding inferior
     ) {
-        items(events, key = { event -> event.id }) { event -> // *** Usa event.id como key ***
-            val isSelected = event.id == selectedEventId // *** Determina si está seleccionado ***
+        items(events, key = { event -> event.name }) { event -> // *** Usa event.id como key ***
+            val isSelected = event.name == selectedEventId // *** Determina si está seleccionado ***
             EventCard(
                 event = event,
                 isSelected = isSelected, // *** Pasa el estado de selección ***
-                onClick = { onEventClick(event.id) } // *** Llama al callback al hacer clic ***
+                onClick = { onEventClick(event.name) } // *** Llama al callback al hacer clic ***
             )
         }
     }

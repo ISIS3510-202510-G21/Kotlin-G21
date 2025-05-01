@@ -108,11 +108,7 @@ fun MainView(
                 EventsView(
                     eventsViewModel = eventsViewModel,
                     modifier = Modifier.fillMaxWidth(),
-                    onEventClick = { event ->
-                        //TODO: Navigation to the Event Detail
-                        Log.d("HomeView", "Event clicked: ${event.name}")
-                        // navController.navigate(...)
-                    }
+                    navController = navController
                 )
             }
         }
