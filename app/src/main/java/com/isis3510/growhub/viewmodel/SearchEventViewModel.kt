@@ -2,6 +2,7 @@ package com.isis3510.growhub.viewmodel
 
 import android.app.Application
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
@@ -9,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.Firebase
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.Repository.EventRepository
 import com.isis3510.growhub.local.database.AppLocalDatabase
@@ -43,6 +46,7 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
 
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
+    private val firebaseAnalytics = FirebaseAnalytics.getInstance(application)
 
     init {
         loadInitialEvents()
@@ -51,6 +55,7 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadInitialEvents() {
         Log.d("SearchEventViewModel", "loadInitialEvents: Start")
+        logSearchOpenedEvent()
         loadInitialSearchEvents()
         loadCategoriesSkillsLocations()
         Log.d("SearchEventViewModel", "loadInitialEvents: End")
@@ -154,4 +159,11 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         searchQuery = ""
     }
 
+    private fun logSearchOpenedEvent() {
+        val bundle = Bundle().apply {
+            putString(FirebaseAnalytics.Param.SCREEN_NAME, "SearchEvents")
+            putString("interaction_type", "search_screen_loaded")
+        }
+        firebaseAnalytics.logEvent("search_events_interaction", bundle)
+    }
 }
