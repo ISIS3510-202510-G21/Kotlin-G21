@@ -23,12 +23,10 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.*
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.accompanist.flowlayout.FlowRow
 import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
 import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
-
 
 
 @Preview(showBackground = true)
@@ -754,6 +752,7 @@ fun UniversityDropdown(viewModel: CreateEventViewModel = viewModel(factory = Cre
 }
 
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SkillsSelection(
     viewModel: CreateEventViewModel = viewModel(
@@ -781,8 +780,9 @@ fun SkillsSelection(
         ) {
             /* Usamos FlowRow para que los chips se distribuyan en filas */
             FlowRow(
-                mainAxisSpacing = 8.dp,
-                crossAxisSpacing = 8.dp
+                // Compose Foundation
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement   = Arrangement.spacedBy(8.dp)
             ) {
                 allSkills.forEach { skill ->
                     val isSelected = selectedSkills.contains(skill)
@@ -904,4 +904,3 @@ fun CategoryDropdown(
         }
     }
 }
-

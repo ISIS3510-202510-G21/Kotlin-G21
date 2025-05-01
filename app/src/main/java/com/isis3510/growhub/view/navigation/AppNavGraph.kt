@@ -4,25 +4,31 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.navArgument
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.view.auth.InterestsScreen
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
+import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
+import com.isis3510.growhub.view.detail.EventDetailView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
+import com.isis3510.growhub.view.events.SearchEventView
+import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
 import com.isis3510.growhub.view.profile.ProfileView
-import com.isis3510.growhub.view.detail.EventDetailView
 import com.isis3510.growhub.viewmodel.AuthViewModel
+import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
 
 object Destinations {
     const val LOGIN = "login"
@@ -35,12 +41,14 @@ object Destinations {
     const val CREATE = "create"
     const val INTERESTS = "interestsScreen"
     const val EVENT_DETAIL = "event_detail"
+    const val CHATBOT = "chatbot"
+    const val SUCCESSFUL_REGISTRATION = "successful_registration"
+    const val SEARCH = "search"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun AppNavGraph(
-    manifestApiKey: String?,
     navController: NavHostController,
     startDestination: String,
     modifier: Modifier = Modifier
@@ -90,6 +98,9 @@ fun AppNavGraph(
                                     popUpTo(Destinations.LOGIN) { inclusive = true }
                                 }
                             }
+                        navController.navigate(Destinations.HOME) {
+                            popUpTo(Destinations.LOGIN) { inclusive = true }
+                        }
                     }
                 },
                 onNavigateToRegister = {
@@ -139,6 +150,12 @@ fun AppNavGraph(
                     navController.navigate(Destinations.LOGIN) {
                         popUpTo(Destinations.HOME) { inclusive = true }
                     }
+                },
+                onClickChat = {
+                    navController.navigate(Destinations.CHATBOT)
+                },
+                onSearch = {
+                    navController.navigate(Destinations.SEARCH)
                 }
             )
         }
@@ -146,7 +163,6 @@ fun AppNavGraph(
         // MAP
         composable(Destinations.MAP) {
             MapView(
-                manifestApiKey = manifestApiKey,
                 navController = navController,
                 onNavigateBack = {
                     navController.navigate(Destinations.HOME) {
@@ -187,7 +203,7 @@ fun AppNavGraph(
 
         // EDIT_PROFILE
         composable(Destinations.EDIT_PROFILE) {
-            PlaceholderScreen("EDIT_PROFILE")
+            PlaceholderScreen()
         }
 
         // CREATE EVENT
@@ -200,6 +216,7 @@ fun AppNavGraph(
                 }
             )
         }
+
         composable(
             route = "${Destinations.EVENT_DETAIL}/{eventName}",
             arguments = listOf(
@@ -209,7 +226,41 @@ fun AppNavGraph(
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
             EventDetailView(
                 eventName = eventName,
-                navController = navController
+                navController = navController)
+        }
+
+        composable(Destinations.CHATBOT) {
+            val context = LocalContext.current
+            val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+            ChatbotView(
+                navController = navController,
+                firebaseAnalytics = firebaseAnalytics
+            )
+        }
+
+        composable(Destinations.SUCCESSFUL_REGISTRATION) {
+            SuccessfulRegistrationView(
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.SUCCESSFUL_REGISTRATION) { inclusive = true }
+                    }
+                },
+                viewModel = SuccessfulRegistrationViewModel(eventID = TODO())
+            )
+        }
+
+        composable(Destinations.SEARCH) {
+            val context = LocalContext.current
+            val firebaseAnalytics = FirebaseAnalytics.getInstance(context)
+
+            SearchEventView(
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.SEARCH) { inclusive = true }
+                    }
+                },
+                firebaseAnalytics = firebaseAnalytics
             )
         }
     }
