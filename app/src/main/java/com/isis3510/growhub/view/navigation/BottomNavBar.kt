@@ -1,4 +1,4 @@
-package com.isis3510.growhub.view.navigation // Ensure this package is correct
+package com.isis3510.growhub.view.navigation 
 
 import android.util.Log
 import androidx.compose.foundation.background
@@ -75,7 +75,7 @@ fun BottomNavigationBar(navController: NavController) {
                     onClick = {
                         // Navigate to the specific Create destination from the graph
                         navController.navigate(Destinations.CREATE) {
-                            Log.d("Navigation Tapped", item.route)
+                        Log.d("Navigation Tapped", item.route)
                         }
                     },
                     icon = {

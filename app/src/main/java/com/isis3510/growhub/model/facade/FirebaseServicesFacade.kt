@@ -136,21 +136,18 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     suspend fun fetchCategories(): List<Category> {
-        try {
+        return try {
             val filteredCategories = filter.getCategoriesData()
-
             val categories = mutableListOf<Category>()
-
             for (category in filteredCategories) {
                 val name = category["name"] as? String ?: ""
                 val categoryExtracted = Category(name = name)
                 categories.add(categoryExtracted)
             }
-
-            return categories
+            categories
         } catch (e: Exception) {
             Log.e("FirebaseServicesFacade", "Error fetching categories", e)
-            return emptyList()
+            emptyList()
         }
     }
 
