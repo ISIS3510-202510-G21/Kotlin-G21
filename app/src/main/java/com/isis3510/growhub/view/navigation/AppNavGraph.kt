@@ -7,8 +7,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import androidx.navigation.navArgument
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
@@ -17,6 +19,7 @@ import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
 import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
+import com.isis3510.growhub.view.detail.EventDetailView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.events.SearchEventView
@@ -36,9 +39,8 @@ object Destinations {
     const val PROFILE = "profile"
     const val EDIT_PROFILE = "edit_profile"
     const val CREATE = "create"
-
-    // Ya no usamos userId en la ruta:
     const val INTERESTS = "interestsScreen"
+    const val EVENT_DETAIL = "event_detail"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
     const val SEARCH = "search"
@@ -96,6 +98,9 @@ fun AppNavGraph(
                                     popUpTo(Destinations.LOGIN) { inclusive = true }
                                 }
                             }
+                        navController.navigate(Destinations.HOME) {
+                            popUpTo(Destinations.LOGIN) { inclusive = true }
+                        }
                     }
                 },
                 onNavigateToRegister = {
@@ -210,6 +215,18 @@ fun AppNavGraph(
                     }
                 }
             )
+        }
+
+        composable(
+            route = "${Destinations.EVENT_DETAIL}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            EventDetailView(
+                eventName = eventName,
+                navController = navController)
         }
 
         composable(Destinations.CHATBOT) {

@@ -186,7 +186,7 @@ fun MyEventsView(
             } else if (upcomingEvents.isNotEmpty()) {
                 items(upcomingEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
                 }
@@ -228,7 +228,7 @@ fun MyEventsView(
             } else if (previousEvents.isNotEmpty()) {
                 items(previousEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
                 }
@@ -270,7 +270,7 @@ fun MyEventsView(
             } else if (createdByMeEvents.isNotEmpty()) {
                 items(createdByMeEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
                 }

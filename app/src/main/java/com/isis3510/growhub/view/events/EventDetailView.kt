@@ -5,7 +5,6 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -42,7 +41,6 @@ private val ChipBg     = Color(0xFFF4F4F4)
 private val ChipLabel  = Color(0xFF9A9A9A)
 private val BodyText   = Color(0xFF191D17)
 
-/* ---------- Pantalla completo ---------- */
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -50,18 +48,15 @@ fun EventDetailView(
     eventName: String,
     navController: NavHostController
 ) {
-    /* --- Estado UI --- */
     var event by remember { mutableStateOf<Event?>(null) }
     var loading by remember { mutableStateOf(true) }
 
-    /* --- Preview mock ---------------------------------------------------- */
     val inPreview = LocalInspectionMode.current
     if (inPreview && event == null) {
         event = Event(
-            id = "SAMPLE",
             name = "IA Prompt Engineering",
             description = "En un mundo donde la inteligencia artificial ...",
-            location = Location(id = "SAMPLE", address = "Cra. 1 #18a‑12", city = "Bogotá", latitude = 0.0, longitude = 0.0),
+            location = Location("Cra. 1 #18a‑12", "Bogotá", "Edificio ML",4.65, -74.05, false),
             startDate = "24 Nov 2025",
             endDate = "24 Nov 2025",
             category = "IA Engineers",
@@ -69,17 +64,16 @@ fun EventDetailView(
             cost = 0,
             attendees = listOf("Miguel Durán"),
             skills = listOf("Programming"),
-            creator = "Jefferson Gutierritos"
+            creator = ""
         )
         loading = false
     }
 
-    /* --- Carga Firestore (omitida en Preview) ---------------------------- */
     LaunchedEffect(eventName) {
-        if (inPreview) return@LaunchedEffect     // evita Firebase en preview
+        if (inPreview) return@LaunchedEffect
 
-        val doc = FirebaseFirestore.getInstance()
-            .collection("events")
+        val db = FirebaseFirestore.getInstance()
+        val snapshot = db.collection("events")
             .whereEqualTo("name", eventName)
             .limit(1)
             .get()
@@ -87,23 +81,25 @@ fun EventDetailView(
             .documents
             .firstOrNull()
 
-        doc?.let { d ->
-            /* helpers para refs */
+        snapshot?.let { d ->
             suspend fun DocumentReference?.string(field: String): String =
                 this?.get()?.await()?.getString(field) ?: "Unknown"
 
-            suspend fun DocumentReference?.bool(field: String): Boolean =
-                this?.get()?.await()?.getBoolean(field) ?: false
-
             val categoryName = d.getDocumentReference("category").string("name")
-            val eventId = d.id
-            val creator = d.getString("creator") ?: ""
-            val locationRef  = d.getDocumentReference("location_id")
-            val address      = locationRef.string("address")
-            val cityName     = locationRef.string("city")
-            val latitude = locationRef.string("latitude").toDouble()
-            val longitude = locationRef.string("longitude").toDouble()
-            val locationId = locationRef.toString()
+            val locationRef = d.getDocumentReference("location_id")
+            val locationSnapshot = locationRef?.get()?.await()
+
+            val location = if (locationSnapshot != null && locationSnapshot.exists()) {
+                Location(
+                    address = locationSnapshot.getString("address") ?: "Unknown",
+                    city = locationSnapshot.getString("city") ?: "Unknown",
+                    latitude = locationSnapshot.getDouble("latitude") ?: 0.0,
+                    longitude = locationSnapshot.getDouble("longitude") ?: 0.0,
+                    university = locationSnapshot.getBoolean("university") ?: false
+                )
+            } else {
+                Location("Unknown", "Unknown", "Unknown",0.0, 0.0, false)
+            }
 
             val attendees = (d["attendees"] as? List<*>)?.mapNotNull {
                 (it as? DocumentReference)?.string("name")
@@ -113,20 +109,21 @@ fun EventDetailView(
                 (it as? DocumentReference)?.string("name")
             } ?: emptyList()
 
+            val creator = ""
+
             event = Event(
-                id = eventId,
-                name         = d.getString("name") ?: "",
-                description  = d.getString("description") ?: "",
-                location     = Location(id = locationId, address = address, city = cityName, latitude = latitude, longitude = longitude),
-                startDate    = d.getTimestamp("start_date")?.toDate()
+                name = d.getString("name") ?: "",
+                description = d.getString("description") ?: "",
+                location = location,
+                startDate = d.getTimestamp("start_date")?.toDate()
                     ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
-                endDate      = d.getTimestamp("end_date")?.toDate()
+                endDate = d.getTimestamp("end_date")?.toDate()
                     ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
-                category     = categoryName,
-                imageUrl     = d.getString("image") ?: "",
-                cost         = d.getDouble("cost")?.toInt() ?: 0,
-                attendees    = attendees,
-                skills       = skills,
+                category = categoryName,
+                imageUrl = d.getString("image") ?: "",
+                cost = d.getDouble("cost")?.toInt() ?: 0,
+                attendees = attendees,
+                skills = skills,
                 creator = creator
             )
         }
@@ -404,7 +401,6 @@ private fun SectionCard(
 
 
 /* ---------- PREVIEW ----------------------------------------------------- */
-@RequiresApi(Build.VERSION_CODES.O)
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)
 @Composable
 fun EventDetailPreview() {

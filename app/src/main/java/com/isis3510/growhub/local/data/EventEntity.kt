@@ -5,10 +5,10 @@ import androidx.room.PrimaryKey
 
 @Entity(tableName = "evententity")
 data class EventEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val name: String,
     val description: String,
-    val locationId: String,
     val locationInfo: String,
     val locationLatitude: Double,
     val locationLongitude: Double,

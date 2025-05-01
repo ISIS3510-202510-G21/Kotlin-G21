@@ -352,8 +352,8 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
                 Log.e("DeleteAttendee", "Error removing user from attendees", e)
             }
 
-        upcomingEvents.value = upcomingEvents.value.filterNot { it.id == eventId }
-        previousEvents.value = previousEvents.value.filterNot { it.id == eventId }
-        createdByMeEvents.value = createdByMeEvents.value.filterNot { it.id == eventId }
+        upcomingEvents.value = upcomingEvents.value.filterNot { it.name == eventId }
+        previousEvents.value = previousEvents.value.filterNot { it.name == eventId }
+        createdByMeEvents.value = createdByMeEvents.value.filterNot { it.name == eventId }
     }
 }
