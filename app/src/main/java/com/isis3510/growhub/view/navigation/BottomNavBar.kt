@@ -1,4 +1,4 @@
-package com.isis3510.growhub.view.navigation // Ensure this package is correct
+package com.isis3510.growhub.view.navigation 
 
 import android.util.Log
 import androidx.compose.foundation.background
