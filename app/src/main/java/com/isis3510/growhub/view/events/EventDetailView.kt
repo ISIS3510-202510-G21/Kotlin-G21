@@ -288,7 +288,7 @@ private fun InfoChip(
                 .padding(end = 8.dp)
                 .size(20.dp)
         )
-
+ 
         /* texto */
         Column {
             Text(
