@@ -24,7 +24,7 @@ import com.isis3510.growhub.viewmodel.AuthViewModel
 
 /* ---- límites ---- */
 private const val MAX_NAME = 40
-private const val MAX_EMAIL = 50
+private const val MAX_EMAIL = 30
 private const val MAX_PASS = 30
 
 @OptIn(ExperimentalMaterial3Api::class)
