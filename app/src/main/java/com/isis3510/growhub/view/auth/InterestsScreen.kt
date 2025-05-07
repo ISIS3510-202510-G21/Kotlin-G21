@@ -23,6 +23,8 @@ import com.isis3510.growhub.R
 import com.isis3510.growhub.cache.RegistrationCache
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.viewmodel.AuthViewModel
+import androidx.compose.animation.animateColorAsState
+
 
 @Composable
 fun InterestsScreen(
@@ -45,6 +47,7 @@ fun InterestsScreen(
     /** Colores **/
     val primaryBlue = Color(0xFF5669FF)
     val cardBorder = Color(0xFF161616)
+
 
     Column(
         modifier = Modifier
@@ -141,12 +144,17 @@ private fun SkillCard(
     primaryBlue: Color,
     borderColor: Color
 ) {
+    val animatedBg by animateColorAsState(
+        targetValue = if (isSelected) Color(0xFFF3F3F3) else Color.White,
+        label = "skillCardBg"
+    )
+
     Card(
         modifier = Modifier
             .height(120.dp)
             .fillMaxWidth()
             .clickable { onToggle() },
-        colors = CardDefaults.cardColors(containerColor = Color.White),
+        colors = CardDefaults.cardColors(containerColor = animatedBg),
         border = BorderStroke(1.dp, borderColor),
         elevation = CardDefaults.cardElevation(defaultElevation = 1.dp)
     ) {
@@ -178,7 +186,7 @@ private fun SkillCard(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(primaryBlue.copy(alpha = 0.1f))
+                    .background(primaryBlue.copy(alpha = 0.08f))
             ) {
                 Icon(
                     imageVector = Icons.Default.Check,

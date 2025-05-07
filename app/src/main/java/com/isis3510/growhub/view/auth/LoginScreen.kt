@@ -83,7 +83,7 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = {
-                    if (it.length <= 50) {
+                    if (it.length <= 30) {
                         viewModel.onEmailChange(it)
                         emailError = null
                     }
