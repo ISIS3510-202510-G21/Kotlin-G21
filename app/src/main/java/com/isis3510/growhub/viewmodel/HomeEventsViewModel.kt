@@ -158,12 +158,12 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
             GlobalData.nearbyEvents = events
+            eventRepository.storeEvents(events)
             if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
                 Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
                 isLoadingNearby.value = false
                 hasReachedEndNearby.value = true
                 loadInitialNearbyEventsLocal()
-                GlobalData.nearbyEvents = events
                 return@launch
             }
             else {
@@ -184,6 +184,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Calling eventRepository.getEvents")
             val events = eventRepository.getFreeEvents()
+            GlobalData.nearbyEvents = events
             Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Received ${events.size} nearby events from local storage")
             nearbyEvents.value = events
             isLoadingNearby.value = false
