@@ -25,6 +25,14 @@ class EventRepository(
         return localEvents
     }
 
+    suspend fun getFreeEvents(): List<Event> {
+        return eventDao.getFreeEvents().map { it.toModel() }
+    }
+
+    suspend fun getNearbyEvents(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double): List<Event> {
+        return eventDao.getNearbyEvents(latMin, latMax, lonMin, lonMax).map { it.toModel() }
+    }
+
     // Store locally
     suspend fun storeEvents(events: List<Event>) {
         val entities = events.map { it.toEntity() }

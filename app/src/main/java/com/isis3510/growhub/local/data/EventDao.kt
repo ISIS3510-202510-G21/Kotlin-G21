@@ -13,5 +13,13 @@ interface EventDao {
 
     @Query("SELECT COUNT(*) FROM evententity")
     suspend fun getCount(): Int
+
+    @Query("SELECT * FROM evententity WHERE cost = 0")
+    suspend fun getFreeEvents(): List<EventEntity>
+
+    @Query("SELECT * FROM evententity WHERE locationLatitude BETWEEN :latMin AND :latMax AND locationLongitude BETWEEN :lonMin AND :lonMax")
+    suspend fun getNearbyEvents(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double): List<EventEntity>
 }
+
+
 
