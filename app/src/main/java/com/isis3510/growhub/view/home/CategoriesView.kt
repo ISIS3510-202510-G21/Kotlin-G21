@@ -1,10 +1,9 @@
 package com.isis3510.growhub.view.home
 
 import android.os.Build
-import android.util.Log // Import Log
+import android.util.Log
+import android.widget.Toast
 import androidx.annotation.RequiresApi
-import androidx.compose.animation.*
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyListState
@@ -15,24 +14,25 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.runtime.livedata.observeAsState
+import androidx.compose.runtime.setValue
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.viewmodel.CategoriesViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.launch
 
 // Predefined colors for buttons
@@ -42,17 +42,19 @@ private val categoryColors = listOf(
     Color(0xff16a085), Color(0xfff39c12)
 )
 
-// LazyListState extension
-fun LazyListState.isScrolledNearEnd(buffer: Int = 1): Boolean {
+// Función más estricta para detectar solo cuando estamos realmente cerca del final
+fun LazyListState.isScrolledNearEnd(): Boolean {
     val visibleItems = layoutInfo.visibleItemsInfo
     if (visibleItems.isEmpty() || layoutInfo.totalItemsCount == 0) return false
+
+    // Solo detectamos que estamos cerca del final cuando el último elemento visible
+    // es el penúltimo o último de la lista
     val lastVisibleIndex = visibleItems.last().index
     val totalItemCount = layoutInfo.totalItemsCount
-    // Adjusted logic: check if last visible is the second to last item or later
-    // when buffer is 1. This gives a little more room to trigger loading.
-    return lastVisibleIndex >= totalItemCount - 1 - buffer
-}
 
+    // Solo consideramos "cerca del final" cuando estamos viendo el último elemento
+    return lastVisibleIndex >= totalItemCount - 1
+}
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -65,24 +67,38 @@ fun CategoriesView(
     val isLoadingMore by categoriesViewModel.isLoadingMore.observeAsState(false)
     val hasReachedEnd by categoriesViewModel.hasReachedEnd.observeAsState(false)
     val listState = rememberLazyListState()
+    val context = LocalContext.current
 
     // State for the temporary message visibility
     var showEndMessage by remember { mutableStateOf(false) }
 
-    // Logging the state value during recompositions
-    Log.d("CategoriesView", "Recomposition: showEndMessage = $showEndMessage, isLoadingMore = $isLoadingMore, hasReachedEnd = $hasReachedEnd")
+    // Estado para controlar la visibilidad del indicador de carga con retardo
+    var showLoadingIndicatorWithDelay by remember { mutableStateOf(false) }
+
+    // LaunchedEffect para controlar la visibilidad del indicador con retardo
+    LaunchedEffect(isLoadingMore) {
+        if (isLoadingMore) {
+            showLoadingIndicatorWithDelay = true
+            // Espera 2.5 segundos
+            delay(2500)
+            showLoadingIndicatorWithDelay = false
+        }
+    }
+
+    // Logging para debug
+    Log.d("CategoriesView", "Recomposition: categories = ${categories.size}, isLoadingMore = $isLoadingMore, hasReachedEnd = $hasReachedEnd")
 
     // --- Effect for observing the LiveData event ---
     val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
-    val scope = rememberCoroutineScope() // Scope tied to the composable lifecycle
+    val scope = rememberCoroutineScope()
 
-    DisposableEffect(lifecycleOwner, categoriesViewModel) { // Effect runs when keys change or on dispose
+    DisposableEffect(lifecycleOwner, categoriesViewModel) {
         val observer = androidx.lifecycle.Observer<Unit?> { _ ->
-            if (!showEndMessage) { // Prevent starting a new timer if one is already running
+            if (!showEndMessage) {
                 scope.launch {
                     Log.d("CategoriesView", "Coroutine launched: Setting showEndMessage = true")
                     showEndMessage = true
-                    delay(3000L) // Keep message visible for 3 seconds
+                    delay(3000L)
                     Log.d("CategoriesView", "Coroutine finished delay: Setting showEndMessage = false")
                     showEndMessage = false
                 }
@@ -91,38 +107,41 @@ fun CategoriesView(
             }
         }
 
-        // Start observing
         categoriesViewModel.showNoMoreCategoriesMessage.observe(lifecycleOwner, observer)
 
-        // Cleanup: Remove observer when the effect leaves composition
         onDispose {
             categoriesViewModel.showNoMoreCategoriesMessage.removeObserver(observer)
         }
     }
 
+    // Effect para cargar más categorías solo cuando el usuario ha llegado al final
+    LaunchedEffect(listState) {
+        snapshotFlow {
+            // Combinamos la detección del final con el estado de desplazamiento
+            val isAtEnd = listState.isScrolledNearEnd()
+            val isScrollingFromUser = listState.isScrollInProgress
 
-    // Effect to trigger loading when scrolled near the end (check logic)
-    LaunchedEffect(listState, categories, isLoadingMore, hasReachedEnd) {
-        snapshotFlow { listState.isScrolledNearEnd() }
+            // Solo consideramos que estamos al final si realmente el usuario está desplazando
+            // y hemos llegado al último elemento
+            isAtEnd && isScrollingFromUser
+        }
             .distinctUntilChanged()
-            .filter { isNearEnd -> isNearEnd } // Filter for true (near end)
-            .collect {
-                // Check conditions *inside* collect
-                if (!isLoadingMore && !hasReachedEnd) {
-                    Log.d("CategoriesView", "ScrollNearEnd detected & conditions met. Calling loadCategories()")
-                    categoriesViewModel.loadCategories()
-                } else {
-                    Log.d("CategoriesView", "ScrollNearEnd detected BUT conditions NOT met (isLoadingMore=$isLoadingMore, hasReachedEnd=$hasReachedEnd)")
+            .collect { shouldLoadMore ->
+                if (shouldLoadMore) {
+                    Log.d("CategoriesView", "User scroll reached end with isLoadingMore=$isLoadingMore, hasReachedEnd=$hasReachedEnd")
+                    if (!isLoadingMore && !hasReachedEnd) {
+                        Log.d("CategoriesView", "Calling loadCategories() after user reached end")
+                        categoriesViewModel.loadCategories()
+                    }
                 }
             }
     }
 
-
     Box(modifier = modifier.fillMaxSize()) {
-
         Column(modifier = Modifier.fillMaxWidth()) {
-            // Placeholder logic
-            if (categories.isEmpty() && !isLoadingMore && !hasReachedEnd && categoriesViewModel.categories.value == null) { // Initial empty state
+            // Manejo de estados de UI
+            if (categories.isEmpty() && !isLoadingMore && !hasReachedEnd && categoriesViewModel.categories.value == null) {
+                // Estado inicial de carga
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -132,14 +151,15 @@ fun CategoriesView(
                     repeat(5) { CategoryButtonPlaceholder() }
                 }
                 Log.d("CategoriesView", "Displaying Placeholders")
-            } else if (categories.isEmpty() && hasReachedEnd) { // Empty and truly nothing more
+            } else if (categories.isEmpty() && hasReachedEnd) {
+                // No hay categorías disponibles
                 Text(
-                    "No categories available.",
+                    "No categories are available.",
                     modifier = Modifier.padding(16.dp).align(Alignment.CenterHorizontally)
                 )
                 Log.d("CategoriesView", "Displaying 'No categories available'")
             } else {
-                // LazyRow for categories
+                // LazyRow para mostrar las categorías
                 LazyRow(
                     state = listState,
                     modifier = Modifier.fillMaxWidth(),
@@ -147,12 +167,13 @@ fun CategoriesView(
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                 ) {
                     items(categories, key = { category -> category.name }) { category ->
-                        val index = categories.indexOf(category).coerceAtLeast(0) // Safe index access
+                        val index = categories.indexOf(category).coerceAtLeast(0)
                         val color = categoryColors[index % categoryColors.size]
                         CategoryButton(category = category, color = color, onClick = { onCategoryClick(category) })
                     }
 
-                    // Loading indicator
+                    // Indicador de carga al final
+                    // Hacemos que siempre esté visible por 2.5 segundos
                     if (isLoadingMore) {
                         item {
                             Box(
@@ -172,41 +193,21 @@ fun CategoriesView(
                 }
             }
         }
+    }
 
-        // --- Animated message overlay at the bottom ---
-        // Add logging around AnimatedVisibility as well
-        val isMessageActuallyVisible = showEndMessage
-        Log.d("CategoriesView", "AnimatedVisibility wrapper: showEndMessage = $isMessageActuallyVisible")
-
-        AnimatedVisibility(
-            visible = isMessageActuallyVisible, // Use the state variable directly
-            enter = fadeIn(animationSpec = tween(300)) + slideInVertically(initialOffsetY = { it / 2 }, animationSpec = tween(300)),
-            exit = fadeOut(animationSpec = tween(300)) + slideOutVertically(targetOffsetY = { it / 2 }, animationSpec = tween(300)),
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .padding(bottom = 16.dp)
-        ) {
-            // This block renders when visible = true
-            Log.d("CategoriesView", "AnimatedVisibility content rendering!")
-            Surface(
-                shape = RoundedCornerShape(8.dp),
-                color = Color.DarkGray.copy(alpha = 0.85f),
-                tonalElevation = 4.dp,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            ) {
-                Text(
-                    text = "There are no more categories",
-                    color = Color.White,
-                    fontSize = 14.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                )
-            }
+    // Mostrar Toast cuando sea necesario
+    LaunchedEffect(showEndMessage) {
+        if (showEndMessage) {
+            Toast.makeText(
+                context,
+                categoriesViewModel.categoriesEventualConnectivity(),
+                Toast.LENGTH_SHORT
+            ).show()
+            Log.d("CategoriesView", "Toast displayed")
         }
     }
 }
 
-// CategoryButton and CategoryButtonPlaceholder remain the same
 @Composable
 private fun CategoryButton(category: Category, color: Color, onClick: () -> Unit) {
     Button(

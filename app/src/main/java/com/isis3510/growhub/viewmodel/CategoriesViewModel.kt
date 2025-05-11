@@ -1,6 +1,7 @@
 package com.isis3510.growhub.viewmodel
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -8,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.Repository.CategoryRepository
+import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.utils.SingleLiveEvent
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
@@ -19,6 +21,8 @@ class CategoriesViewModel(application: Application) : AndroidViewModel(applicati
 
     private val _categories = MutableLiveData<List<Category>>()
     val categories: LiveData<List<Category>> = _categories
+
+    private val connectivityViewModel = ConnectivityViewModel(application)
 
     // --- Enhancement States ---
     private val _isLoadingMore = MutableLiveData<Boolean>(false)
@@ -48,60 +52,93 @@ class CategoriesViewModel(application: Application) : AndroidViewModel(applicati
     }
 
     fun loadCategories(initialLoad: Boolean = false) {
-        // Prevent multiple simultaneous loads and loading if the end is reached
-        if (currentLoadingJob?.isActive == true || _hasReachedEnd.value == true) {
+        // Verificar si ya hay una carga en progreso o si se alcanzó el final
+        if (currentLoadingJob?.isActive == true) {
+            Log.d("CategoriesViewModel", "⛔ Skipping load - already loading")
+            return
+        }
+
+        if (_hasReachedEnd.value == true && !initialLoad) {
+            Log.d("CategoriesViewModel", "🛑 Reached end, triggering message")
+            _showNoMoreCategoriesMessage.call()
             return
         }
 
         currentLoadingJob = viewModelScope.launch {
-            // Show loading indicator only when loading *more* items, not initial load
+            Log.d("CategoriesViewModel", "🔄 Loading categories with offset=$offset, pageSize=$pageSize, initialLoad=$initialLoad")
+
+            // Mostrar indicador de carga solo cuando no es la carga inicial
             if (!initialLoad) {
                 _isLoadingMore.value = true
             }
 
             try {
-                // Obtain categories based on the paging we defined
-                val newCategories = repository.getCategories(pageSize, offset)
+                // Asegúrate de que se respete exactamente el tamaño de página
+                val exactPageSize = pageSize
+
+                // Obtener categorías según el estado de la conexión
+                val newCategories : List<Category> = repository.getCategoriesOnline(exactPageSize, offset)
+
+                Log.d("CategoriesViewModel", "📦 Loaded ${newCategories.size} new categories at offset $offset")
 
                 if (newCategories.isNotEmpty()) {
-                    val currentList = _categories.value.orEmpty()
-                    _categories.value = currentList + newCategories // Append new items
+                    // En caso de carga inicial, reemplazar la lista; de lo contrario, añadir
+                    val currentList = if (initialLoad) emptyList() else _categories.value.orEmpty()
+                    _categories.value = currentList + newCategories
 
-                    // Increases the offset only if we got the full page size we expected
-                    if (newCategories.size == pageSize) {
-                        offset += pageSize
-                        _hasReachedEnd.value = false // We might have more
+                    // Incrementar el offset solo si recibimos exactamente el tamaño de página
+                    // para asegurarnos de no saltar elementos
+                    if (newCategories.size == exactPageSize) {
+                        offset += exactPageSize
+                        _hasReachedEnd.value = false
+                        Log.d("CategoriesViewModel", "✅ More categories may be available, new offset: $offset")
                     } else {
-                        // Reached the end because we received fewer items than the page size
+                        // Alcanzamos el final porque recibimos menos elementos de los esperados
                         _hasReachedEnd.value = true
+                        Log.d("CategoriesViewModel", "🏁 End reached: received ${newCategories.size} < $exactPageSize")
+
+                        if (!initialLoad) {
+                            _showNoMoreCategoriesMessage.call()
+                        }
                     }
                 } else {
-                    // Reached the end because the repository returned an empty list
+                    // No se encontraron categorías nuevas
                     _hasReachedEnd.value = true
-                    // If this wasn't the initial load and we got nothing, trigger the message
+                    Log.d("CategoriesViewModel", "🏁 End reached: no new categories found")
+
+                    // Si no fue la carga inicial y no obtuvimos nada, mostrar mensaje
                     if (!initialLoad) {
-                        _showNoMoreCategoriesMessage.call() // Signal the event
+                        _showNoMoreCategoriesMessage.call()
                     }
                 }
             } catch (e: Exception) {
-                // Handle potential errors (e.g., network, database)
-                // You might want to expose an error state here
-                _hasReachedEnd.value = true // Stop trying if there was an error
-                _showNoMoreCategoriesMessage.call() // Signal the event to inform user
+                Log.e("CategoriesViewModel", "❌ Error loading categories: ${e.message}", e)
+                // Manejo de errores
+                _hasReachedEnd.value = true
+                _showNoMoreCategoriesMessage.call()
             } finally {
-                // Hide loading indicator regardless of outcome
+                // Ocultar indicador de carga independientemente del resultado
                 _isLoadingMore.value = false
+                Log.d("CategoriesViewModel", "⏹️ Loading completed, isLoadingMore set to false")
             }
         }
     }
 
-    // Optional: Add a function to reset the state if needed (e.g., for pull-to-refresh)
+    fun categoriesEventualConnectivity() : String {
+        return if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+            "Please check your connection. Cannot find more categories while offline"
+        } else {
+            "No more categories have been found"
+        }
+    }
+
+    // Función para reiniciar y volver a cargar (por ejemplo, para pull-to-refresh)
     fun resetAndLoad() {
         offset = 0
         _categories.value = emptyList()
         _hasReachedEnd.value = false
         _isLoadingMore.value = false
-        currentLoadingJob?.cancel() // Cancel any ongoing load
+        currentLoadingJob?.cancel() // Cancelar cualquier carga en curso
         loadCategories(initialLoad = true)
     }
 }
