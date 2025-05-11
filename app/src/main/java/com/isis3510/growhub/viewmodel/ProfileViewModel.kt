@@ -4,9 +4,7 @@ import android.app.Application
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.isis3510.growhub.Repository.EventRepository
 import com.isis3510.growhub.Repository.ProfileRepository
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
@@ -36,6 +34,7 @@ class ProfileViewModel(application: Application) : AndroidViewModel(application)
             val profile = firebaseServicesFacade.fetchUserProfile()
             if (profile != null) {
                 profileRepository.storeProfile(profile)
+                profileRepository.deleteDuplicates()
                 this@ProfileViewModel.profile.add(profile)
             }
             isLoading.value = false

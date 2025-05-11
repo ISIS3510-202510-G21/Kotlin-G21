@@ -183,18 +183,14 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (upcomingEvents.isNotEmpty()) {
+            }
+
+            else if (upcomingEvents.isNotEmpty()) {
                 items(upcomingEvents) { event ->
                     MyEventsCard(event, onDelete = {
                         eventIdToDelete = event.name
                         showDialog = true
                     })
-                }
-
-                if (upcomingEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
                 }
 
                 if (isLoadingMoreUpcoming) {
@@ -206,7 +202,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+            }
+            else if (upcomingEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -225,18 +227,13 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (previousEvents.isNotEmpty()) {
+            }
+            else if (previousEvents.isNotEmpty()) {
                 items(previousEvents) { event ->
                     MyEventsCard(event, onDelete = {
                         eventIdToDelete = event.name
                         showDialog = true
                     })
-                }
-
-                if (previousEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
                 }
 
                 if (isLoadingMorePrevious) {
@@ -248,7 +245,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+            }
+            else if (previousEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -275,16 +278,6 @@ fun MyEventsView(
                     })
                 }
 
-                if (createdByMeEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
-                }
-
                 if (isLoadingMoreCreatedByMe) {
                     item {
                         CircularProgressIndicator(
@@ -294,7 +287,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+            }
+            else if (createdByMeEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }

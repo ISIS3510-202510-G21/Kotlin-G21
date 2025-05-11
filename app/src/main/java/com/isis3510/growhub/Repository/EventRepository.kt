@@ -25,6 +25,10 @@ class EventRepository(
         return localEvents
     }
 
+    suspend fun deleteDuplicates() {
+        eventDao.deleteDuplicates()
+    }
+
     suspend fun getFreeEvents(): List<Event> {
         return eventDao.getFreeEvents().map { it.toModel() }
     }

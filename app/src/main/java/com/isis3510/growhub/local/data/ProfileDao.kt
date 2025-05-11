@@ -13,4 +13,6 @@ interface ProfileDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertProfiles(profiles: ProfileEntity)
 
+    @Query("DELETE FROM profileentity WHERE id NOT IN (SELECT MIN(id) FROM profileentity GROUP BY name)")
+    suspend fun deleteDuplicates()
 }

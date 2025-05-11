@@ -74,6 +74,7 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
             val (events, snapshot) = firebaseServicesFacade.fetchMyEvents()
             GlobalData.myEventsUpcoming = events
             eventRepository.storeEvents(events)
+            eventRepository.deleteDuplicates()
             if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
                 Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
                 isLoadingUpcoming.value = false
@@ -107,10 +108,7 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: Calling eventRepository.getUpcomingEvents")
             val events = eventRepository.getUpcomingEvents(LocalDate.now().toString())
-            val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: return@launch
-            Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: currentUserUid = $currentUserUid")
-            val name = ProfileCache.get(currentUserUid)?.get("name") as? String
-            Log.d("MyEventsViewModel", "loadInitialUpcomingEventsLocal: name = $name")
+            val name = profileRepository.getProfile()?.name
             val filteredEvents = events.filter { event ->
                 val attendees = event.attendees
                 attendees.contains(name)
@@ -171,6 +169,7 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
             val (events, snapshot) = firebaseServicesFacade.fetchMyEvents()
             GlobalData.myEventsPrevious = events
             eventRepository.storeEvents(events)
+            eventRepository.deleteDuplicates()
             if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
                 Log.d("MyEventsViewModel", "loadInitialPreviousEvents: No events found, calling loadInitialPreviousEventsLocal")
                 isLoadingPrevious.value = false
@@ -204,13 +203,12 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Calling eventRepository.getPreviousEvents")
             val events = eventRepository.getPreviousEvents(LocalDate.now().toString())
-            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Received ${events.size} previous events from local storage")
             val name = profileRepository.getProfile()?.name
-            Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: name = $name")
             val filteredEvents = events.filter { event ->
                 val attendees = event.attendees
                 attendees.contains(name)
             }
+            GlobalData.myEventsPrevious = filteredEvents
             Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Received ${filteredEvents.size} previous events from local storage")
             previousEvents.value = filteredEvents
             Log.d("MyEventsViewModel", "loadInitialPreviousEventsLocal: Events: $filteredEvents")
@@ -265,20 +263,19 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
         viewModelScope.launch {
             Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: Calling firebaseServicesFacade.fetchMyEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchMyEventsCreate()
-            if (events.isEmpty()) {
-                //Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: No events found, calling loadInitialCreatedByMeEventsLocal")
-                //isLoadingCreatedByMe.value = false
-                //hasReachedEnd.value = true
-                //loadInitialCreatedByMeEventsLocal()
-                //return@launch
+            GlobalData.myEventsCreatedByMe = events
+            eventRepository.storeEvents(events)
+            eventRepository.deleteDuplicates()
+            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: No events found, calling loadInitialCreatedByMeEventsLocal")
+                isLoadingCreatedByMe.value = false
+                hasReachedEnd.value = true
+                loadInitialCreatedByMeEventsLocal()
+                return@launch
             }
             else {
                 Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: Received ${events.size} created by me events from Facade")
                 createdByMeEvents.value = events
-                //eventRepository.storeEvents(events)
-                // Check if events are being stored properly
-                //val storedEvents = eventRepository.getEvents(5, 0)
-                //Log.d("MyEventsViewModel", "loadInitialCreatedByMeEvents: Stored ${storedEvents.size} created by me events")
                 lastMyEventsSnapshot = snapshot
                 isLoadingCreatedByMe.value = false
                 hasReachedEnd.value = events.isEmpty()
@@ -292,13 +289,14 @@ class MyEventsViewModel(application: Application) : AndroidViewModel(application
         Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Start")
         isLoadingCreatedByMe.value = true
         viewModelScope.launch {
-            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Calling eventRepository.getEventsCreate")
-            val events = eventRepository.getEvents(5, 0)
+            Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Calling eventRepository.getEvents")
+            val events = eventRepository.getEvents(25, 0)
+            val name = profileRepository.getProfile()?.name
             val filteredEvents = events.filter { event ->
-                val currentUserUid = FirebaseAuth.getInstance().currentUser?.uid ?: return@filter false
                 val creator = event.creator
-                creator == currentUserUid
+                creator == name
             }
+            GlobalData.myEventsCreatedByMe = filteredEvents
             Log.d("MyEventsViewModel", "loadInitialCreatedByMeEventsLocal: Received ${filteredEvents.size} created by me events from local storage")
             createdByMeEvents.value = filteredEvents
             isLoadingCreatedByMe.value = false

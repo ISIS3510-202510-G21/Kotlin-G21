@@ -18,7 +18,9 @@ class ProfileRepository(
     suspend fun storeProfile(profile: Profile) {
         val entity = profile.toEntity()
         profileDao.insertProfiles(entity)
-
     }
 
+    suspend fun deleteDuplicates() {
+        profileDao.deleteDuplicates()
+    }
 }

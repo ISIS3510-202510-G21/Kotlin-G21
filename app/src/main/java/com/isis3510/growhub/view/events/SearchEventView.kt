@@ -95,6 +95,7 @@ fun SearchEventView(
     firebaseAnalytics: FirebaseAnalytics
 ) {
     val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
 
     val searchEvents by searchEventsViewModel.searchEvents
     val isLoading by searchEventsViewModel.isLoading
@@ -137,49 +138,93 @@ fun SearchEventView(
                 ) {
                     EventCardPlaceholder()
                 }
-            } else {
-                if (isNetworkAvailable == ConnectionStatus.Available) {
-                    LazyColumn(
-                        state = listStateSearch,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        item {
-                            SearchBar(searchEventsViewModel, firebaseAnalytics)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            SearchFilters(searchEventsViewModel, firebaseAnalytics)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
-                        items(searchEventsViewModel.filteredEvents) { event ->
-                            EventCard(event)
-                        }
-
-                        if (isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                    ) {
+            } else if (searchEvents.isNotEmpty()) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
                         SearchBar(searchEventsViewModel, firebaseAnalytics)
                         Spacer(modifier = Modifier.height(16.dp))
                         SearchFilters(searchEventsViewModel, firebaseAnalytics)
                         Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    items(searchEventsViewModel.filteredEvents) { event ->
+                        EventCard(event)
+                    }
+
+                    if (isLoadingMore) {
+                        item {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
+                            }
+                        }
+                    }
+                }
+            }
+            else if (searchEvents.isEmpty()) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
                         EventSectionEmpty()
+                    }
+                }
+            }
+
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
+                        EventSectionEmptyConnection()
+                    }
+                }
+            }
+            else if (initialNetworkAvailable.value == false) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
+                        EventSectionEmptyConnection()
                     }
                 }
             }
@@ -523,6 +568,35 @@ fun EventCardPlaceholder() {
 
 @Composable
 fun EventSectionEmpty() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No events found icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Events Found",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EventSectionEmptyConnection() {
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier

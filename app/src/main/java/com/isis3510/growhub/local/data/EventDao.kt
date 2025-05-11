@@ -25,6 +25,9 @@ interface EventDao {
 
     @Query("SELECT * FROM evententity WHERE startDate < :today ORDER BY startDate DESC")
     suspend fun getPreviousEvents(today: String): List<EventEntity>
+
+    @Query("DELETE FROM evententity WHERE id NOT IN (SELECT MIN(id) FROM evententity GROUP BY name)")
+    suspend fun deleteDuplicates()
 }
 
 
