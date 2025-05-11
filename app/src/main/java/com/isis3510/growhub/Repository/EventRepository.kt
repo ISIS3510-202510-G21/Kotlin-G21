@@ -29,6 +29,14 @@ class EventRepository(
         return eventDao.getFreeEvents().map { it.toModel() }
     }
 
+    suspend fun getUpcomingEvents(today: String): List<Event> {
+        return eventDao.getUpcomingEvents(today).map { it.toModel() }
+    }
+
+    suspend fun getPreviousEvents(today: String): List<Event> {
+        return eventDao.getPreviousEvents(today).map { it.toModel() }
+    }
+
     suspend fun getNearbyEvents(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double): List<Event> {
         return eventDao.getNearbyEvents(latMin, latMax, lonMin, lonMax).map { it.toModel() }
     }
