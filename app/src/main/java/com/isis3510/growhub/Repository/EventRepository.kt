@@ -41,8 +41,8 @@ class EventRepository(
         return eventDao.getPreviousEvents(today).map { it.toModel() }
     }
 
-    suspend fun getNearbyEvents(latMin: Double, latMax: Double, lonMin: Double, lonMax: Double): List<Event> {
-        return eventDao.getNearbyEvents(latMin, latMax, lonMin, lonMax).map { it.toModel() }
+    suspend fun getAllLocalEvents(): List<Event> {
+        return eventDao.getAllLocalEvents().map { it.toModel() }
     }
 
     // Store locally

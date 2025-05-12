@@ -38,7 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -73,8 +73,6 @@ import com.isis3510.growhub.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
-import com.isis3510.growhub.utils.ConnectionStatus
-import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -143,7 +141,7 @@ fun MapView(
             // Renderiza MapContent SI showMap es true
             if (showMap) {
                 // Pasa el ID seleccionado a MapContent
-                MapContent(mapViewModel, cameraPositionState, hasPermission, selectedEventId, isOffline)
+                MapContent(mapViewModel, cameraPositionState, hasPermission, selectedEventId, isOffline.value)
             } else {
                 Box(
                     modifier = Modifier
@@ -160,7 +158,7 @@ fun MapView(
             SwipeRefresh(
                 state = rememberSwipeRefreshState(isRefreshing),
                 onRefresh = {
-                    if (!isOffline) {
+                    if (!isOffline.value) {
                         mapViewModel.refreshNearbyEvents()
                     } else {
                         Toast.makeText(context, "Nearby events cannot be refreshed while you are offline", Toast.LENGTH_SHORT).show()
@@ -192,7 +190,7 @@ fun MapView(
 @Composable
 fun MapTopBar(
     onNavigateBack: () -> Unit = {},
-    isOffline: Boolean
+    isOffline: State<Boolean>
 ) {
     Box(
         modifier = Modifier
@@ -219,7 +217,7 @@ fun MapTopBar(
             )
         }
 
-        if (isOffline) {
+        if (isOffline.value) {
             Text(
                 text = "Offline",
                 color = Color.White,
