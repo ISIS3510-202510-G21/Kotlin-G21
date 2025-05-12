@@ -75,7 +75,7 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
 
     LaunchedEffect(Unit) {
         chatbotViewModel.checkBotStatus()
-        chatbotViewModel.sendInitialBotMessage(isNetworkAvailable == ConnectionStatus.Available)
+        chatbotViewModel.sendInitialBotMessage()
     }
 
     Scaffold(

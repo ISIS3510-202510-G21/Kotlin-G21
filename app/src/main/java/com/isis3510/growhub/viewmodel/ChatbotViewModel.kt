@@ -19,6 +19,7 @@ import com.isis3510.growhub.service.GeminiContent
 import com.isis3510.growhub.service.GeminiPart
 import com.isis3510.growhub.service.GeminiRequest
 import com.isis3510.growhub.service.Message
+import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.launch
 
 /**
@@ -38,6 +39,8 @@ class ChatbotViewModel(application: Application) : AndroidViewModel(application)
 
     private val localEvents = mutableStateListOf<Event>()
     private val localCategories = mutableStateListOf<Category>()
+
+    private val connectivityViewModel = ConnectivityViewModel(application)
 
     fun sendMessage(message: String, firebaseAnalytics: FirebaseAnalytics) {
         Log.d("ChatbotViewModel", "message: $message")
@@ -94,16 +97,20 @@ class ChatbotViewModel(application: Application) : AndroidViewModel(application)
         }
     }
 
-    fun sendInitialBotMessage(isOnline: Boolean) {
+    fun sendInitialBotMessage() {
         if (_messages.isEmpty()) {
-            val greeting = if (isOnline) {
-                "Hello, how can I help you today?"
-            } else {
-                "You're offline. Choose one:\n1. About GrowHub\n2. Show stored events\n3. Show event categories"
+            viewModelScope.launch {
+                val isOnline = connectivityViewModel.networkStatus.value == ConnectionStatus.Available
+                val greeting = if (isOnline) {
+                    "Hello, how can I help you today?"
+                } else {
+                    "You're offline. Choose one:\n1. About GrowHub\n2. Show stored events\n3. Show event categories"
+                }
+                _messages.add(Message(role = "assistant", content = greeting))
             }
-            _messages.add(Message(role = "assistant", content = greeting))
         }
     }
+
 
     private val categoryLetterMap = mutableMapOf<String, String>()
 

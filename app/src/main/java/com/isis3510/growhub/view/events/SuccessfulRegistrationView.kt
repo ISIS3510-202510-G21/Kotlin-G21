@@ -16,8 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.DateRange
@@ -73,12 +75,16 @@ fun SuccessfulRegistrationView(
         },
         containerColor = MaterialTheme.colorScheme.background,
         content = { innerPadding ->
+
+            val scrollState = rememberScrollState()
+
             if (event != null) {
                 Column(
                     modifier = Modifier
                         .padding(innerPadding)
                         .padding(horizontal = 16.dp)
-                        .fillMaxSize(),
+                        .fillMaxSize()
+                        .verticalScroll(scrollState),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
@@ -113,7 +119,8 @@ fun SuccessfulRegistrationView(
 
                     Spacer(modifier = Modifier.height(16.dp))
                     MyEventsButton(onMyEvents = onMyEvents)
-                    Spacer(modifier = Modifier.height(32.dp))
+
+                    Spacer(modifier = Modifier.height(64.dp))
                 }
             } else {
                 Box(
@@ -129,14 +136,13 @@ fun SuccessfulRegistrationView(
     )
 }
 
-
 @Composable
 fun EventTopBar() {
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .background(Color.White)
-            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.background)
+            .padding(16.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -257,7 +263,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>)
                                 .size(30.dp)
                                 .padding(end = 6.dp)
                         )
-                        Spacer(modifier = Modifier.width(36.dp))
+                        Spacer(modifier = Modifier.width(30.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "Cost",
@@ -273,7 +279,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>)
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(48.dp))
+                    Spacer(modifier = Modifier.width(36.dp))
 
                     VerticalDivider(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -296,7 +302,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>)
                                 .size(30.dp)
                                 .padding(end = 6.dp)
                         )
-                        Spacer(modifier = Modifier.width(36.dp))
+                        Spacer(modifier = Modifier.width(30.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = "Attendees",
