@@ -1,9 +1,11 @@
 package com.isis3510.growhub.viewmodel
 
 import android.app.Application
+import android.content.Context
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.collection.LruCache
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,9 +16,17 @@ import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.atan2
+import kotlin.math.cos
+import kotlin.math.pow
+import kotlin.math.sin
+import kotlin.math.sqrt
 
 @RequiresApi(Build.VERSION_CODES.O)
 class HomeEventsViewModel(application: Application) : AndroidViewModel(application) {
@@ -32,6 +42,10 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     val isLoadingRecommended = mutableStateOf(false)
 
     val connectivityViewModel = ConnectivityViewModel(application)
+    private val _isOffline = mutableStateOf(false)
+    val isOffline = _isOffline
+
+    private val locationViewModel = LocationViewModel(application)
 
     private var lastHomeEventsSnapshot: DocumentSnapshot? = null
     private var currentRecommendedIds = mutableSetOf<String>()
@@ -48,7 +62,28 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
 
+    // LRU Cache para upcoming, nearby y recommended events - almacena máximo 5 eventos cada uno
+    private val eventsCache = LruCache<String, List<Event>>(2)
+    private val timestampCache = LruCache<String, Long>(2)
+
+    private val UPCOMING_CACHE_KEY = "upcoming_events"
+    private val RECOMMENDED_CACHE_KEY = "recommended_events"
+    private val UPCOMING_CACHE_TIMESTAMP_KEY = "upcoming_events_timestamp"
+    private val RECOMMENDED_CACHE_TIMESTAMP_KEY = "recommended_events_timestamp"
+
+    // Tiempo de expiración para el caché (24 horas en milisegundos)
+    private val CACHE_EXPIRATION_TIME = 24 * 60 * 60 * 1000L
+
     init {
+        // Observar cambios en el estado de conectividad
+        viewModelScope.launch {
+            connectivityViewModel.networkStatus.collectLatest { status ->
+                _isOffline.value = status == ConnectionStatus.Unavailable || status == ConnectionStatus.Lost
+                loadInitialHomeEvents()
+                Log.d("HomeEventsViewModel", "Network status changed to: $status, isOffline: ${_isOffline.value}")
+            }
+        }
+
         loadInitialHomeEvents()
     }
 
@@ -65,15 +100,39 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     fun loadInitialUpcomingEvents() {
         Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Start")
         isLoadingUpcoming.value = true
+
+        // Verificar si hay datos en el caché y si no han expirado
+        val cachedEvents = eventsCache.get(UPCOMING_CACHE_KEY)
+        val cachedTimestamp = timestampCache.get(UPCOMING_CACHE_TIMESTAMP_KEY) as? Long ?: 0L
+        val currentTimeMillis = System.currentTimeMillis()
+
+        if (cachedEvents != null &&
+            (currentTimeMillis - cachedTimestamp < CACHE_EXPIRATION_TIME || isOffline.value)) {
+            // Usar datos en caché si están frescos o si estamos offline
+            Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Using cached data")
+            upcomingEvents.value = cachedEvents
+            isLoadingUpcoming.value = false
+            hasReachedEndUpcoming.value = cachedEvents.isEmpty()
+            return
+        }
+
         viewModelScope.launch {
+            if (isOffline.value) {
+                // Si estamos offline y no hay caché válido o ha expirado, cargar desde local
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Device is offline, loading from local")
+                loadInitialUpcomingEventsLocal()
+                return@launch
+            }
+
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            GlobalData.upcomingEvents = events
             if (events.isEmpty()) {
-                //Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
-                //isLoadingUpcoming.value = false
-                //hasReachedEndUpcoming.value = true
-                //loadInitialUpcomingEventsLocal()
-                //return@launch
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
+                isLoadingUpcoming.value = false
+                hasReachedEndUpcoming.value = true
+                loadInitialUpcomingEventsLocal()
+                return@launch
             }
             else {
                 val filteredEvents = events.filter { event ->
@@ -84,11 +143,17 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                     formattedDate.isAfter(today) || formattedDate == today
                 }
                 Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Received ${filteredEvents.size} upcoming events from Facade")
+
+                // Actualizar la interfaz
                 upcomingEvents.value = filteredEvents
-                //eventRepository.storeEvents(filteredEvents)
-                // Check if events are being stored properly
-                //val storedEvents = eventRepository.getEvents(5, 0)
-                //Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Stored ${storedEvents.size} upcoming events")
+
+                // Guardar en Room para acceso offline posterior
+                eventRepository.storeEvents(filteredEvents)
+
+                // Guardar en el caché LRU los primeros 5 eventos
+                val firstFiveEvents = filteredEvents.take(5)
+                eventsCache.put(UPCOMING_CACHE_KEY, firstFiveEvents)
+
                 lastHomeEventsSnapshot = snapshot
                 isLoadingUpcoming.value = false
                 hasReachedEndUpcoming.value = filteredEvents.isEmpty()
@@ -102,6 +167,17 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Start")
         isLoadingUpcoming.value = true
         viewModelScope.launch {
+            // Verificar primero en el caché LRU
+            val cachedEvents = eventsCache.get(UPCOMING_CACHE_KEY)
+            if (cachedEvents != null) {
+                Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Using LRU cached events")
+                upcomingEvents.value = cachedEvents
+                isLoadingUpcoming.value = false
+                hasReachedEndUpcoming.value = cachedEvents.isEmpty()
+                return@launch
+            }
+
+            // Si no hay en caché, cargar desde Room
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Calling eventRepository.getEvents")
             val events = eventRepository.getEvents(5, 0)
             val filteredEvents = events.filter { event ->
@@ -112,15 +188,34 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 formattedDate.isAfter(today) || formattedDate == today
             }
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Received ${filteredEvents.size} upcoming events from local storage")
+
+            // Actualizar la interfaz
             upcomingEvents.value = filteredEvents
+
+            // Actualizar también el caché LRU
+            eventsCache.put(UPCOMING_CACHE_KEY, filteredEvents)
+
             isLoadingUpcoming.value = false
             hasReachedEndUpcoming.value = filteredEvents.isEmpty()
             Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: hasReachedEndUpcoming = $hasReachedEndUpcoming")
         }
     }
 
+    // Méthod para limpiar el caché
+    fun clearEventsCache() {
+        eventsCache.remove(UPCOMING_CACHE_KEY)
+        eventsCache.remove(RECOMMENDED_CACHE_KEY)
+        timestampCache.remove(UPCOMING_CACHE_TIMESTAMP_KEY)
+        timestampCache.remove(RECOMMENDED_CACHE_TIMESTAMP_KEY)
+    }
+
+
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadMoreUpcomingEvents() {
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+            return
+        }
+
         Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Start - isLoadingMoreUpcoming = ${isLoadingMoreUpcoming.value}, hasReachedEndUpcoming = ${hasReachedEndUpcoming.value}")
         if (isLoadingMoreUpcoming.value || hasReachedEndUpcoming.value) return
 
@@ -150,6 +245,37 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: End")
     }
 
+
+    private fun filterWithinKm(events: List<Event>): List<Event> {
+        // Recupera coords de usuario
+        val (userLat, userLon) = locationViewModel.getLastKnownLatLng()
+        if (userLat == null || userLon == null) return emptyList()
+
+        return events.filter { event ->
+            // Asume que event.latitude y event.longitude son Doubles
+            val dist = haversineDistanceKm(
+                userLat, userLon,
+                event.location.latitude, event.location.longitude
+            )
+            dist <= 5.0
+        }
+    }
+
+    private fun haversineDistanceKm(
+        lat1: Double, lon1: Double,
+        lat2: Double, lon2: Double
+    ): Double {
+        val R = 6371.0 // km
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = sin(dLat / 2).pow(2) +
+                cos(Math.toRadians(lat1)) *
+                cos(Math.toRadians(lat2)) *
+                sin(dLon / 2).pow(2)
+        val c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return R * c
+    }
+
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialNearbyEvents() {
         Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Start")
@@ -157,9 +283,14 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
-            GlobalData.nearbyEvents = events
-            eventRepository.storeEvents(events)
-            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+
+            val filtered = withContext(Dispatchers.IO) {
+                filterWithinKm(events)
+            }
+
+            GlobalData.nearbyEvents = filtered
+            eventRepository.storeEvents(filtered)
+            if (filtered.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
                 Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
                 isLoadingNearby.value = false
                 hasReachedEndNearby.value = true
@@ -195,6 +326,10 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadMoreNearbyEvents() {
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+            return
+        }
+
         Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: Start - isLoadingMoreNearby = ${isLoadingMoreNearby.value}, hasReachedEndNearby = ${hasReachedEndNearby.value}")
         if (isLoadingMoreNearby.value || hasReachedEndNearby.value) return
 
@@ -205,6 +340,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: Received ${nextEvents.size} next nearby events from Facade")
             if (nextEvents.isNotEmpty()) {
                 nearbyEvents.value += nextEvents
+                GlobalData.nearbyEvents = nearbyEvents.value
                 lastHomeEventsSnapshot = newLastSnapshot
             } else {
                 hasReachedEndNearby.value = true
@@ -218,32 +354,34 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     }
 
 
+    // --- Recommended Events con caché LRU ---
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialRecommendedEvents() {
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Start")
         isLoadingRecommended.value = true
+
+        val now = System.currentTimeMillis()
+
         viewModelScope.launch {
+            if (isOffline.value) {
+                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Offline, loading local")
+                loadInitialRecommendedEventsLocal()
+                return@launch
+            }
+
             Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Calling firebaseServicesFacade.fetchHomeRecommendedEvents")
             val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
-            if (events.isEmpty()) {
-                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
-                //isLoadingRecommended.value = false
-                //hasReachedEndRecommended.value = true
-                //loadInitialRecommendedEventsLocal()
-                //return@launch
-            } else {
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Received ${events.size} recommended events from Facade")
-                recommendedEvents.value = events
-                //eventRepository.storeEvents(events)
-                // Check if events are being stored properly
-                //val storedEvents = eventRepository.getEvents(5, 0)
-                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Stored ${storedEvents.size} recommended events")
-                val newIds = events.map { it.name }
-                currentRecommendedIds.addAll(newIds)
-                isLoadingRecommended.value = false
-                hasReachedEndRecommended.value = events.isEmpty()
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: hasReachedEndRecommended = $hasReachedEndRecommended")
-            }
+            recommendedEvents.value = events
+            currentRecommendedIds.clear()
+            currentRecommendedIds.addAll(events.map { it.name })
+
+            isLoadingRecommended.value = false
+            hasReachedEndRecommended.value = events.isEmpty()
+
+            // Cache first 5
+            eventsCache.put(RECOMMENDED_CACHE_KEY, events.take(5))
+            timestampCache.put(RECOMMENDED_CACHE_KEY, now)
+            Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Cached ${events.take(5).size} recommended events")
         }
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: End")
     }
@@ -251,20 +389,38 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadInitialRecommendedEventsLocal() {
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Start")
         isLoadingRecommended.value = true
+        val ts = timestampCache.get(RECOMMENDED_CACHE_KEY) ?: 0L
+        val now = System.currentTimeMillis()
+
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Calling eventRepository.getEvents")
+            val cached = eventsCache.get(RECOMMENDED_CACHE_KEY)
+            if (cached != null && (now - ts < CACHE_EXPIRATION_TIME || isOffline.value)) {
+                Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Using cached data")
+                recommendedEvents.value = cached
+                currentRecommendedIds.clear()
+                currentRecommendedIds.addAll(cached.map { it.name })
+                isLoadingRecommended.value = false
+                hasReachedEndRecommended.value = cached.isEmpty()
+                return@launch
+            }
             val events = eventRepository.getEvents(5, 0)
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Received ${events.size} recommended events from local storage")
             recommendedEvents.value = events
             isLoadingRecommended.value = false
             hasReachedEndRecommended.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: hasReachedEndRecommended = $hasReachedEndRecommended")
+
+            // Update cache
+            eventsCache.put(RECOMMENDED_CACHE_KEY, events)
+            timestampCache.put(RECOMMENDED_CACHE_KEY, System.currentTimeMillis())
+            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Cached ${events.size} recommended events locally")
         }
         Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: End")
     }
 
     fun loadMoreRecommendedEvents() {
         Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Start - isLoadingMoreRecommended = ${isLoadingMoreRecommended.value}, hasReachedEndRecommended = ${hasReachedEndRecommended.value}")
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+            return
+        }
         if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
         isLoadingMoreRecommended.value = true
         viewModelScope.launch {
