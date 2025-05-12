@@ -226,7 +226,10 @@ fun AppNavGraph(
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
             EventDetailView(
                 eventName = eventName,
-                navController = navController)
+                navController = navController,
+                onBookEvent = {
+                    navController.navigate("${Destinations.SUCCESSFUL_REGISTRATION}/$eventName")
+                })
         }
 
         composable(Destinations.CHATBOT) {
@@ -239,15 +242,19 @@ fun AppNavGraph(
             )
         }
 
-        composable(Destinations.SUCCESSFUL_REGISTRATION) {
-            SuccessfulRegistrationView(
-                onNavigateBack = {
-                    navController.navigate(Destinations.HOME) {
-                        popUpTo(Destinations.SUCCESSFUL_REGISTRATION) { inclusive = true }
-                    }
-                },
-                viewModel = SuccessfulRegistrationViewModel(eventID = TODO())
+        composable(
+            route = "${Destinations.SUCCESSFUL_REGISTRATION}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
             )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            SuccessfulRegistrationView(eventName = eventName, onMyEvents = {
+                navController.navigate(Destinations.MY_EVENTS) {
+                    popUpTo(0) { inclusive = true } // clears everything
+                    launchSingleTop = true
+                }
+            })
         }
 
         composable(Destinations.SEARCH) {

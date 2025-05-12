@@ -322,7 +322,7 @@ fun ChatBar(
             trailingIcon = {
                 IconButton(
                     onClick = { onClickSend() },
-                    enabled = isNetworkAvailable == ConnectionStatus.Available && isBotActive
+                    enabled = true
                 ){
                     Icon(
                         imageVector = Icons.AutoMirrored.Filled.Send,
