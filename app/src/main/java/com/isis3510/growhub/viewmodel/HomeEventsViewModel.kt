@@ -4,6 +4,7 @@ import android.app.Application
 import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.collection.LruCache
 import androidx.compose.runtime.mutableStateOf
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -14,275 +15,233 @@ import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 @RequiresApi(Build.VERSION_CODES.O)
 class HomeEventsViewModel(application: Application) : AndroidViewModel(application) {
     private val firebaseServicesFacade = FirebaseServicesFacade()
-
-    // States for event lists and loading states
-    val upcomingEvents = mutableStateOf<List<Event>>(emptyList())
-    val nearbyEvents = mutableStateOf<List<Event>>(emptyList())
-    val recommendedEvents = mutableStateOf<List<Event>>(emptyList())
-
-    val isLoadingUpcoming = mutableStateOf(false)
-    val isLoadingNearby = mutableStateOf(false)
-    val isLoadingRecommended = mutableStateOf(false)
-
-    val connectivityViewModel = ConnectivityViewModel(application)
-
-    private var lastHomeEventsSnapshot: DocumentSnapshot? = null
-    private var currentRecommendedIds = mutableSetOf<String>()
-
-    // States for paginated loading
-    val isLoadingMoreUpcoming = mutableStateOf(false)
-    val isLoadingMoreNearby = mutableStateOf(false)
-    val isLoadingMoreRecommended = mutableStateOf(false)
-
-    val hasReachedEndUpcoming = mutableStateOf(false)
-    val hasReachedEndNearby = mutableStateOf(false)
-    val hasReachedEndRecommended = mutableStateOf(false)
-
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
 
+    val upcomingEvents = mutableStateOf<List<Event>>(emptyList())
+    val recommendedEvents = mutableStateOf<List<Event>>(emptyList())
+    val nearbyEvents = mutableStateOf<List<Event>>(emptyList())
+
+    val isLoadingUpcoming = mutableStateOf(false)
+    val isLoadingRecommended = mutableStateOf(false)
+    val isLoadingNearby = mutableStateOf(false)
+
+    val isLoadingMoreUpcoming = mutableStateOf(false)
+    val isLoadingMoreRecommended = mutableStateOf(false)
+    val isLoadingMoreNearby = mutableStateOf(false)
+
+    val hasReachedEndUpcoming = mutableStateOf(false)
+    val hasReachedEndRecommended = mutableStateOf(false)
+    val hasReachedEndNearby = mutableStateOf(false)
+
+    private val connectivityViewModel = ConnectivityViewModel(application)
+    private val _isOffline = mutableStateOf(false)
+    val isOffline = _isOffline
+
+    private var lastHomeUpcomingSnapshot: DocumentSnapshot? = null
+    private var lastHomeNearbySnapshot: DocumentSnapshot? = null
+    private var currentRecommendedIds = mutableSetOf<String>()
+
+    private val upcomingCache = LruCache<String, List<Event>>(1)
+    private val recommendedCache = LruCache<String, List<Event>>(1)
+
+    private val UPCOMING_KEY = "upcoming_events"
+    private val RECOMMENDED_KEY = "recommended_events"
+
     init {
-        loadInitialHomeEvents()
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun loadInitialHomeEvents() {
-        Log.d("HomeEventsViewModel", "loadInitialHomeEvents: Start")
-        loadInitialUpcomingEvents()
-        loadInitialNearbyEvents()
-        loadInitialRecommendedEvents()
-        Log.d("HomeEventsViewModel", "loadInitialHomeEvents: End")
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun loadInitialUpcomingEvents() {
-        Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Start")
-        isLoadingUpcoming.value = true
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Calling firebaseServicesFacade.fetchHomeEvents")
-            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
-            if (events.isEmpty()) {
-                //Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: No events found, calling loadInitialUpcomingEventsLocal")
-                //isLoadingUpcoming.value = false
-                //hasReachedEndUpcoming.value = true
-                //loadInitialUpcomingEventsLocal()
-                //return@launch
-            }
-            else {
-                val filteredEvents = events.filter { event ->
-                    val startDate = event.startDate
-                    val today = LocalDate.now()
-                    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-                    val formattedDate = LocalDate.parse(startDate, formatter)
-                    formattedDate.isAfter(today) || formattedDate == today
-                }
-                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: Received ${filteredEvents.size} upcoming events from Facade")
-                upcomingEvents.value = filteredEvents
-                //eventRepository.storeEvents(filteredEvents)
-                // Check if events are being stored properly
-                //val storedEvents = eventRepository.getEvents(5, 0)
-                //Log.d("MyEventsViewModel", "loadInitialUpcomingEvents: Stored ${storedEvents.size} upcoming events")
-                lastHomeEventsSnapshot = snapshot
-                isLoadingUpcoming.value = false
-                hasReachedEndUpcoming.value = filteredEvents.isEmpty()
-                Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: hasReachedEndUpcoming = $hasReachedEndUpcoming")
+            connectivityViewModel.networkStatus.collectLatest { status ->
+                _isOffline.value = status == ConnectionStatus.Unavailable || status == ConnectionStatus.Lost
+                loadInitialHomeEvents()
+                Log.d("HomeEventsViewModel", "Network status: $status, isOffline=${_isOffline.value}")
             }
         }
-        Log.d("HomeEventsViewModel", "loadInitialUpcomingEvents: End")
     }
 
-    private fun loadInitialUpcomingEventsLocal() {
-        Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Start")
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun loadInitialHomeEvents() {
+        loadInitialUpcomingEvents()
+        loadInitialRecommendedEvents()
+        loadInitialNearbyEvents()
+    }
+
+    // Upcoming
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun loadInitialUpcomingEvents() {
         isLoadingUpcoming.value = true
+        if (_isOffline.value) return loadUpcomingFromCacheOrRoom()
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Calling eventRepository.getEvents")
-            val events = eventRepository.getEvents(5, 0)
-            val filteredEvents = events.filter { event ->
-                val startDate = event.startDate
-                val today = LocalDate.now()
-                val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-                val formattedDate = LocalDate.parse(startDate, formatter)
-                formattedDate.isAfter(today) || formattedDate == today
-            }
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: Received ${filteredEvents.size} upcoming events from local storage")
-            upcomingEvents.value = filteredEvents
+            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            val filtered = events.filterUpcoming()
+            upcomingEvents.value = filtered
+            eventRepository.storeEvents(filtered)
+            upcomingCache.put(UPCOMING_KEY, filtered.take(5))
+            lastHomeUpcomingSnapshot = snapshot
             isLoadingUpcoming.value = false
-            hasReachedEndUpcoming.value = filteredEvents.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialUpcomingEventsLocal: hasReachedEndUpcoming = $hasReachedEndUpcoming")
+            hasReachedEndUpcoming.value = filtered.isEmpty()
+        }
+    }
+
+    private fun loadUpcomingFromCacheOrRoom() {
+        val cached = upcomingCache.get(UPCOMING_KEY)
+        if (!cached.isNullOrEmpty()) {
+            upcomingEvents.value = cached
+            isLoadingUpcoming.value = false
+            hasReachedEndUpcoming.value = cached.isEmpty()
+            return
+        }
+        viewModelScope.launch {
+            val room = eventRepository.getEvents(5, 0).filterUpcoming()
+            upcomingEvents.value = room
+            isLoadingUpcoming.value = false
+            hasReachedEndUpcoming.value = room.isEmpty()
+            upcomingCache.put(UPCOMING_KEY, room)
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadMoreUpcomingEvents() {
-        Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Start - isLoadingMoreUpcoming = ${isLoadingMoreUpcoming.value}, hasReachedEndUpcoming = ${hasReachedEndUpcoming.value}")
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) return
         if (isLoadingMoreUpcoming.value || hasReachedEndUpcoming.value) return
-
         isLoadingMoreUpcoming.value = true
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Calling firebaseServicesFacade.fetchNextHomeEvents")
-            val (nextEvents, newLastSnapshot) = firebaseServicesFacade.fetchNextHomeEvents(lastSnapshot = lastHomeEventsSnapshot)
-            val filteredNextEvents = nextEvents
-                .filter { event ->
-                    val startDate = event.startDate
-                    val today = LocalDate.now()
-                    val formatter = DateTimeFormatter.ofPattern("dd/MM/yyyy")
-                    val formattedDate = LocalDate.parse(startDate, formatter)
-                    formattedDate.isAfter(today) || formattedDate == today
-                }
-            Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: Received ${filteredNextEvents.size} next upcoming events from Facade")
-            if (filteredNextEvents.isNotEmpty()) {
-                upcomingEvents.value += filteredNextEvents
-                lastHomeEventsSnapshot = newLastSnapshot
-            } else {
-                hasReachedEndUpcoming.value = true
-                Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: No more upcoming events, hasReachedEndUpcoming set to true")
-            }
+            val (next, newSnap) = firebaseServicesFacade.fetchNextHomeEvents(lastSnapshot = lastHomeUpcomingSnapshot)
+            val filteredNext = next.filterUpcoming()
+            if (filteredNext.isNotEmpty()) {
+                upcomingEvents.value += filteredNext
+                lastHomeUpcomingSnapshot = newSnap
+            } else hasReachedEndUpcoming.value = true
             isLoadingMoreUpcoming.value = false
-            Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: isLoadingMoreUpcoming set to false")
         }
-        Log.d("HomeEventsViewModel", "loadMoreUpcomingEvents: End")
     }
 
+    // Recommended
+    @RequiresApi(Build.VERSION_CODES.O)
+    fun loadInitialRecommendedEvents() {
+        isLoadingRecommended.value = true
+        if (_isOffline.value) return loadRecommendedFromCacheOrRoom()
+        viewModelScope.launch {
+            val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
+            recommendedEvents.value = events
+            currentRecommendedIds = events.mapTo(mutableSetOf()) { it.name + "-" + it.startDate }
+            recommendedCache.put(RECOMMENDED_KEY, events.take(5))
+            isLoadingRecommended.value = false
+            hasReachedEndRecommended.value = events.isEmpty()
+        }
+    }
+
+    private fun loadRecommendedFromCacheOrRoom() {
+        val cached = recommendedCache.get(RECOMMENDED_KEY)
+        if (!cached.isNullOrEmpty()) {
+            recommendedEvents.value = cached
+            isLoadingRecommended.value = false
+            hasReachedEndRecommended.value = cached.isEmpty()
+            return
+        }
+        viewModelScope.launch {
+            val room = eventRepository.getEvents(5, 0)
+            recommendedEvents.value = room
+            isLoadingRecommended.value = false
+            hasReachedEndRecommended.value = room.isEmpty()
+            recommendedCache.put(RECOMMENDED_KEY, room)
+        }
+    }
+
+    fun loadMoreRecommendedEvents() {
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) return
+        if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
+        isLoadingMoreRecommended.value = true
+        viewModelScope.launch {
+            val next = firebaseServicesFacade.fetchNextHomeRecommendedEvents(offsetIds = currentRecommendedIds)
+            if (next.isNotEmpty()) {
+                recommendedEvents.value += next
+                currentRecommendedIds.addAll(next.map { it.name + "-" + it.startDate })
+            } else hasReachedEndRecommended.value = true
+            isLoadingMoreRecommended.value = false
+        }
+    }
+
+    // Nearby
     @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialNearbyEvents() {
-        Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Start")
         isLoadingNearby.value = true
-        viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
-            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
-            GlobalData.nearbyEvents = events
-            eventRepository.storeEvents(events)
-            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
-                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
-                isLoadingNearby.value = false
-                hasReachedEndNearby.value = true
-                loadInitialNearbyEventsLocal()
-                return@launch
-            }
-            else {
-                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Received ${events.size} nearby events from Facade")
-                nearbyEvents.value = events
-                lastHomeEventsSnapshot = snapshot
-                isLoadingNearby.value = false
-                hasReachedEndNearby.value = events.isEmpty()
-                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: hasReachedEndNearby = $hasReachedEndNearby")
-            }
-        }
-        Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: End")
-    }
+        if (_isOffline.value) {
+            viewModelScope.launch {
+                val local = eventRepository.getAllLocalEvents()
+                val filtered = withContext(Dispatchers.IO) { filterWithinKm(local) }
+                GlobalData.nearbyEvents = filtered
 
-    private fun loadInitialNearbyEventsLocal() {
-        Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Start")
-        isLoadingNearby.value = true
+                nearbyEvents.value = filtered
+                isLoadingNearby.value = false
+                hasReachedEndNearby.value = filtered.isEmpty()
+            }
+            return
+        }
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Calling eventRepository.getEvents")
-            val events = eventRepository.getFreeEvents()
-            GlobalData.nearbyEvents = events
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Received ${events.size} nearby events from local storage")
-            nearbyEvents.value = events
+            val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
+            val filtered = withContext(Dispatchers.IO) { filterWithinKm(events) }
+            nearbyEvents.value = filtered
+            GlobalData.nearbyEvents = filtered
+            eventRepository.storeEvents(filtered)
+            lastHomeNearbySnapshot = snapshot
             isLoadingNearby.value = false
-            hasReachedEndNearby.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: hasReachedEndNearby = $hasReachedEndNearby")
+            hasReachedEndNearby.value = filtered.isEmpty()
         }
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadMoreNearbyEvents() {
-        Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: Start - isLoadingMoreNearby = ${isLoadingMoreNearby.value}, hasReachedEndNearby = ${hasReachedEndNearby.value}")
+        if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) return
         if (isLoadingMoreNearby.value || hasReachedEndNearby.value) return
-
         isLoadingMoreNearby.value = true
         viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: Calling firebaseServicesFacade.fetchNextHomeEvents")
-            val (nextEvents, newLastSnapshot) = firebaseServicesFacade.fetchNextHomeEvents(lastSnapshot = lastHomeEventsSnapshot)
-            Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: Received ${nextEvents.size} next nearby events from Facade")
-            if (nextEvents.isNotEmpty()) {
-                nearbyEvents.value += nextEvents
-                lastHomeEventsSnapshot = newLastSnapshot
-            } else {
-                hasReachedEndNearby.value = true
-
-                Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: No more nearby events, hasReachedEndNearby set to true")
-            }
+            val (next, newSnap) = firebaseServicesFacade.fetchNextHomeEvents(lastSnapshot = lastHomeNearbySnapshot)
+            val filtered = withContext(Dispatchers.IO) { filterWithinKm(next) }
+            if (filtered.isNotEmpty()) {
+                nearbyEvents.value += filtered
+                GlobalData.nearbyEvents = nearbyEvents.value
+                lastHomeNearbySnapshot = newSnap
+            } else hasReachedEndNearby.value = true
             isLoadingMoreNearby.value = false
-            Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: isLoadingMoreNearby set to false")
         }
-        Log.d("HomeEventsViewModel", "loadMoreNearbyEvents: End")
     }
-
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private fun loadInitialRecommendedEvents() {
-        Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Start")
-        isLoadingRecommended.value = true
-        viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Calling firebaseServicesFacade.fetchHomeRecommendedEvents")
-            val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
-            if (events.isEmpty()) {
-                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: No events found, calling loadInitialRecommendedEventsLocal")
-                //isLoadingRecommended.value = false
-                //hasReachedEndRecommended.value = true
-                //loadInitialRecommendedEventsLocal()
-                //return@launch
-            } else {
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Received ${events.size} recommended events from Facade")
-                recommendedEvents.value = events
-                //eventRepository.storeEvents(events)
-                // Check if events are being stored properly
-                //val storedEvents = eventRepository.getEvents(5, 0)
-                //Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: Stored ${storedEvents.size} recommended events")
-                val newIds = events.map { it.name }
-                currentRecommendedIds.addAll(newIds)
-                isLoadingRecommended.value = false
-                hasReachedEndRecommended.value = events.isEmpty()
-                Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: hasReachedEndRecommended = $hasReachedEndRecommended")
-            }
+    private fun List<Event>.filterUpcoming(): List<Event> {
+        val today = LocalDate.now()
+        val fmt = DateTimeFormatter.ofPattern("dd/MM/yyyy")
+        return filter {
+            val date = LocalDate.parse(it.startDate, fmt)
+            !date.isBefore(today)
         }
-        Log.d("HomeEventsViewModel", "loadInitialRecommendedEvents: End")
     }
 
-    private fun loadInitialRecommendedEventsLocal() {
-        Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Start")
-        isLoadingRecommended.value = true
-        viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Calling eventRepository.getEvents")
-            val events = eventRepository.getEvents(5, 0)
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: Received ${events.size} recommended events from local storage")
-            recommendedEvents.value = events
-            isLoadingRecommended.value = false
-            hasReachedEndRecommended.value = events.isEmpty()
-            Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: hasReachedEndRecommended = $hasReachedEndRecommended")
+    private fun filterWithinKm(events: List<Event>): List<Event> {
+        val (userLat, userLon) = LocationViewModel(getApplication()).getLastKnownLatLng()
+        if (userLat == null || userLon == null) return emptyList()
+        return events.filter {
+            haversineKm(userLat, userLon, it.location.latitude, it.location.longitude) <= 5.0
         }
-        Log.d("HomeEventsViewModel", "loadInitialRecommendedEventsLocal: End")
     }
 
-    fun loadMoreRecommendedEvents() {
-        Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Start - isLoadingMoreRecommended = ${isLoadingMoreRecommended.value}, hasReachedEndRecommended = ${hasReachedEndRecommended.value}")
-        if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
-        isLoadingMoreRecommended.value = true
-        viewModelScope.launch {
-            Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Calling firebaseServicesFacade.fetchNextHomeRecommendedEvents, currentRecommendedIds size = ${currentRecommendedIds.size}")
-            val nextEvents = firebaseServicesFacade.fetchNextHomeRecommendedEvents(offsetIds = currentRecommendedIds)
-            Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Received ${nextEvents.size} next recommended events from Facade")
-            if (nextEvents.isNotEmpty()) {
-                recommendedEvents.value += nextEvents
-                val newIds = nextEvents.map { it.name }
-                currentRecommendedIds.addAll(newIds)
-                Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: Updated currentRecommendedIds to ${currentRecommendedIds.size} elements")
-            } else {
-                hasReachedEndRecommended.value = true
-                Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: No more recommended events, hasReachedEndRecommended set to true")
-            }
-            isLoadingMoreRecommended.value = false
-            Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: isLoadingMoreRecommended set to false")
-        }
-        Log.d("HomeEventsViewModel", "loadMoreRecommendedEvents: End")
+    private fun haversineKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
+        val R = 6371.0
+        val dLat = Math.toRadians(lat2 - lat1)
+        val dLon = Math.toRadians(lon2 - lon1)
+        val a = kotlin.math.sin(dLat/2).pow(2) + kotlin.math.cos(Math.toRadians(lat1)) * kotlin.math.cos(Math.toRadians(lat2)) * kotlin.math.sin(dLon/2).pow(2)
+        val c = 2 * kotlin.math.atan2(sqrt(a), kotlin.math.sqrt(1 - a))
+        return R * c
     }
 }
