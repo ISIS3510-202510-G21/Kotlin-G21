@@ -11,7 +11,9 @@ import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.Location
 import com.isis3510.growhub.model.objects.Profile
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.time.ZoneId
 
 /**
@@ -20,8 +22,8 @@ import java.time.ZoneId
 
 class FirebaseServicesFacade(private val filter: Filter = Filter()) {
 
-    suspend fun fetchUserProfile(): Profile? {
-        return try {
+    suspend fun fetchUserProfile(): Profile? = withContext(Dispatchers.IO){
+        return@withContext try {
             val data = filter.getProfileData()
 
             Profile(
@@ -39,8 +41,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEvents(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    suspend fun fetchMyEvents(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, lastSnapshot) = filter.getMyEventsData(limit)
             Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
@@ -53,8 +55,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     suspend fun fetchNextMyEvents(
         limit: Long = 3,
         lastSnapshot: DocumentSnapshot? = null
-    ): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    ): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsData(limit, lastSnapshot)
             Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
         } catch (e: Exception) {
@@ -64,8 +66,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchMyEventsCreate(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    suspend fun fetchMyEventsCreate(limit: Long = 25): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, lastSnapshot) = filter.getMyEventsCreateData(limit)
             Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
@@ -78,8 +80,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     suspend fun fetchNextMyEventsCreate(
         limit: Long = 3,
         lastSnapshot: DocumentSnapshot? = null
-    ): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    ): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, newLastSnapshot) = filter.getNextMyEventsCreateData(limit, lastSnapshot)
             Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
         } catch (e: Exception) {
@@ -152,8 +154,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    suspend fun fetchSearchEvents(limit: Long = 5): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    suspend fun fetchSearchEvents(limit: Long = 5): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, lastSnapshot) = filter.getSearchEventsData(limit)
             Pair(mapFilterEventsToEvents(filteredEvents), lastSnapshot)
         } catch (e: Exception) {
@@ -166,8 +168,8 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     suspend fun fetchNextSearchEvents(
         limit: Long = 3,
         lastSnapshot: DocumentSnapshot? = null
-    ): Pair<List<Event>, DocumentSnapshot?> {
-        return try {
+    ): Pair<List<Event>, DocumentSnapshot?> = withContext(Dispatchers.IO){
+        return@withContext try {
             val (filteredEvents, newLastSnapshot) = filter.getNextSearchEventsData(limit, lastSnapshot)
             Pair(mapFilterEventsToEvents(filteredEvents), newLastSnapshot)
         } catch (e: Exception) {
@@ -177,7 +179,7 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
-    private suspend fun mapFilterEventsToEvents(filteredEvents: List<Map<String, Any>>): List<Event> {
+    private suspend fun mapFilterEventsToEvents(filteredEvents: List<Map<String, Any>>): List<Event> = withContext(Dispatchers.Default) {
         val events = mutableListOf<Event>()
 
         for (event in filteredEvents) {
@@ -269,7 +271,7 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             )
             events.add(eventExtracted)
         }
-        return events
+        return@withContext events
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
@@ -345,17 +347,17 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
         }
     }
 
-    suspend fun fetchSkills(): List<String> {
+    suspend fun fetchSkills(): List<String> = withContext(Dispatchers.IO) {
         val skills = filter.getSkillsData()
         val skillsList = mutableListOf<String>()
         for (skill in skills) {
             val name = skill["name"] as? String ?: ""
             skillsList.add(name)
         }
-        return skillsList
+        return@withContext skillsList
     }
 
-    suspend fun fetchLocations(): List<String> {
+    suspend fun fetchLocations(): List<String> = withContext(Dispatchers.IO) {
         val locations = filter.getLocationsData()
         val locationsList = mutableListOf<String>()
         for (location in locations) {
@@ -364,6 +366,6 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
                 locationsList.add(city)
             }
         }
-        return locationsList
+        return@withContext locationsList
     }
 }

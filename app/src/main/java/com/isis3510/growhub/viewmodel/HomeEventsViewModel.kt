@@ -13,6 +13,7 @@ import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
@@ -29,6 +30,8 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     val isLoadingUpcoming = mutableStateOf(false)
     val isLoadingNearby = mutableStateOf(false)
     val isLoadingRecommended = mutableStateOf(false)
+
+    val connectivityViewModel = ConnectivityViewModel(application)
 
     private var lastHomeEventsSnapshot: DocumentSnapshot? = null
     private var currentRecommendedIds = mutableSetOf<String>()
@@ -155,12 +158,13 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Calling firebaseServicesFacade.fetchHomeEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
             GlobalData.nearbyEvents = events
-            if (events.isEmpty()) {
-                //Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
-                //isLoadingNearby.value = false
-                //hasReachedEndNearby.value = true
-                //loadInitialNearbyEventsLocal()
-                //return@launch
+            eventRepository.storeEvents(events)
+            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: No events found, calling loadInitialNearbyEventsLocal")
+                isLoadingNearby.value = false
+                hasReachedEndNearby.value = true
+                loadInitialNearbyEventsLocal()
+                return@launch
             }
             else {
                 Log.d("HomeEventsViewModel", "loadInitialNearbyEvents: Received ${events.size} nearby events from Facade")
@@ -179,7 +183,8 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         isLoadingNearby.value = true
         viewModelScope.launch {
             Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Calling eventRepository.getEvents")
-            val events = eventRepository.getEvents(5, 0)
+            val events = eventRepository.getFreeEvents()
+            GlobalData.nearbyEvents = events
             Log.d("HomeEventsViewModel", "loadInitialNearbyEventsLocal: Received ${events.size} nearby events from local storage")
             nearbyEvents.value = events
             isLoadingNearby.value = false

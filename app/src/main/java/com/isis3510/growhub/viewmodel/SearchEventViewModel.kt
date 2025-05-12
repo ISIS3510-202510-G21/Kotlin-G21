@@ -10,14 +10,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import com.google.firebase.Firebase
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.firestore.DocumentSnapshot
 import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -48,6 +50,8 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
     private val eventRepository = EventRepository(db)
     private val firebaseAnalytics = FirebaseAnalytics.getInstance(application)
 
+    private val connectivityViewModel = ConnectivityViewModel(application)
+
     init {
         loadInitialEvents()
     }
@@ -68,12 +72,15 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             Log.d("SearchEventViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
-            if (events.isEmpty()) {
-                //Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
-                //isLoading.value = false
-                //hasReachedEnd.value = true
-                //loadInitialSearchEventsLocal()
-                //return@launch
+            GlobalData.searchEventsList = events
+            eventRepository.storeEvents(events)
+            eventRepository.deleteDuplicates()
+            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
+                isLoading.value = false
+                hasReachedEnd.value = true
+                loadInitialSearchEventsLocal()
+                return@launch
             }
             else {
                 Log.d("SearchEventViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
@@ -94,7 +101,8 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Calling eventRepository.getEvents")
             val events = eventRepository.getEvents(5, 0)
-            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${filteredEvents.size} search events from local storage")
+            GlobalData.searchEventsList = events
+            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${events.size} search events from local storage")
             searchEvents.value = events
             isLoading.value = false
             hasReachedEnd.value = events.isEmpty()
