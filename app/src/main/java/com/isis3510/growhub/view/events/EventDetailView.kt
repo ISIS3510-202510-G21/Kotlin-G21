@@ -14,6 +14,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.Painter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
@@ -21,22 +22,18 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.rememberNavController
 import coil.compose.rememberAsyncImagePainter
-import com.google.firebase.firestore.DocumentReference
-import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.R
+import com.isis3510.growhub.viewmodel.EventDetailViewModel
 import com.isis3510.growhub.model.objects.Event
-import com.isis3510.growhub.model.objects.Location
-import kotlinx.coroutines.tasks.await
-import java.text.SimpleDateFormat
-import java.util.*
 
 /* ---------- Paleta / estilos ---------- */
-private val CardShape = RoundedCornerShape(12.dp)
+private val CardShape  = RoundedCornerShape(12.dp)
 private val CardBg     = Color.White
-private val Accent = Color(0xFF5669FF)
+private val Accent     = Color(0xFF5669FF)
 private val ChipBg     = Color(0xFFF4F4F4)
 private val ChipLabel  = Color(0xFF9A9A9A)
 private val BodyText   = Color(0xFF191D17)
@@ -46,91 +43,20 @@ private val BodyText   = Color(0xFF191D17)
 @Composable
 fun EventDetailView(
     eventName: String,
-    navController: NavHostController
+    navController: NavHostController,
+    vm: EventDetailViewModel = viewModel()
 ) {
-    var event by remember { mutableStateOf<Event?>(null) }
-    var loading by remember { mutableStateOf(true) }
-
+    /* ---- dispara la carga (Main + IO en el VM) ---- */
     val inPreview = LocalInspectionMode.current
-    if (inPreview && event == null) {
-        event = Event(
-            name = "IA Prompt Engineering",
-            description = "En un mundo donde la inteligencia artificial ...",
-            location = Location("Cra. 1 #18a‑12", "Bogotá", "Edificio ML",4.65, -74.05, false),
-            startDate = "24 Nov 2025",
-            endDate = "24 Nov 2025",
-            category = "IA Engineers",
-            imageUrl = "https://placehold.co/600x400/png",
-            cost = 0,
-            attendees = listOf("Miguel Durán"),
-            skills = listOf("Programming"),
-            creator = ""
-        )
-        loading = false
+    LaunchedEffect(eventName, inPreview) {
+        vm.loadEvent(eventName, inPreview)
     }
 
-    LaunchedEffect(eventName) {
-        if (inPreview) return@LaunchedEffect
+    /* ---- estado reactivo ---- */
+    val event   by vm.event
+    val loading by vm.loading
 
-        val db = FirebaseFirestore.getInstance()
-        val snapshot = db.collection("events")
-            .whereEqualTo("name", eventName)
-            .limit(1)
-            .get()
-            .await()
-            .documents
-            .firstOrNull()
-
-        snapshot?.let { d ->
-            suspend fun DocumentReference?.string(field: String): String =
-                this?.get()?.await()?.getString(field) ?: "Unknown"
-
-            val categoryName = d.getDocumentReference("category").string("name")
-            val locationRef = d.getDocumentReference("location_id")
-            val locationSnapshot = locationRef?.get()?.await()
-
-            val location = if (locationSnapshot != null && locationSnapshot.exists()) {
-                Location(
-                    address = locationSnapshot.getString("address") ?: "Unknown",
-                    city = locationSnapshot.getString("city") ?: "Unknown",
-                    latitude = locationSnapshot.getDouble("latitude") ?: 0.0,
-                    longitude = locationSnapshot.getDouble("longitude") ?: 0.0,
-                    university = locationSnapshot.getBoolean("university") ?: false
-                )
-            } else {
-                Location("Unknown", "Unknown", "Unknown",0.0, 0.0, false)
-            }
-
-            val attendees = (d["attendees"] as? List<*>)?.mapNotNull {
-                (it as? DocumentReference)?.string("name")
-            } ?: emptyList()
-
-            val skills = (d["skills"] as? List<*>)?.mapNotNull {
-                (it as? DocumentReference)?.string("name")
-            } ?: emptyList()
-
-            val creator = ""
-
-            event = Event(
-                name = d.getString("name") ?: "",
-                description = d.getString("description") ?: "",
-                location = location,
-                startDate = d.getTimestamp("start_date")?.toDate()
-                    ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
-                endDate = d.getTimestamp("end_date")?.toDate()
-                    ?.let { SimpleDateFormat("dd MMM yyyy", Locale.getDefault()).format(it) } ?: "",
-                category = categoryName,
-                imageUrl = d.getString("image") ?: "",
-                cost = d.getDouble("cost")?.toInt() ?: 0,
-                attendees = attendees,
-                skills = skills,
-                creator = creator
-            )
-        }
-        loading = false
-    }
-
-    /* ------------------------- UI --------------------------------------- */
+    /* ---------------- UI --------------------------- */
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
@@ -175,71 +101,16 @@ fun EventDetailView(
                             .fillMaxWidth()
                             .height(190.dp)
                             .clip(CardShape)
-                            .background(Color.LightGray, shape = CardShape)
+                            .background(Color.LightGray, shape = CardShape),
+                        contentScale = ContentScale.Crop,
+                        alignment = Alignment.Center
                     )
                 }
 
-
-                /* ---------- Nombre ---------- */
+                /* ---------- Nombre + chips ---------- */
                 item {
-                    Card(
-                        shape = CardShape,
-                        colors = CardDefaults.cardColors(containerColor = CardBg),
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        Column(
-                            modifier = Modifier
-                                .background(ChipBg, CardShape) // ← fondo gris aplicado a todo el bloque
-                                .padding(horizontal = 16.dp, vertical = 12.dp)
-                        ) {
-                            // Título dentro del gris
-                            Text(
-                                text = ev.name,
-                                fontSize = 18.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = BodyText
-                            )
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Fila de chips
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                InfoChip(
-                                    label = "Cost",
-                                    value = if (ev.cost == 0) "FREE" else "\$${ev.cost}",
-                                    icon = painterResource(id = R.drawable.ic_money),
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                VerticalDivider()
-
-                                InfoChip(
-                                    label = "Category",
-                                    value = ev.category,
-                                    icon = painterResource(id = R.drawable.ic_category),
-                                    modifier = Modifier.weight(1f)
-                                )
-
-                                VerticalDivider()
-
-                                InfoChip(
-                                    label = "Location",
-                                    value = ev.location.getInfo().ifBlank { "Unknown" },
-                                    icon = painterResource(id = R.drawable.ic_pin),
-                                    modifier = Modifier.weight(1f)
-                                )
-                            }
-                        }
-                    }
+                    EventHeaderCard(ev)
                 }
-
-
-
 
                 /* ---------- Start / End ---------- */
                 item {
@@ -264,17 +135,21 @@ fun EventDetailView(
                     }
                 }
 
-                /* ---------- Description ---------- */
-                /* ---------- Description ---------- */
+                /* ---------- Description / Skills ---------- */
                 item {
                     SectionCard("Description") {
                         Column {
-                            Text(ev.description, fontSize = 14.sp, color = BodyText, lineHeight = 18.sp)
+                            Text(
+                                ev.description,
+                                fontSize = 14.sp,
+                                color = BodyText,
+                                lineHeight = 18.sp
+                            )
 
                             if (ev.skills.isNotEmpty()) {
-                                Spacer(modifier = Modifier.height(16.dp))
+                                Spacer(Modifier.height(16.dp))
                                 Text("Skills", fontWeight = FontWeight.Bold, color = BodyText)
-                                Spacer(modifier = Modifier.height(6.dp))
+                                Spacer(Modifier.height(6.dp))
                                 FlowRow(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -284,7 +159,6 @@ fun EventDetailView(
                                             onClick = {},
                                             label = { Text(s) },
                                             colors = AssistChipDefaults.assistChipColors(
-
                                                 labelColor = BodyText
                                             )
                                         )
@@ -294,8 +168,6 @@ fun EventDetailView(
                         }
                     }
                 }
-
-
 
                 /* ---------- Speaker ---------- */
                 if (ev.attendees.isNotEmpty()) {
@@ -325,7 +197,75 @@ fun EventDetailView(
     }
 }
 
-/* ---------- COMPONENTES REUTILIZABLES ----------------------------------- */
+/* ---------- sub-componentes -------------------------------------------- */
+
+@Composable
+private fun EventHeaderCard(ev: Event) {
+    Card(
+        shape = CardShape,
+        colors = CardDefaults.cardColors(containerColor = CardBg),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .background(ChipBg, CardShape)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
+            Text(
+                text = ev.name,
+                fontSize = 18.sp,
+                fontWeight = FontWeight.Bold,
+                color = BodyText
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                /* ─── fila 1 ─── */
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    InfoChip(
+                        label = "Cost",
+                        value = if (ev.cost == 0) "FREE" else "\$${ev.cost}",
+                        icon = painterResource(id = R.drawable.ic_money),
+                        modifier = Modifier.weight(1f)
+                    )
+                    VerticalDivider()
+                    InfoChip(
+                        label = "Category",
+                        value = ev.category,
+                        icon = painterResource(id = R.drawable.ic_category),
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                Spacer(Modifier.height(8.dp))
+
+                /* ─── fila 2 ─── */
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    InfoChip(
+                        label = "Location",
+                        value = ev.location.getInfo().ifBlank { "Unknown" },
+                        icon = painterResource(id = R.drawable.ic_pin)
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun InfoChip(
     label: String,
@@ -336,24 +276,20 @@ private fun InfoChip(
     Row(
         modifier = modifier
             .background(ChipBg, CardShape)
-            .padding(vertical = 10.dp, horizontal = 4.dp)
-            .width(IntrinsicSize.Min),
+            .padding(vertical = 10.dp, horizontal = 15.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        // Columna izquierda: Ícono
-        Column(
-            modifier = Modifier.padding(end = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
-        ) {
-            Icon(
-                painter = icon,
-                contentDescription = null,
-                tint = ChipLabel,
-                modifier = Modifier.size(20.dp)
-            )
-        }
-
-        // Columna derecha: Texto
+        /* icono */
+        Icon(
+            painter = icon,
+            contentDescription = null,
+            tint = ChipLabel,
+            modifier = Modifier
+                .padding(end = 8.dp)
+                .size(20.dp)
+        )
+ 
+        /* texto */
         Column {
             Text(
                 text = label,
@@ -372,7 +308,6 @@ private fun InfoChip(
         }
     }
 }
-
 
 @Composable
 private fun SectionCard(
@@ -398,7 +333,6 @@ private fun SectionCard(
         }
     }
 }
-
 
 /* ---------- PREVIEW ----------------------------------------------------- */
 @Preview(showBackground = true, backgroundColor = 0xFFF5F5F5)

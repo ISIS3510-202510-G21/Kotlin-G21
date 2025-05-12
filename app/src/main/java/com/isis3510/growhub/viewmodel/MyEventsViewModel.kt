@@ -19,6 +19,7 @@ import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.utils.ProfileCache
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter

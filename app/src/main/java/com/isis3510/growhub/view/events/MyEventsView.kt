@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -403,8 +404,9 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         contentDescription = event.name,
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (event.cost > 0.0) {
