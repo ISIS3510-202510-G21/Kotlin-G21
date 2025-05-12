@@ -14,10 +14,13 @@ import kotlinx.coroutines.*
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat
 import java.util.*
+import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.database.AppLocalDatabase
 
 @RequiresApi(Build.VERSION_CODES.O)
 class EventDetailViewModel(application: Application) : AndroidViewModel(application) {
-
+    private val eventRepository = EventRepository(AppLocalDatabase.getDatabase(application)) // Inicialización del repositorio
+    
     /* ---------- estado expuesto a la UI ---------- */
     val event   = mutableStateOf<Event?>(null)
     val loading = mutableStateOf(true)
@@ -31,7 +34,15 @@ class EventDetailViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             /* --------- Modo preview --------- */
             if (inPreview) {
-                event.value = dummyEvent()          // datos ficticios
+                event.value = dummyEvent()          
+                loading.value = false
+                return@launch
+            }
+
+            /* --------- Intentar cargar evento desde la base de datos local ---------- */
+            val localEvent = eventRepository.getEventById(name)  // Asegúrate de usar el método adecuado en el repositorio
+            if (localEvent != null) {
+                event.value = localEvent  // Si se encuentra en la base de datos local, lo usamos directamente
                 loading.value = false
                 return@launch
             }
@@ -101,6 +112,7 @@ class EventDetailViewModel(application: Application) : AndroidViewModel(applicat
             }
 
             /* ------------ vuelve al Main (UI) ------------- */
+            eventRepository.storeEvents(listOf(fullEvent))
             event.value   = fullEvent          // Input/Output + Main-10
             loading.value = false
         }

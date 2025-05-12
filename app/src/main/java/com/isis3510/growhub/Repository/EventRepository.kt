@@ -50,5 +50,11 @@ class EventRepository(
         val entities = events.map { it.toEntity() }
         eventDao.insertEvents(entities)
     }
+
+    // Obtener un evento específico por ID
+    suspend fun getEventById(eventId: Int): Event {
+    return eventDao.getEventById(eventId).toModel() 
+}
+
 }
 

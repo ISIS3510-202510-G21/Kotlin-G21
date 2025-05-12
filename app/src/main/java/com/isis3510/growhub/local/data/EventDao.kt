@@ -31,6 +31,9 @@ interface EventDao {
 
     @Query("SELECT * FROM evententity")
     suspend fun getAllLocalEvents(): List<EventEntity>
+
+    @Query("SELECT * FROM evententity WHERE id = :eventId")
+    suspend fun getEventById(eventId: Int): EventEntity
 }
 
 
