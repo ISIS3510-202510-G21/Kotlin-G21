@@ -15,7 +15,7 @@ import com.isis3510.growhub.local.data.ProfileDao
 import com.isis3510.growhub.utils.Converters
 
 
-@Database(entities = [CategoryEntity::class, EventEntity::class, ProfileEntity::class], version = 8, exportSchema = false)
+@Database(entities = [CategoryEntity::class, EventEntity::class, ProfileEntity::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppLocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
