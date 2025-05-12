@@ -1,8 +1,10 @@
 package com.isis3510.growhub.view.map
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.pm.PackageManager
 import android.os.Build
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.RequiresApi
@@ -36,6 +38,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +46,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +73,8 @@ import com.isis3510.growhub.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
 import com.google.accompanist.swiperefresh.SwipeRefresh
 import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
+import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -80,6 +86,7 @@ fun MapView(
     val context = LocalContext.current
     val fusedLocationClient = remember { LocationServices.getFusedLocationProviderClient(context) }
     val cameraPositionState = rememberCameraPositionState()
+    var isOffline = mapViewModel.isOffline
 
     // Estado para saber si el permiso está concedido
     var hasPermission by remember {
@@ -124,7 +131,7 @@ fun MapView(
     }
 
     Scaffold(
-        topBar = { MapTopBar(onNavigateBack) },
+        topBar = { MapTopBar(onNavigateBack, isOffline) },
         containerColor = MaterialTheme.colorScheme.background
     ) { paddingValues ->
         Column(
@@ -136,7 +143,7 @@ fun MapView(
             // Renderiza MapContent SI showMap es true
             if (showMap) {
                 // Pasa el ID seleccionado a MapContent
-                MapContent(mapViewModel, cameraPositionState, hasPermission, selectedEventId)
+                MapContent(mapViewModel, cameraPositionState, hasPermission, selectedEventId, isOffline)
             } else {
                 Box(
                     modifier = Modifier
@@ -152,9 +159,14 @@ fun MapView(
             val isRefreshing by mapViewModel.isRefreshing
             SwipeRefresh(
                 state = rememberSwipeRefreshState(isRefreshing),
-                onRefresh = { mapViewModel.refreshNearbyEvents() },
-                modifier = Modifier
-                    .fillMaxSize()
+                onRefresh = {
+                    if (!isOffline) {
+                        mapViewModel.refreshNearbyEvents()
+                    } else {
+                        Toast.makeText(context, "Nearby events cannot be refreshed while you are offline", Toast.LENGTH_SHORT).show()
+                    }
+                },
+                modifier = Modifier.fillMaxSize()
             ) {
                 EventsList(
                     events = mapViewModel.nearbyEvents,
@@ -178,14 +190,19 @@ fun MapView(
 }
 
 @Composable
-fun MapTopBar(onNavigateBack: () -> Unit = {}) {
+fun MapTopBar(
+    onNavigateBack: () -> Unit = {},
+    isOffline: Boolean
+) {
     Box(
         modifier = Modifier
             .fillMaxWidth()
             .background(MaterialTheme.colorScheme.background)
             .padding(16.dp)
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically
+        ) {
             IconButton(onClick = { onNavigateBack() }) {
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.ArrowBack,
@@ -201,16 +218,31 @@ fun MapTopBar(onNavigateBack: () -> Unit = {}) {
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
+
+        if (isOffline) {
+            Text(
+                text = "Offline",
+                color = Color.White,
+                style = MaterialTheme.typography.labelLarge,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .background(Color.Red, shape = RoundedCornerShape(4.dp))
+                    .padding(horizontal = 8.dp, vertical = 4.dp)
+            )
+        }
     }
 }
 
+
+@SuppressLint("StateFlowValueCalledInComposition")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun MapContent(
     viewModel: MapViewModel,
     cameraPositionState: CameraPositionState,
     hasPermission: Boolean,
-    selectedEventId: String?
+    selectedEventId: String?,
+    isOffline: Boolean
 ) {
     val userLocation by viewModel.userLocation
     val eventMarkersData by viewModel.eventMarkers
@@ -265,7 +297,11 @@ fun MapContent(
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
             cameraPositionState = cameraPositionState,
-            uiSettings = MapUiSettings(myLocationButtonEnabled = true),
+            uiSettings = MapUiSettings(myLocationButtonEnabled = true,
+                    zoomControlsEnabled = !(isOffline),
+                    scrollGesturesEnabled = !(isOffline),
+                    zoomGesturesEnabled = !(isOffline)
+                ),
             properties = MapProperties(isMyLocationEnabled = false)
         ) {
             // Marcador de Usuario (Violeta) - Condicional

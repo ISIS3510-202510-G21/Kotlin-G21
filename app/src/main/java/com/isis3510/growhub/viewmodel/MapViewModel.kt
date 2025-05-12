@@ -21,6 +21,7 @@ import com.isis3510.growhub.local.data.GlobalData
 // import com.isis3510.growhub.model.facade.FirebaseServicesFacade // No se usa si es solo GlobalData
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.MarkerData
+import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.* // Importar CoroutineScope, Job, delay, etc.
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -43,6 +44,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _isLoading = mutableStateOf(true) // Empieza cargando
     val isLoading: State<Boolean> = _isLoading
     private val _errorMessage = mutableStateOf<String?>(null)
+
+    val connectivityViewModel = ConnectivityViewModel(application)
+    val isOffline: Boolean = connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable
 
     // --- Internals ---
     private var pollingJob: Job? = null // Job para la consulta periódica
