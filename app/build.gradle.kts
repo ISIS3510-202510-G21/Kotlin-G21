@@ -130,6 +130,9 @@ dependencies {
     implementation("androidx.datastore:datastore-preferences:1.0.0")
     implementation("com.google.code.gson:gson:2.10.1")
 
+    // Swipe Refresh
+    implementation("com.google.accompanist:accompanist-swiperefresh:0.30.1")
+
 }
 
 secrets {

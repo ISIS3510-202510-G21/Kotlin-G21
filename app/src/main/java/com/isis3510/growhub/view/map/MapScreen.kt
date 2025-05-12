@@ -67,6 +67,8 @@ import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.viewmodel.MapViewModel
 import kotlinx.coroutines.launch
+import com.google.accompanist.swiperefresh.SwipeRefresh
+import com.google.accompanist.swiperefresh.rememberSwipeRefreshState
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
@@ -147,14 +149,21 @@ fun MapView(
                 }
             }
             // Pasa el ID seleccionado y el callback a EventsList
-            EventsList(
-                events = mapViewModel.nearbyEvents,
-                selectedEventId = selectedEventId,
-                onEventClick = { eventId ->
-                    // Lógica de toggle: si se clica el mismo, se deselecciona (null), si no, se selecciona
-                    selectedEventId = if (selectedEventId == eventId) null else eventId
-                }
-            )
+            val isRefreshing by mapViewModel.isRefreshing
+            SwipeRefresh(
+                state = rememberSwipeRefreshState(isRefreshing),
+                onRefresh = { mapViewModel.refreshNearbyEvents() },
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                EventsList(
+                    events = mapViewModel.nearbyEvents,
+                    selectedEventId = selectedEventId,
+                    onEventClick = { eventId ->
+                        selectedEventId = if (selectedEventId == eventId) null else eventId
+                    }
+                )
+            }
         }
 
         Box(

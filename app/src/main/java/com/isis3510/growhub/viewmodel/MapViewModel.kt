@@ -36,6 +36,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _eventMarkers = mutableStateOf<List<MarkerData>>(emptyList())
     val eventMarkers: State<List<MarkerData>> = _eventMarkers
 
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: State<Boolean> = _isRefreshing
+
     // *** Nuevos Estados para Conectividad y Carga ***
     private val _isLoading = mutableStateOf(true) // Empieza cargando
     val isLoading: State<Boolean> = _isLoading
@@ -233,5 +236,15 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         stopPolling() // Asegura detener el polling cuando el ViewModel se destruye
         Log.d(logTag, "ViewModel cleared, polling stopped.")
+    }
+
+    /** Lanza de nuevo la carga de nearbyEvents */
+    fun refreshNearbyEvents() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            // Esto volverá a llenar GlobalData.nearbyEvents
+            loadNearbyEventsToList()
+            _isRefreshing.value = false
+        }
     }
 }
