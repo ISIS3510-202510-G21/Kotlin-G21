@@ -75,7 +75,7 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
 
     LaunchedEffect(Unit) {
         chatbotViewModel.checkBotStatus()
-        chatbotViewModel.sendInitialBotMessage()
+        chatbotViewModel.sendInitialBotMessage(isNetworkAvailable == ConnectionStatus.Available)
     }
 
     Scaffold(
@@ -89,25 +89,28 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
             )
         },
         bottomBar = {
-            if (isNetworkAvailable == ConnectionStatus.Available) {
-                ChatBar(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .imePadding()
-                        .offset(y = (40).dp),
-                    value = userInput,
-                    onValueChange = { userInput = it },
-                    onClickSend = {
-                        if (userInput.isNotEmpty()) {
+            ChatBar(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .imePadding()
+                    .offset(y = (40).dp),
+                value = userInput,
+                onValueChange = { userInput = it },
+                onClickSend = {
+                    if (userInput.isNotEmpty()) {
+                        if (isNetworkAvailable == ConnectionStatus.Available) {
                             chatbotViewModel.sendMessage(userInput, firebaseAnalytics)
-                            userInput = ""
+                        } else {
+                            chatbotViewModel.handleOfflineInput(userInput)
                         }
-                    },
-                    isNetworkAvailable = isNetworkAvailable,
-                    isBotActive = isBotActive,
-                )
-            }
+                        userInput = ""
+                    }
+
+                },
+                isNetworkAvailable = isNetworkAvailable,
+                isBotActive = isBotActive,
+            )
         }
     ) { paddingValues ->
         Column(
@@ -115,27 +118,23 @@ fun ChatbotView(firebaseAnalytics: FirebaseAnalytics, navController: NavControll
                 .padding(paddingValues)
                 .fillMaxSize()
         ) {
-            if (isNetworkAvailable == ConnectionStatus.Available) {
-                LazyColumn(
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    horizontalAlignment = Alignment.End
-                ) {
-                    items(chatbotViewModel.messages) { message ->
-                        if (message.role == "user") {
-                            UserChat(
-                                modifier = Modifier.align(Alignment.End),
-                                message = message.content
-                            )
-                        } else {
-                            AssistantChat(message = message.content)
-                        }
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalAlignment = Alignment.End
+            ) {
+                items(chatbotViewModel.messages) { message ->
+                    if (message.role == "user") {
+                        UserChat(
+                            modifier = Modifier.align(Alignment.End),
+                            message = message.content
+                        )
+                    } else {
+                        AssistantChat(message = message.content)
                     }
                 }
-            } else {
-                ChatBotSectionEmpty()
             }
         }
     }

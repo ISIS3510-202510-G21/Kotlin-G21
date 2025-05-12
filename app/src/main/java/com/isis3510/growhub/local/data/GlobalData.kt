@@ -8,5 +8,5 @@ object GlobalData {
     var myEventsUpcoming: List<Event> = emptyList()
     var myEventsPrevious: List<Event> = emptyList()
     var myEventsCreatedByMe: List<Event> = emptyList()
-    var searchEvents: List<Event> = emptyList()
+    var searchEventsList: List<Event> = emptyList()
 }
