@@ -11,7 +11,9 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.Repository.EventRepository
 import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.local.database.AppLocalDatabase
@@ -19,6 +21,7 @@ import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.utils.SearchEventClick
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -174,4 +177,25 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         }
         firebaseAnalytics.logEvent("search_events_interaction", bundle)
     }
+
+    fun logClick(clickType: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val clickEvent = SearchEventClick(
+                userId = currentUser.uid,
+                clickType = clickType
+            )
+
+            FirebaseFirestore.getInstance()
+                .collection("search_clicks")
+                .add(clickEvent)
+                .addOnSuccessListener {
+                    Log.d("ClickLog", "Click logged successfully")
+                }
+                .addOnFailureListener {
+                    Log.e("ClickLog", "Failed to log click", it)
+                }
+        }
+    }
+
 }
