@@ -289,6 +289,7 @@ fun SearchBar(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAnalyt
                     putString("search_query", viewModel.searchQuery)
                 }
                 firebaseAnalytics.logEvent("search_events_interaction", bundle)
+                viewModel.logClick("search_click")
             }
         )
     )
@@ -306,26 +307,26 @@ fun SearchFilters(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAn
                 .padding(8.dp)
         ) {
             val typesList = listOf("Free", "Paid")
-            FilterDropdown(firebaseAnalytics, "By Type", viewModel.selectedType, typesList) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Type", viewModel.selectedType, typesList) {
                 viewModel.selectedType = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             val categoriesList = viewModel.categories.map { it.name }
-            FilterDropdown(firebaseAnalytics,"By Category", viewModel.selectedCategory, categoriesList) {
+            FilterDropdown(firebaseAnalytics,viewModel, "By Category", viewModel.selectedCategory, categoriesList) {
                 viewModel.selectedCategory = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            FilterDropdown(firebaseAnalytics,"By Skill", viewModel.selectedSkill, viewModel.skills) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Skill", viewModel.selectedSkill, viewModel.skills) {
                 viewModel.selectedSkill = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            FilterDropdown(firebaseAnalytics,"By Location", viewModel.selectedLocation, viewModel.locations) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Location", viewModel.selectedLocation, viewModel.locations) {
                 viewModel.selectedLocation = it
             }
 
@@ -334,7 +335,8 @@ fun SearchFilters(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAn
             DatePickerButton(
                 selectedDate = viewModel.selectedDate,
                 onDateSelected = { viewModel.selectedDate = it },
-                firebaseAnalytics
+                firebaseAnalytics,
+                viewModel
             )
         }
 
@@ -347,6 +349,7 @@ fun SearchFilters(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAn
                     putString("filter_label", "Clear Filters")
                 }
                 firebaseAnalytics.logEvent("search_events_filter", bundle)
+                viewModel.logClick("clear_click")
                 },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
             modifier = Modifier
@@ -367,6 +370,7 @@ fun SearchFilters(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAn
 @Composable
 fun FilterDropdown(
     firebaseAnalytics: FirebaseAnalytics,
+    viewModel: SearchEventViewModel,
     label: String,
     selectedOption: String,
     options: List<String>,
@@ -411,6 +415,7 @@ fun FilterDropdown(
                             putString("filter_label", label)
                         }
                         firebaseAnalytics.logEvent("search_events_filter", bundle)
+                        viewModel.logClick("filter_click")
                     },
                     text = { Text(option.ifBlank { "All" }) }
                 )
@@ -427,7 +432,8 @@ fun FilterDropdown(
 fun DatePickerButton(
     selectedDate: String,
     onDateSelected: (String) -> Unit,
-    firebaseAnalytics: FirebaseAnalytics
+    firebaseAnalytics: FirebaseAnalytics,
+    viewModel: SearchEventViewModel
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -453,6 +459,7 @@ fun DatePickerButton(
                       putString("filter_label", "By Date")
                   }
                   firebaseAnalytics.logEvent("search_events_filter", bundle)
+                  viewModel.logClick("date_click")
                   },
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF5669FF),
