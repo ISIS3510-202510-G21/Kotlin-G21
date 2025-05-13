@@ -35,7 +35,7 @@ fun RegisterScreen(
     onNavigateBack: () -> Unit
 ) {
     /* 🔑 Reset del estado al montar el composable */
-    LaunchedEffect(Unit) { viewModel.startFreshRegistration() }
+    /*LaunchedEffect(Unit) { viewModel.startFreshRegistration() } */
 
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
@@ -288,13 +288,24 @@ private fun validate(
     setCPassErr: (String?) -> Unit
 ): Boolean {
     var ok = true
-    if (state.name.isBlank()) { setNameErr("Please enter your full name."); ok = false }
-    if (state.email.isBlank()) { setEmailErr("Please enter your email."); ok = false }
+
+    /* ---- nombre, email, rol (sin cambios) ---- */
+    if (state.name.isBlank())  { setNameErr("Please enter your full name."); ok = false }
+    if (state.email.isBlank()) { setEmailErr("Please enter your email.");     ok = false }
     else if (!state.email.contains("@") || !state.email.endsWith(".com")) {
-        setEmailErr("Please enter a valid email address."); ok = false
+        setEmailErr("Please enter a valid email address.");                   ok = false
     }
     if (state.userRole.isBlank()) { setRoleErr("Please select a user role."); ok = false }
-    if (state.password.isBlank()) { setPassErr("Please enter a password."); ok = false }
-    if (state.confirmPassword.isBlank()) { setCPassErr("Please confirm your password."); ok = false }
+
+    /* ---- contraseñas ---- */
+    if (state.password.isBlank())        { setPassErr("Please enter a password.");         ok = false }
+    if (state.confirmPassword.isBlank()) { setCPassErr("Please confirm your password.");   ok = false }
+
+    if (ok && state.password != state.confirmPassword) {
+        setPassErr("Passwords do not match.")
+        setCPassErr("Passwords do not match.")
+        ok = false
+    }
+
     return ok
 }

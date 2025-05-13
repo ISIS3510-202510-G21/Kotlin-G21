@@ -104,7 +104,10 @@ fun AppNavGraph(
                     }
                 },
                 onNavigateToRegister = {
-                    authViewModel.startFreshRegistration()
+                    authViewModel.preserveLoginFields()
+                    if (!authViewModel.hasRegistrationDraft()) {
+                        authViewModel.startFreshRegistration()
+                    }
                     navController.navigate(Destinations.REGISTER)
                 }
             )
@@ -115,12 +118,12 @@ fun AppNavGraph(
             RegisterScreen(
                 viewModel = authViewModel,
                 onNavigateToInterests = {
-                    // Al terminar, pasamos a InterestsScreen
                     navController.navigate(Destinations.INTERESTS) {
                         popUpTo(Destinations.REGISTER) { inclusive = true }
                     }
                 },
                 onNavigateBack = {
+                    authViewModel.restoreLoginFields()
                     navController.popBackStack()
                 }
             )
@@ -137,7 +140,9 @@ fun AppNavGraph(
                     }
                 },
                 onGoBack = {
-                    navController.popBackStack()
+                    navController.navigate(Destinations.REGISTER) {
+                        popUpTo(Destinations.INTERESTS) { inclusive = true }
+                    }
                 }
             )
         }
