@@ -1,5 +1,6 @@
 package com.isis3510.growhub.Repository
 
+import android.util.Log
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
@@ -8,6 +9,7 @@ import kotlinx.coroutines.tasks.await
 class CreateEventRepository {
 
     private val firestore = FirebaseFirestore.getInstance()
+    private val TAG = "CreateEventRepo"
 
     suspend fun createEvent(
         name: String,
@@ -24,12 +26,17 @@ class CreateEventRepository {
         isUniversity: Boolean,
         skillIds: List<String>
     ): Boolean {
+        Log.d(TAG, "Grow Category received = '$category'")
+
         val categoryQuerySnapshot = firestore.collection("categories")
-            .whereEqualTo("name", category)
+            .whereEqualTo("name", category.trim())
             .get()
             .await()
 
+        Log.d(TAG, "Matches found = ${categoryQuerySnapshot.size()}")
+
         if (categoryQuerySnapshot.isEmpty) {
+            Log.e(TAG, "Category NOT found in Firestore.")
             return false
         }
         val categoryRef = categoryQuerySnapshot.documents[0].reference

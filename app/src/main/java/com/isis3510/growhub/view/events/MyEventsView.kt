@@ -47,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -183,18 +184,14 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (upcomingEvents.isNotEmpty()) {
+            }
+
+            else if (upcomingEvents.isNotEmpty()) {
                 items(upcomingEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
-                }
-
-                if (upcomingEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
                 }
 
                 if (isLoadingMoreUpcoming) {
@@ -206,7 +203,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+            }
+            else if (upcomingEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -225,18 +228,13 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (previousEvents.isNotEmpty()) {
+            }
+            else if (previousEvents.isNotEmpty()) {
                 items(previousEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
-                }
-
-                if (previousEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
                 }
 
                 if (isLoadingMorePrevious) {
@@ -248,7 +246,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+            }
+            else if (previousEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -270,19 +274,9 @@ fun MyEventsView(
             } else if (createdByMeEvents.isNotEmpty()) {
                 items(createdByMeEvents) { event ->
                     MyEventsCard(event, onDelete = {
-                        eventIdToDelete = event.id
+                        eventIdToDelete = event.name
                         showDialog = true
                     })
-                }
-
-                if (createdByMeEvents.isEmpty()) {
-                    item {
-                        MyEventsSectionEmpty()
-                    }
-                }
-
-                item {
-                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
                 if (isLoadingMoreCreatedByMe) {
@@ -294,7 +288,13 @@ fun MyEventsView(
                         )
                     }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable){
+            }
+            else if (createdByMeEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            }
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
                 item {
                     MyEventsSectionEmptyConnection()
                 }
@@ -302,6 +302,10 @@ fun MyEventsView(
                 item {
                     MyEventsSectionEmptyConnection()
                 }
+            }
+
+            item {
+                Spacer(modifier = Modifier.height(64.dp))
             }
         }
 
@@ -404,8 +408,9 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         contentDescription = event.name,
                         modifier = Modifier
                             .size(80.dp)
-                            .clip(RoundedCornerShape(8.dp))
-                            .fillMaxSize()
+                            .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
+                            .fillMaxSize(),
+                        contentScale = ContentScale.Crop
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     if (event.cost > 0.0) {

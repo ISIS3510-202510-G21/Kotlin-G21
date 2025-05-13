@@ -3,6 +3,7 @@ package com.isis3510.growhub.view.events
 import android.annotation.SuppressLint
 import android.app.DatePickerDialog
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
@@ -60,6 +61,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
@@ -69,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.rememberAsyncImagePainter
+import com.google.firebase.analytics.FirebaseAnalytics
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.view.home.isScrolledNearEnd
@@ -90,8 +93,10 @@ fun SearchEventView(
     searchEventsViewModel: SearchEventViewModel = viewModel(),
     connectivityViewModel: ConnectivityViewModel = viewModel(),
     onNavigateBack: () -> Unit = {},
+    firebaseAnalytics: FirebaseAnalytics
 ) {
     val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+    val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
 
     val searchEvents by searchEventsViewModel.searchEvents
     val isLoading by searchEventsViewModel.isLoading
@@ -134,49 +139,93 @@ fun SearchEventView(
                 ) {
                     EventCardPlaceholder()
                 }
-            } else {
-                if (isNetworkAvailable == ConnectionStatus.Available) {
-                    LazyColumn(
-                        state = listStateSearch,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
+            } else if (searchEvents.isNotEmpty()) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    items(searchEventsViewModel.filteredEvents) { event ->
+                        EventCard(event)
+                    }
+
+                    if (isLoadingMore) {
                         item {
-                            SearchBar(searchEventsViewModel)
-                            Spacer(modifier = Modifier.height(16.dp))
-                            SearchFilters(searchEventsViewModel)
-                            Spacer(modifier = Modifier.height(16.dp))
-                        }
-
-                        items(searchEventsViewModel.filteredEvents) { event ->
-                            EventCard(event)
-                        }
-
-                        if (isLoadingMore) {
-                            item {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(16.dp),
-                                    contentAlignment = Alignment.Center
-                                ) {
-                                    CircularProgressIndicator()
-                                }
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(16.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                CircularProgressIndicator()
                             }
                         }
                     }
-                } else {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp)
-                    ) {
-                        SearchBar(searchEventsViewModel)
+                }
+            }
+            else if (searchEvents.isEmpty()) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
                         Spacer(modifier = Modifier.height(16.dp))
-                        SearchFilters(searchEventsViewModel)
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
                         Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
                         EventSectionEmpty()
+                    }
+                }
+            }
+
+            else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
+                        EventSectionEmptyConnection()
+                    }
+                }
+            }
+            else if (initialNetworkAvailable.value == false) {
+                LazyColumn(
+                    state = listStateSearch,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 16.dp)
+                ) {
+                    item {
+                        SearchBar(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                        SearchFilters(searchEventsViewModel, firebaseAnalytics)
+                        Spacer(modifier = Modifier.height(16.dp))
+                    }
+
+                    item {
+                        EventSectionEmptyConnection()
                     }
                 }
             }
@@ -212,7 +261,7 @@ fun SearchEventTopBar(onNavigateBack: () -> Unit = {}) {
 
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SearchBar(viewModel: SearchEventViewModel) {
+fun SearchBar(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAnalytics) {
     val keyboardController = LocalSoftwareKeyboardController.current
 
     OutlinedTextField(
@@ -236,6 +285,11 @@ fun SearchBar(viewModel: SearchEventViewModel) {
         keyboardActions = KeyboardActions(
             onSearch = {
                 keyboardController?.hide()
+                val bundle = Bundle().apply {
+                    putString("search_query", viewModel.searchQuery)
+                }
+                firebaseAnalytics.logEvent("search_events_interaction", bundle)
+                viewModel.logClick("search_click")
             }
         )
     )
@@ -244,7 +298,7 @@ fun SearchBar(viewModel: SearchEventViewModel) {
 @SuppressLint("RestrictedApi")
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun SearchFilters(viewModel: SearchEventViewModel) {
+fun SearchFilters(viewModel: SearchEventViewModel, firebaseAnalytics: FirebaseAnalytics) {
 
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
@@ -253,26 +307,26 @@ fun SearchFilters(viewModel: SearchEventViewModel) {
                 .padding(8.dp)
         ) {
             val typesList = listOf("Free", "Paid")
-            FilterDropdown("By Type", viewModel.selectedType, typesList) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Type", viewModel.selectedType, typesList) {
                 viewModel.selectedType = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
             val categoriesList = viewModel.categories.map { it.name }
-            FilterDropdown("By Category", viewModel.selectedCategory, categoriesList) {
+            FilterDropdown(firebaseAnalytics,viewModel, "By Category", viewModel.selectedCategory, categoriesList) {
                 viewModel.selectedCategory = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            FilterDropdown("By Skill", viewModel.selectedSkill, viewModel.skills) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Skill", viewModel.selectedSkill, viewModel.skills) {
                 viewModel.selectedSkill = it
             }
 
             Spacer(modifier = Modifier.width(8.dp))
 
-            FilterDropdown("By Location", viewModel.selectedLocation, viewModel.locations) {
+            FilterDropdown(firebaseAnalytics, viewModel, "By Location", viewModel.selectedLocation, viewModel.locations) {
                 viewModel.selectedLocation = it
             }
 
@@ -280,14 +334,23 @@ fun SearchFilters(viewModel: SearchEventViewModel) {
 
             DatePickerButton(
                 selectedDate = viewModel.selectedDate,
-                onDateSelected = { viewModel.selectedDate = it }
+                onDateSelected = { viewModel.selectedDate = it },
+                firebaseAnalytics,
+                viewModel
             )
         }
 
         Spacer(modifier = Modifier.height(8.dp))
 
         Button(
-            onClick = { viewModel.clearFilters() },
+            onClick = { viewModel.clearFilters()
+                val bundle = Bundle().apply {
+                    putString("filter_selected", "Clear")
+                    putString("filter_label", "Clear Filters")
+                }
+                firebaseAnalytics.logEvent("search_events_filter", bundle)
+                viewModel.logClick("clear_click")
+                },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
             modifier = Modifier
                 .padding(horizontal = 8.dp)
@@ -303,12 +366,15 @@ fun SearchFilters(viewModel: SearchEventViewModel) {
     }
 }
 
+@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun FilterDropdown(
+    firebaseAnalytics: FirebaseAnalytics,
+    viewModel: SearchEventViewModel,
     label: String,
     selectedOption: String,
     options: List<String>,
-    onOptionSelected: (String) -> Unit
+    onOptionSelected: (String) -> Unit,
 ) {
     var expanded by remember { mutableStateOf(false) }
 
@@ -344,6 +410,12 @@ fun FilterDropdown(
                     onClick = {
                         onOptionSelected(option)
                         expanded = false
+                        val bundle = Bundle().apply {
+                            putString("filter_selected", option)
+                            putString("filter_label", label)
+                        }
+                        firebaseAnalytics.logEvent("search_events_filter", bundle)
+                        viewModel.logClick("filter_click")
                     },
                     text = { Text(option.ifBlank { "All" }) }
                 )
@@ -360,6 +432,8 @@ fun FilterDropdown(
 fun DatePickerButton(
     selectedDate: String,
     onDateSelected: (String) -> Unit,
+    firebaseAnalytics: FirebaseAnalytics,
+    viewModel: SearchEventViewModel
 ) {
     val context = LocalContext.current
     val calendar = remember { Calendar.getInstance() }
@@ -379,7 +453,14 @@ fun DatePickerButton(
     }
 
     OutlinedButton(
-        onClick = { datePickerDialog.show() },
+        onClick = { datePickerDialog.show()
+                  val bundle = Bundle().apply {
+                      putString("filter_selected", selectedDate)
+                      putString("filter_label", "By Date")
+                  }
+                  firebaseAnalytics.logEvent("search_events_filter", bundle)
+                  viewModel.logClick("date_click")
+                  },
         colors = ButtonDefaults.buttonColors(
             containerColor = Color(0xFF5669FF),
             contentColor = Color.White
@@ -421,7 +502,8 @@ fun EventCard(event: Event) {
                 modifier = Modifier
                     .size(80.dp)
                     .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
-                    .fillMaxSize()
+                    .fillMaxSize(),
+                contentScale = ContentScale.Crop
             )
 
             Spacer(modifier = Modifier.width(12.dp))
@@ -495,6 +577,35 @@ fun EventCardPlaceholder() {
 
 @Composable
 fun EventSectionEmpty() {
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(200.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "No events found icon",
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.size(48.dp)
+                )
+                Spacer(modifier = Modifier.height(8.dp))
+                Text(
+                    text = "No Events Found",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun EventSectionEmptyConnection() {
     Column(modifier = Modifier.fillMaxWidth()) {
         Box(
             modifier = Modifier

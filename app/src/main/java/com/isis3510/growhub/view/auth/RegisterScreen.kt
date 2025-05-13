@@ -5,33 +5,27 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.isis3510.growhub.R
-import com.isis3510.growhub.viewmodel.AuthViewModel
-import androidx.compose.ui.text.input.KeyboardType
 import com.isis3510.growhub.offline.NetworkUtils
-import androidx.compose.ui.platform.LocalContext
+import com.isis3510.growhub.viewmodel.AuthViewModel
+
+/* ---- límites ---- */
+private const val MAX_NAME = 40
+private const val MAX_EMAIL = 30
+private const val MAX_PASS = 30
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,23 +34,26 @@ fun RegisterScreen(
     onNavigateToInterests: () -> Unit,
     onNavigateBack: () -> Unit
 ) {
+    /* 🔑 Reset del estado al montar el composable */
+    /*LaunchedEffect(Unit) { viewModel.startFreshRegistration() } */
+
     val uiState by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
     val primaryBlue = Color(0xFF5669FF)
 
-    val context = LocalContext.current
+    /* visibilidad y errores */
+    var passVisible by remember { mutableStateOf(false) }
+    var confirmVisible by remember { mutableStateOf(false) }
 
-    var passwordVisible by remember { mutableStateOf(false) }
-    var confirmPasswordVisible by remember { mutableStateOf(false) }
-
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var emailError by remember { mutableStateOf<String?>(null) }
-    var roleError by remember { mutableStateOf<String?>(null) }
-    var passwordError by remember { mutableStateOf<String?>(null) }
-    var confirmPasswordError by remember { mutableStateOf<String?>(null) }
+    var errName by remember { mutableStateOf<String?>(null) }
+    var errEmail by remember { mutableStateOf<String?>(null) }
+    var errRole by remember { mutableStateOf<String?>(null) }
+    var errPass by remember { mutableStateOf<String?>(null) }
+    var errCPass by remember { mutableStateOf<String?>(null) }
 
     var roleMenuExpanded by remember { mutableStateOf(false) }
-    val selectedRole = if (uiState.userRole.isNotBlank()) uiState.userRole else "Select a role"
     val roles = listOf("Host", "Attendee")
+    val selectedRole = if (uiState.userRole.isNotBlank()) uiState.userRole else "Select a role"
 
     Column(
         modifier = Modifier
@@ -64,17 +61,14 @@ fun RegisterScreen(
             .padding(horizontal = 16.dp),
         horizontalAlignment = Alignment.Start
     ) {
+        /* back */
         IconButton(
-            onClick = { onNavigateBack() },
+            onClick = onNavigateBack,
             modifier = Modifier
                 .size(60.dp)
                 .padding(top = 16.dp)
         ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                contentDescription = "Go back",
-                tint = Color.Black
-            )
+            Icon(Icons.AutoMirrored.Filled.ArrowBack, null, tint = Color.White)
         }
 
         Text(
@@ -83,73 +77,61 @@ fun RegisterScreen(
             modifier = Modifier.padding(start = 8.dp, top = 80.dp, bottom = 12.dp)
         )
 
-        // Full Name
+        /* -------- Nombre -------- */
         OutlinedTextField(
             value = uiState.name,
             onValueChange = {
-                viewModel.onNameChange(it)
-                nameError = null
+                if (it.length <= MAX_NAME) {
+                    viewModel.onNameChange(it); errName = null
+                }
             },
             label = { Text("Full name") },
-            isError = (nameError != null),
+            isError = errName != null,
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_email),
-                    contentDescription = "User Icon",
+                    contentDescription = null,
                     modifier = Modifier.size(24.dp)
                 )
             }
         )
-        nameError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
+        errName?.let { Error(it) }
 
-        // Email
+        /* -------- Email -------- */
         OutlinedTextField(
             value = uiState.email,
             onValueChange = {
-                viewModel.onEmailChange(it)
-                emailError = null
+                if (it.length <= MAX_EMAIL) {
+                    viewModel.onEmailChange(it); errEmail = null
+                }
             },
             label = { Text("Email") },
-            isError = (emailError != null),
+            isError = errEmail != null,
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_email),
-                    contentDescription = "Email Icon",
+                    contentDescription = null,
                     modifier = Modifier.size(24.dp)
                 )
             }
         )
-        emailError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
+        errEmail?.let { Error(it) }
 
-        // User Role (Dropdown)
+        /* -------- Role -------- */
         Box {
             OutlinedTextField(
                 value = selectedRole,
                 onValueChange = {},
                 readOnly = true,
                 label = { Text("User Role") },
-                isError = (roleError != null),
+                isError = errRole != null,
                 modifier = Modifier.fillMaxWidth(),
                 leadingIcon = {
                     Icon(
-                        painter = painterResource(id = R.drawable.ic_email),
-                        contentDescription = "Role Icon",
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = null,
                         modifier = Modifier.size(24.dp)
                     )
                 },
@@ -157,169 +139,110 @@ fun RegisterScreen(
                     IconButton(onClick = { roleMenuExpanded = !roleMenuExpanded }) {
                         Icon(
                             painter = painterResource(id = R.drawable.arrow_drop_down),
-                            contentDescription = "Expand or Collapse"
+                            contentDescription = null
                         )
                     }
                 }
             )
-            DropdownMenu(
-                expanded = roleMenuExpanded,
-                onDismissRequest = { roleMenuExpanded = false }
-            ) {
+            DropdownMenu(expanded = roleMenuExpanded, onDismissRequest = { roleMenuExpanded = false }) {
                 roles.forEach { role ->
                     DropdownMenuItem(
                         text = { Text(role) },
                         onClick = {
                             viewModel.onUserRoleChange(role)
-                            roleError = null
+                            errRole = null
                             roleMenuExpanded = false
                         }
                     )
                 }
             }
         }
-        roleError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
+        errRole?.let { Error(it) }
 
-        // Password
+        /* -------- Password -------- */
         OutlinedTextField(
             value = uiState.password,
             onValueChange = {
-                viewModel.onPasswordChange(it)
-                passwordError = null
+                if (it.length <= MAX_PASS) { viewModel.onPasswordChange(it); errPass = null }
             },
             label = { Text("Your password") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
-            visualTransformation =
-            if (passwordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (passVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-                IconButton(onClick = { passwordVisible = !passwordVisible }) {
+                IconButton(onClick = { passVisible = !passVisible }) {
                     Icon(
                         painter = painterResource(
-                            id = if (passwordVisible) R.drawable.ic_eye_closed
-                            else R.drawable.ic_eye_open
+                            id = if (passVisible) R.drawable.ic_eye_closed else R.drawable.ic_eye_open
                         ),
-                        contentDescription = if (passwordVisible) "Hide password" else "Show password",
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = null
                     )
                 }
             },
-            isError = (passwordError != null),
+            isError = errPass != null,
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_lock),
-                    contentDescription = "Lock Icon",
+                    contentDescription = null,
                     modifier = Modifier.size(24.dp)
                 )
             }
         )
-        passwordError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
+        errPass?.let { Error(it) }
 
-        // Confirm Password
+        /* -------- Confirm Password -------- */
         OutlinedTextField(
             value = uiState.confirmPassword,
             onValueChange = {
-                viewModel.onConfirmPasswordChange(it)
-                confirmPasswordError = null
+                if (it.length <= MAX_PASS) { viewModel.onConfirmPasswordChange(it); errCPass = null }
             },
             label = { Text("Confirm password") },
-            keyboardOptions = KeyboardOptions.Default.copy(keyboardType = KeyboardType.Password),
-            visualTransformation =
-            if (confirmPasswordVisible) VisualTransformation.None else PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            visualTransformation = if (confirmVisible) VisualTransformation.None else PasswordVisualTransformation(),
             trailingIcon = {
-                IconButton(onClick = { confirmPasswordVisible = !confirmPasswordVisible }) {
+                IconButton(onClick = { confirmVisible = !confirmVisible }) {
                     Icon(
                         painter = painterResource(
-                            id = if (confirmPasswordVisible) R.drawable.ic_eye_closed
-                            else R.drawable.ic_eye_open
+                            id = if (confirmVisible) R.drawable.ic_eye_closed else R.drawable.ic_eye_open
                         ),
-                        contentDescription = if (confirmPasswordVisible) "Hide password" else "Show password",
-                        modifier = Modifier.size(24.dp)
+                        contentDescription = null
                     )
                 }
             },
-            isError = (confirmPasswordError != null),
+            isError = errCPass != null,
             modifier = Modifier.fillMaxWidth(),
             leadingIcon = {
                 Icon(
                     painter = painterResource(id = R.drawable.ic_lock),
-                    contentDescription = "Lock Icon",
+                    contentDescription = null,
                     modifier = Modifier.size(24.dp)
                 )
             }
         )
-        confirmPasswordError?.let {
-            Text(
-                text = it,
-                color = MaterialTheme.colorScheme.error,
-                fontSize = 12.sp,
-                modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
-            )
-        }
+        errCPass?.let { Error(it) }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(Modifier.height(20.dp))
 
         if (uiState.isLoading) {
-            CircularProgressIndicator()
-            Spacer(modifier = Modifier.height(16.dp))
+            CircularProgressIndicator(); Spacer(Modifier.height(16.dp))
         }
 
-        uiState.errorMessage?.let { error ->
-            Text(
-                text = error,
-                color = MaterialTheme.colorScheme.error,
-                modifier = Modifier.padding(bottom = 8.dp)
-            )
-        }
+        uiState.errorMessage?.let { Error(it) }
 
         Button(
             onClick = {
-                val hasInternet = NetworkUtils.isNetworkAvailable(context)
-                if (!hasInternet) {
-                    Toast.makeText(context, "No internet connection", Toast.LENGTH_LONG).show()
-                    return@Button
+                if (!NetworkUtils.isNetworkAvailable(context)) {
+                    Toast.makeText(context, "No internet connection", Toast.LENGTH_LONG).show(); return@Button
                 }
-                var hasError = false
-                // Validaciones locales
-                if (uiState.name.isBlank()) {
-                    nameError = "Please enter your full name."
-                    hasError = true
-                }
-                if (uiState.email.isBlank()) {
-                    emailError = "Please enter your email."
-                    hasError = true
-                } else if (!uiState.email.contains("@") || !uiState.email.endsWith(".com")) {
-                    emailError = "Please enter a valid email address"
-                    hasError = true
-                }
-                if (uiState.userRole.isBlank()) {
-                    roleError = "Please select a user role."
-                    hasError = true
-                }
-                if (uiState.password.isBlank()) {
-                    passwordError = "Please enter a password."
-                    hasError = true
-                }
-                if (uiState.confirmPassword.isBlank()) {
-                    confirmPasswordError = "Please confirm your password."
-                    hasError = true
-                }
-                // Si no hay errores, guardamos la data en el ViewModel (sin crear usuario en FirebaseAuth).
-                if (!hasError) {
+                val ok = validate(
+                    uiState,
+                    { errName = it },
+                    { errEmail = it },
+                    { errRole = it },
+                    { errPass = it },
+                    { errCPass = it }
+                )
+                if (ok) {
                     viewModel.updateRegistrationData(
                         name = uiState.name,
                         email = uiState.email,
@@ -327,30 +250,62 @@ fun RegisterScreen(
                         confirmPassword = uiState.confirmPassword,
                         userRole = uiState.userRole
                     )
-                    // Navegamos a InterestsScreen
                     onNavigateToInterests()
                 }
             },
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = primaryBlue),
-            enabled = !uiState.isLoading
-        ) {
-            Text(text = "SIGN UP", color = Color.White)
-        }
+            enabled = !uiState.isLoading,
+            colors = ButtonDefaults.buttonColors(containerColor = primaryBlue)
+        ) { Text("SIGN UP", color = Color.White) }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(Modifier.height(16.dp))
 
         Row(
+            modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.fillMaxWidth()
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(text = "Already have an account? ")
-            TextButton(onClick = { onNavigateBack() }) {
-                Text(text = "Sign In", color = primaryBlue)
-            }
+            Text("Already have an account? ")
+            TextButton(onClick = onNavigateBack) { Text("Sign In", color = primaryBlue) }
         }
     }
+}
+
+/* Helpers */
+@Composable private fun Error(msg: String) = Text(
+    msg, color = MaterialTheme.colorScheme.error, fontSize = 12.sp,
+    modifier = Modifier.padding(start = 16.dp, bottom = 8.dp)
+)
+
+private fun validate(
+    state: com.isis3510.growhub.model.objects.AuthUiState,
+    setNameErr: (String?) -> Unit,
+    setEmailErr: (String?) -> Unit,
+    setRoleErr: (String?) -> Unit,
+    setPassErr: (String?) -> Unit,
+    setCPassErr: (String?) -> Unit
+): Boolean {
+    var ok = true
+
+    /* ---- nombre, email, rol (sin cambios) ---- */
+    if (state.name.isBlank())  { setNameErr("Please enter your full name."); ok = false }
+    if (state.email.isBlank()) { setEmailErr("Please enter your email.");     ok = false }
+    else if (!state.email.contains("@") || !state.email.endsWith(".com")) {
+        setEmailErr("Please enter a valid email address.");                   ok = false
+    }
+    if (state.userRole.isBlank()) { setRoleErr("Please select a user role."); ok = false }
+
+    /* ---- contraseñas ---- */
+    if (state.password.isBlank())        { setPassErr("Please enter a password.");         ok = false }
+    if (state.confirmPassword.isBlank()) { setCPassErr("Please confirm your password.");   ok = false }
+
+    if (ok && state.password != state.confirmPassword) {
+        setPassErr("Passwords do not match.")
+        setCPassErr("Passwords do not match.")
+        ok = false
+    }
+
+    return ok
 }

@@ -1,7 +1,11 @@
 package com.isis3510.growhub.viewmodel
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import android.content.Context
+import android.util.Log
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.isis3510.growhub.viewmodel.SimpleLocationUiState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -9,26 +13,26 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.net.HttpURLConnection
 import java.net.URL
 
-// --- Simplified UI State ---
-// Success now holds the raw JSON String
 sealed interface SimpleLocationUiState {
-    object Loading : SimpleLocationUiState
-    data class Success(val rawResponse: String) : SimpleLocationUiState // Holds the raw JSON string
-    data class Error(val message: String) : SimpleLocationUiState
     object Idle : SimpleLocationUiState
+    object Loading : SimpleLocationUiState
+    data class Success(val rawResponse: String) : SimpleLocationUiState
+    data class Error(val message: String) : SimpleLocationUiState
 }
 
-class LocationViewModel : ViewModel() {
+class LocationViewModel(application: Application) : AndroidViewModel(application) {
+
+    private val prefs = application.getSharedPreferences("UserPreferences", Context.MODE_PRIVATE)
 
     private val _locationState = MutableStateFlow<SimpleLocationUiState>(SimpleLocationUiState.Idle)
     val locationState: StateFlow<SimpleLocationUiState> = _locationState.asStateFlow()
 
-    // API Endpoint URL
     private val apiUrl = "http://ip-api.com/json/"
 
     init {
@@ -36,52 +40,61 @@ class LocationViewModel : ViewModel() {
     }
 
     fun fetchLocationFromIpApi() {
-        // Prevent fetching if already loading
         if (_locationState.value is SimpleLocationUiState.Loading) return
-
         _locationState.update { SimpleLocationUiState.Loading }
 
         viewModelScope.launch {
-            // Perform network operation on the IO dispatcher
             val result: SimpleLocationUiState = withContext(Dispatchers.IO) {
                 var connection: HttpURLConnection? = null
                 try {
                     val url = URL(apiUrl)
-                    connection = url.openConnection() as HttpURLConnection
-                    connection.requestMethod = "GET"
-                    connection.connectTimeout = 8000 // 8 seconds
-                    connection.readTimeout = 8000 // 8 seconds
-                    connection.connect()
+                    connection = (url.openConnection() as HttpURLConnection).apply {
+                        requestMethod = "GET"
+                        connectTimeout = 8000
+                        readTimeout = 8000
+                        connect()
+                    }
 
-                    val responseCode = connection.responseCode
+                    if (connection.responseCode == HttpURLConnection.HTTP_OK) {
+                        val response = BufferedReader(InputStreamReader(connection.inputStream)).use { it.readText() }
+                        // → parseo JSON:
+                        val json = JSONObject(response)
+                        val lat = json.optDouble("lat", Double.NaN)
+                        val lon = json.optDouble("lon", Double.NaN)
 
-                    if (responseCode == HttpURLConnection.HTTP_OK) {
-                        // Read the successful response body
-                        val inputStream = connection.inputStream
-                        val reader = BufferedReader(InputStreamReader(inputStream))
-                        val response = reader.use { it.readText() } // Reads entire stream to String
+                        if (!lat.isNaN() && !lon.isNaN()) {
+                            // → guardo en SharedPreferences:
+                            prefs.edit()
+                                .putString("user_latitude", lat.toString())
+                                .putString("user_longitude", lon.toString())
+                                .apply()
+                            Log.d("LocationViewModel", "Saved coords: $lat, $lon")
+                        } else {
+                            Log.w("LocationViewModel", "No se obtuvieron coords válidas")
+                        }
+
                         SimpleLocationUiState.Success(response)
                     } else {
-                        // Read the error body if available
-                        val errorStream = connection.errorStream
-                        val errorMessage = try {
-                            errorStream?.bufferedReader()?.use { it.readText() } ?: "No error details available."
-                        } catch (e: Exception) {
-                            "Failed to read error stream."
-                        }
-                        SimpleLocationUiState.Error("HTTP Error: $responseCode. $errorMessage")
+                        val errorMsg = connection.errorStream
+                            ?.bufferedReader()
+                            ?.use { it.readText() }
+                            ?: "No hay detalles de error"
+                        SimpleLocationUiState.Error("HTTP ${connection.responseCode}: $errorMsg")
                     }
                 } catch (e: Exception) {
-                    // Catch network errors (UnknownHostException, SocketTimeoutException, etc.)
-                    // Or MalformedURLException, SecurityException, etc.
-                    SimpleLocationUiState.Error(e.message ?: "An unknown network error occurred.")
+                    SimpleLocationUiState.Error(e.localizedMessage ?: "Error de red desconocido")
                 } finally {
-                    // Always disconnect
                     connection?.disconnect()
                 }
             }
-            // Update the state flow back on the main thread (viewModelScope handles this)
             _locationState.value = result
         }
+    }
+
+    /** Para recuperar las coordenadas más adelante: */
+    fun getLastKnownLatLng(): Pair<Double?, Double?> {
+        val lat = prefs.getString("user_latitude", null)?.toDoubleOrNull()
+        val lon = prefs.getString("user_longitude", null)?.toDoubleOrNull()
+        return Pair(lat, lon)
     }
 }

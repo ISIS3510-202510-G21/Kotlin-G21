@@ -1,237 +1,212 @@
 package com.isis3510.growhub.viewmodel
 
-import android.annotation.SuppressLint // Necesario para ConnectivityManager y FusedLocation
-import android.app.Application // *** Importar Application ***
+import android.annotation.SuppressLint
+import android.app.Application
 import android.content.Context
 import android.content.pm.PackageManager
-import android.net.ConnectivityManager // *** Importar ConnectivityManager ***
-import android.net.NetworkCapabilities // *** Importar NetworkCapabilities ***
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.os.Build
 import android.util.Log
+import androidx.core.content.ContextCompat
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.State
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
-import androidx.core.content.ContextCompat
-import androidx.lifecycle.AndroidViewModel // *** Cambiar a AndroidViewModel ***
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.model.LatLng
 import com.isis3510.growhub.local.data.GlobalData
-// import com.isis3510.growhub.model.facade.FirebaseServicesFacade // No se usa si es solo GlobalData
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.MarkerData
-import kotlinx.coroutines.* // Importar CoroutineScope, Job, delay, etc.
+import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.collectLatest
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @RequiresApi(Build.VERSION_CODES.O)
-// *** Heredar de AndroidViewModel ***
 class MapViewModel(application: Application) : AndroidViewModel(application) {
-
-    // --- Estados ---
+    // Estados de datos
     val nearbyEvents = mutableStateListOf<Event>()
+    private val _eventMarkers = mutableStateOf<List<MarkerData>>(emptyList())
+    val eventMarkers: State<List<MarkerData>> = _eventMarkers
+    private val _isRefreshing = mutableStateOf(false)
+    val isRefreshing: State<Boolean> = _isRefreshing
+    private val _isLoading = mutableStateOf(true)
+    val isLoading: State<Boolean> = _isLoading
+    private val _errorMessage = mutableStateOf<String?>(null)
+    val errorMessage: State<String?> = _errorMessage
+
+    // Conectividad
+    private val connectivityViewModel = ConnectivityViewModel(application)
+    private val _isOffline = mutableStateOf(false)
+    val isOffline: State<Boolean> = _isOffline
+
+    // Polling
+    private var pollingJob: Job? = null
+    private val pollingIntervalMillis = 5000L
+    private val logTag = "MapViewModelConn"
+
+    init {
+        // Observar cambios de red
+        viewModelScope.launch {
+            connectivityViewModel.networkStatus.collectLatest { status ->
+                _isOffline.value = status == ConnectionStatus.Unavailable || status == ConnectionStatus.Lost
+                Log.d(logTag, "Network status changed: $status, isOffline=${_isOffline.value}")
+                // Opcional: recargar datos al reconectar
+                if (!_isOffline.value) {
+                    loadNearbyEventsToList()
+                }
+            }
+        }
+        // Carga inicial
+        loadNearbyEventsToList()
+    }
+
+    @SuppressLint("MissingPermission")
+    fun fetchUserLocation(
+        context: Context,
+        fusedLocationClient: FusedLocationProviderClient
+    ) {
+        val fine = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        val coarse = ContextCompat.checkSelfPermission(
+            context, android.Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
+        if (fine || coarse) {
+            fusedLocationClient.lastLocation.addOnSuccessListener { loc ->
+                loc?.let {
+                    _userLocation.value = LatLng(it.latitude, it.longitude)
+                    Log.d(logTag, "Location: ${_userLocation.value}")
+                }
+            }
+        }
+    }
 
     private val _userLocation = mutableStateOf<LatLng?>(null)
     val userLocation: State<LatLng?> = _userLocation
 
-    private val _eventMarkers = mutableStateOf<List<MarkerData>>(emptyList())
-    val eventMarkers: State<List<MarkerData>> = _eventMarkers
-
-    // *** Nuevos Estados para Conectividad y Carga ***
-    private val _isLoading = mutableStateOf(true) // Empieza cargando
-    val isLoading: State<Boolean> = _isLoading
-    private val _errorMessage = mutableStateOf<String?>(null)
-
-    // --- Internals ---
-    private var pollingJob: Job? = null // Job para la consulta periódica
-    private val pollingIntervalMillis = 5000L // Intervalo de consulta (e.g., 5 segundos)
-    private val logTag = "MapViewModelConn"
-
-    // --- Lógica de Ubicación (sin cambios respecto a tu versión) ---
-    @SuppressLint("MissingPermission") // Permiso chequeado en la View
-    fun fetchUserLocation(context: Context, fusedLocationClient: FusedLocationProviderClient) {
-        val fineLocationGranted = ContextCompat.checkSelfPermission(
-            context, android.Manifest.permission.ACCESS_FINE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        val coarseLocationGranted = ContextCompat.checkSelfPermission(
-            context, android.Manifest.permission.ACCESS_COARSE_LOCATION
-        ) == PackageManager.PERMISSION_GRANTED
-
-        if (fineLocationGranted || coarseLocationGranted) {
-            try {
-                fusedLocationClient.lastLocation.addOnSuccessListener { location ->
-                    location?.let {
-                        val userLatLng = LatLng(it.latitude, it.longitude)
-                        _userLocation.value = userLatLng
-                        Log.d(logTag, "Ubicación obtenida: $userLatLng")
-                    } ?: run {
-                        Log.w(logTag, "No last known location available.")
-                        // Considerar poner _userLocation.value = null aquí explícitamente
-                    }
-                }.addOnFailureListener { e ->
-                    Log.e(logTag, "Error FusedLocationProvider.lastLocation", e)
-                    // Podrías setear un error aquí si la ubicación es crítica
-                }
-            } catch (e: SecurityException) {
-                Log.e(logTag, "Location access permission error: ${e.localizedMessage}")
-            }
-        } else {
-            Log.w(logTag, "fetchUserLocation llamado sin permisos concedidos.")
-        }
-    }
-
-    // --- Lógica de Carga Inicial y Consulta Periódica ---
-    init {
-        loadNearbyEventsToList() // Inicia la carga al crear el ViewModel
-    }
-
     private fun loadNearbyEventsToList() {
-        viewModelScope.launch { // Lanza en el scope del ViewModel
-            _isLoading.value = true // Indica inicio de carga
-            _errorMessage.value = null // Limpia errores previos
-            var dataLoaded = false // Flag para saber si se cargó algo
+        viewModelScope.launch {
+            _isLoading.value = true
+            _errorMessage.value = null
+            var dataLoaded = false
 
             try {
-                val eventsFromGlobal = GlobalData.nearbyEvents
-                Log.d(logTag, "GlobalData.nearbyEvents tiene ${eventsFromGlobal.size} elementos.")
+                val globalList = GlobalData.nearbyEvents
+                Log.d(logTag, "GlobalData size: ${globalList.size}")
 
-                if (eventsFromGlobal.isNotEmpty()) {
-                    // ======= MULTITHREADING ADDED =======:
-                    // Procesamiento de marcadores en hilo de fondo
-                    val markers = processMarkersInBackground(eventsFromGlobal)
-
-                    // Actualiza estado en hilo principal
+                if (globalList.isNotEmpty()) {
+                    val markers = processMarkers(globalList)
                     withContext(Dispatchers.Main) {
                         nearbyEvents.clear()
-                        nearbyEvents.addAll(eventsFromGlobal)
+                        nearbyEvents.addAll(globalList)
                         _eventMarkers.value = markers
                         dataLoaded = true
                     }
                 } else {
-                    if (!isNetworkAvailable()) {
-                        // Sin datos y sin conexión
-                        Log.e(logTag, "No connection and no data in GlobalData.")
+                    if (_isOffline.value) {
+                        Log.e(logTag, "Offline & no data in cache.")
                         withContext(Dispatchers.Main) {
-                            _errorMessage.value = "No Connection. Please try again later"
+                            _errorMessage.value = "No Connection. Try again later."
                         }
                     } else {
-                        Log.i(logTag, "GlobalData empty, periodic polling started.")
+                        Log.i(logTag, "No data, starting polling...")
                     }
                 }
             } catch (e: Exception) {
                 withContext(Dispatchers.Main) {
-                    _errorMessage.value = "Error getting Event Data."
+                    _errorMessage.value = "Error loading events."
                 }
             } finally {
-                // Asegura que isLoading se ponga a false y se inicie el polling si es necesario
                 withContext(Dispatchers.Main) {
                     _isLoading.value = false
-                    if (!dataLoaded && nearbyEvents.isEmpty()) { // Inicia polling solo si realmente no se cargó nada
-                        startPollingForData()
-                    }
+                    if (!dataLoaded && nearbyEvents.isEmpty()) startPollingForData()
                 }
             }
         }
     }
 
-    // ======= MULTITHREADING ADDED =======:
-    // Helper para procesar marcadores en Dispatchers.Default
-    private suspend fun processMarkersInBackground(events: List<Event>): List<MarkerData> {
-        return withContext(Dispatchers.Default) {
-            events.mapNotNull { event ->
+    private suspend fun processMarkers(events: List<Event>): List<MarkerData> =
+        withContext(Dispatchers.Default) {
+            events.mapNotNull { ev ->
                 runCatching {
-                    // Asumiendo que MarkerData tiene id y los métodos de location existen
                     MarkerData(
-                        id = event.id,
-                        position = event.location.getCoordinates(),
-                        title = event.name,
-                        snippet = event.location.getInfo()
+                        id = ev.name,
+                        position = ev.location.getCoordinates(),
+                        title = ev.name,
+                        snippet = ev.location.getInfo()
                     )
-                }.onFailure { e ->
-                    Log.e(logTag, "Error creando MarkerData para evento ${event.id}", e)
                 }.getOrNull()
             }
         }
-    }
 
-    // Inicia la consulta periódica si no hay datos
     private fun startPollingForData() {
-        // Cancela cualquier polling anterior
         stopPolling()
-        // Inicia solo si la lista sigue vacía
         if (nearbyEvents.isEmpty()) {
-            Log.i(logTag, "Starting polling every ${pollingIntervalMillis}ms...")
-            pollingJob = viewModelScope.launch(Dispatchers.IO) { // Ejecuta el bucle en IO
-                while (isActive) { // Bucle mientras la corrutina esté activa
-                    try {
-                        // Verify connection before polling
-                        if (!isNetworkAvailable()) {
-                            Log.d(logTag, "Polling: No connection, waiting...")
-                            delay(pollingIntervalMillis * 2) // Espera más si no hay conexión
-                            continue // Salta esta iteración
-                        }
-
-                        val currentGlobalEvents = GlobalData.nearbyEvents
-                        if (currentGlobalEvents.isNotEmpty()) {
-                            Log.i(logTag, "Polling: ¡Data found in GlobalData! (${currentGlobalEvents.size} events)")
-                            // ======= MULTITHREADING ADDED =======:
-                            val markers = processMarkersInBackground(currentGlobalEvents)
-                            // Actualiza la UI en el hilo principal
-                            withContext(Dispatchers.Main) {
-                                nearbyEvents.clear()
-                                nearbyEvents.addAll(currentGlobalEvents)
-                                _eventMarkers.value = markers
-                                _errorMessage.value = null
-                                _isLoading.value = false
-                                stopPolling() // Detiene el polling una vez que encuentra datos
-                            }
-                        } else {
-                            Log.d(logTag, "Polling: GlobalData still empty.")
-                        }
-                    } catch (e: Exception) {
-                        Log.e(logTag, "Polling: Error during polling", e)
+            pollingJob = viewModelScope.launch(Dispatchers.IO) {
+                while (isActive) {
+                    if (_isOffline.value) {
+                        Log.d(logTag, "Polling: still offline.")
+                        delay(pollingIntervalMillis * 2)
+                        continue
                     }
-                    delay(pollingIntervalMillis) // Espera antes de la siguiente consulta
+                    val list = GlobalData.nearbyEvents
+                    if (list.isNotEmpty()) {
+                        val markers = processMarkers(list)
+                        withContext(Dispatchers.Main) {
+                            nearbyEvents.clear()
+                            nearbyEvents.addAll(list)
+                            _eventMarkers.value = markers
+                            _errorMessage.value = null
+                            _isLoading.value = false
+                        }
+                        break
+                    }
+                    delay(pollingIntervalMillis)
                 }
             }
-        } else {
-            Log.d(logTag, "No polling because there is already data.")
         }
     }
 
-    // Detiene la consulta periódica
     private fun stopPolling() {
-        if (pollingJob?.isActive == true) {
-            Log.i(logTag, "Stopping polling...")
-            pollingJob?.cancel()
-        }
+        pollingJob?.cancel()
         pollingJob = null
     }
 
-    // --- Helper de Conectividad ---
-    @SuppressLint("MissingPermission") // El permiso ACCESS_NETWORK_STATE es normal, no peligroso
-    private fun isNetworkAvailable(): Boolean {
-        val connectivityManager =
-            getApplication<Application>().getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager?
-                ?: return false // Retorna false si no se puede obtener el servicio
+    fun refreshNearbyEvents() {
+        viewModelScope.launch {
+            _isRefreshing.value = true
+            loadNearbyEventsToList()
+            _isRefreshing.value = false
+        }
+    }
 
+    @SuppressLint("MissingPermission")
+    private fun isNetworkAvailable(): Boolean {
+        val cm = getApplication<Application>().getSystemService(
+            Context.CONNECTIVITY_SERVICE
+        ) as ConnectivityManager? ?: return false
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            val network = connectivityManager.activeNetwork ?: return false
-            val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+            cm.activeNetwork ?: return false
+            val caps = cm.getNetworkCapabilities(cm.activeNetwork) ?: return false
+            return caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+                    caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         } else {
-            // Deprecated para API < 23, pero como fallback
             @Suppress("DEPRECATION")
-            val networkInfo = connectivityManager.activeNetworkInfo ?: return false
-            @Suppress("DEPRECATION")
-            return networkInfo.isConnected
+            return cm.activeNetworkInfo?.isConnected == true
         }
     }
 
     override fun onCleared() {
         super.onCleared()
-        stopPolling() // Asegura detener el polling cuando el ViewModel se destruye
-        Log.d(logTag, "ViewModel cleared, polling stopped.")
+        stopPolling()
+        Log.d(logTag, "Cleared, polling stopped.")
     }
 }

@@ -2,6 +2,7 @@ package com.isis3510.growhub.viewmodel
 
 import android.app.Application
 import android.os.Build
+import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.compose.runtime.getValue
@@ -9,12 +10,19 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.firebase.analytics.FirebaseAnalytics
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentSnapshot
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.facade.FirebaseServicesFacade
 import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.utils.SearchEventClick
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -43,6 +51,9 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
 
     private val db = AppLocalDatabase.getDatabase(application)
     private val eventRepository = EventRepository(db)
+    private val firebaseAnalytics = FirebaseAnalytics.getInstance(application)
+
+    private val connectivityViewModel = ConnectivityViewModel(application)
 
     init {
         loadInitialEvents()
@@ -51,6 +62,7 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
     @RequiresApi(Build.VERSION_CODES.O)
     fun loadInitialEvents() {
         Log.d("SearchEventViewModel", "loadInitialEvents: Start")
+        logSearchOpenedEvent()
         loadInitialSearchEvents()
         loadCategoriesSkillsLocations()
         Log.d("SearchEventViewModel", "loadInitialEvents: End")
@@ -63,12 +75,15 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             Log.d("SearchEventViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
             val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
-            if (events.isEmpty()) {
-                //Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
-                //isLoading.value = false
-                //hasReachedEnd.value = true
-                //loadInitialSearchEventsLocal()
-                //return@launch
+            GlobalData.searchEventsList = events
+            eventRepository.storeEvents(events)
+            eventRepository.deleteDuplicates()
+            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
+                isLoading.value = false
+                hasReachedEnd.value = true
+                loadInitialSearchEventsLocal()
+                return@launch
             }
             else {
                 Log.d("SearchEventViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
@@ -89,7 +104,8 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         viewModelScope.launch {
             Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Calling eventRepository.getEvents")
             val events = eventRepository.getEvents(5, 0)
-            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${filteredEvents.size} search events from local storage")
+            GlobalData.searchEventsList = events
+            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${events.size} search events from local storage")
             searchEvents.value = events
             isLoading.value = false
             hasReachedEnd.value = events.isEmpty()
@@ -152,6 +168,34 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
         selectedLocation = ""
         selectedDate = ""
         searchQuery = ""
+    }
+
+    private fun logSearchOpenedEvent() {
+        val bundle = Bundle().apply {
+            putString(FirebaseAnalytics.Param.SCREEN_NAME, "SearchEvents")
+            putString("interaction_type", "search_screen_loaded")
+        }
+        firebaseAnalytics.logEvent("search_events_interaction", bundle)
+    }
+
+    fun logClick(clickType: String) {
+        val currentUser = FirebaseAuth.getInstance().currentUser
+        if (currentUser != null) {
+            val clickEvent = SearchEventClick(
+                userId = currentUser.uid,
+                clickType = clickType
+            )
+
+            FirebaseFirestore.getInstance()
+                .collection("search_clicks")
+                .add(clickEvent)
+                .addOnSuccessListener {
+                    Log.d("ClickLog", "Click logged successfully")
+                }
+                .addOnFailureListener {
+                    Log.e("ClickLog", "Failed to log click", it)
+                }
+        }
     }
 
 }

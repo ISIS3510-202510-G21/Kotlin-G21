@@ -33,6 +33,7 @@ import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.R
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+
 import androidx.compose.ui.text.input.KeyboardType
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -82,8 +83,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.email,
                 onValueChange = {
-                    viewModel.onEmailChange(it)
-                    emailError = null
+                    if (it.length <= 30) {
+                        viewModel.onEmailChange(it)
+                        emailError = null
+                    }
                 },
                 label = { Text("Email") },
                 placeholder = { Text("abc@email.com") },
@@ -109,8 +112,10 @@ fun LoginScreen(
             OutlinedTextField(
                 value = uiState.password,
                 onValueChange = {
-                    viewModel.onPasswordChange(it)
-                    passwordError = null
+                    if (it.length <= 30) {
+                        viewModel.onPasswordChange(it)
+                        passwordError = null
+                    }
                 },
                 label = { Text("Password") },
                 placeholder = { Text("Your password") },

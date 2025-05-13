@@ -3,6 +3,7 @@ package com.isis3510.growhub.view.create
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -26,6 +27,7 @@ import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
 import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
+
 
 @Preview(showBackground = true)
 @Composable
@@ -85,13 +87,12 @@ fun CreateEventView(
     onNavigateBack: () -> Unit = {}
 ) {
     val context = LocalContext.current
-    // Usamos el factory que recibe un Context
     val factory = remember { CreateEventViewModelFactory(context) }
-    // Instanciamos el ViewModel con factory
     val viewModel: CreateEventViewModel = viewModel(factory = factory)
 
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
+    val eventCreated by viewModel.eventCreated.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -100,6 +101,13 @@ fun CreateEventView(
     ) { uri ->
         if (uri != null) {
             viewModel.onImageUrlChange(uri.toString())
+        }
+    }
+
+    LaunchedEffect(eventCreated) {
+        if (eventCreated == true) {
+            onNavigateBack()
+            viewModel.resetEventCreated()
         }
     }
 
@@ -113,10 +121,7 @@ fun CreateEventView(
                 .padding(innerPadding)
         ) {
             if (isLoading) {
-                Box(
-                    modifier = Modifier.fillMaxSize(),
-                    contentAlignment = Alignment.Center
-                ) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
             } else {
@@ -130,9 +135,7 @@ fun CreateEventView(
 
         LaunchedEffect(errorMessage) {
             errorMessage?.let { msg ->
-                scope.launch {
-                    snackbarHostState.showSnackbar(msg)
-                }
+                scope.launch { snackbarHostState.showSnackbar(msg) }
             }
         }
     }
@@ -303,6 +306,7 @@ fun CreateEventContent(
 
             if (!hasError) {
                 viewModel.createEvent()
+                // onNavigateBack()
             }
         },
         onNavigateBack = onNavigateBack
@@ -747,31 +751,63 @@ fun UniversityDropdown(viewModel: CreateEventViewModel = viewModel(factory = Cre
     }
 }
 
+
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun SkillsSelection(viewModel: CreateEventViewModel = viewModel(factory = CreateEventViewModelFactory(LocalContext.current))) {
+fun SkillsSelection(
+    viewModel: CreateEventViewModel = viewModel(
+        factory = CreateEventViewModelFactory(LocalContext.current)
+    )
+) {
     val allSkills by viewModel.allSkills.collectAsState()
     val selectedSkills by viewModel.selectedSkills.collectAsState()
 
-    Column {
-        allSkills.forEach { skillName ->
-            val isSelected = selectedSkills.contains(skillName)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .clickable { viewModel.toggleSkill(skillName) },
-                horizontalArrangement = Arrangement.SpaceBetween
+    /* Contenedor con altura fija y scroll interno */
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(150.dp)
+            .border(1.dp, Color(0xFFE0E0E0), RoundedCornerShape(8.dp))
+            .clip(RoundedCornerShape(8.dp))
+            .padding(8.dp)
+    ) {
+        val scrollState = rememberScrollState()
+
+        Column(
+            modifier = Modifier
+                .verticalScroll(scrollState)
+                .fillMaxWidth()
+        ) {
+            /* Usamos FlowRow para que los chips se distribuyan en filas */
+            FlowRow(
+                // Compose Foundation
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement   = Arrangement.spacedBy(8.dp)
             ) {
-                Text(text = skillName, color = Color.Black)
-                if (isSelected) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_check),
-                        contentDescription = "Selected",
-                        tint = Color.Green
+                allSkills.forEach { skill ->
+                    val isSelected = selectedSkills.contains(skill)
+
+                    FilterChip(
+                        selected = isSelected,
+                        onClick = { viewModel.toggleSkill(skill) },
+                        label = { Text(text = skill, maxLines = 1) },
+                        leadingIcon = if (isSelected) {
+                            {
+                                Icon(
+                                    painter = painterResource(id = R.drawable.ic_check),
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                            }
+                        } else null,
+                        colors = FilterChipDefaults.filterChipColors(
+                            containerColor = if (isSelected) Color(0xFF5669FF).copy(alpha = .15f)
+                            else Color(0xFFF5F5F5),
+                            labelColor = if (isSelected) Color(0xFF5669FF) else Color.Black
+                        )
                     )
                 }
             }
-            Divider()
         }
     }
 }
@@ -816,9 +852,16 @@ fun CategoryDropdown(
     selectedCategory: String,
     placeholderText: String,
     onCategorySelected: (String) -> Unit,
-    isError: Boolean
+    isError: Boolean,
+    viewModel: CreateEventViewModel = viewModel(
+        factory = CreateEventViewModelFactory(LocalContext.current)
+    )
 ) {
+    /* La lista ahora viene de Firestore vía ViewModel ----------- */
+    val categories by viewModel.allCategories.collectAsState()
+
     var expanded by remember { mutableStateOf(false) }
+
     ExposedDropdownMenuBox(
         expanded = expanded,
         onExpandedChange = { expanded = !expanded },
@@ -844,24 +887,12 @@ fun CategoryDropdown(
                 unfocusedTextColor = Color.Black
             )
         )
-        val categoryList = listOf(
-            "Leadership",
-            "Sports",
-            "Hackathons & Competitions",
-            "Career Fairs",
-            "Workshops",
-            "Technology",
-            "Science",
-            "Sustainability & Environment",
-            "Engineering",
-            "Networking",
-            "Entrepeneurship",
-            "SW Develop",
-            "Networking",
-            "Psychology"
-        )
-        ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
-            categoryList.forEach { cat ->
+
+        ExposedDropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            categories.forEach { cat ->
                 DropdownMenuItem(
                     text = { Text(cat) },
                     onClick = {

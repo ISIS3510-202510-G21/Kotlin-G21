@@ -9,15 +9,18 @@ import androidx.room.TypeConverters
 import com.isis3510.growhub.local.data.CategoryDao
 import com.isis3510.growhub.local.data.CategoryEntity
 import com.isis3510.growhub.local.data.EventEntity
+import com.isis3510.growhub.local.data.ProfileEntity
 import com.isis3510.growhub.local.data.EventDao
+import com.isis3510.growhub.local.data.ProfileDao
 import com.isis3510.growhub.utils.Converters
 
 
-@Database(entities = [CategoryEntity::class, EventEntity::class], version = 6, exportSchema = false)
+@Database(entities = [CategoryEntity::class, EventEntity::class, ProfileEntity::class], version = 9, exportSchema = false)
 @TypeConverters(Converters::class)
 abstract class AppLocalDatabase : RoomDatabase() {
     abstract fun categoryDao(): CategoryDao
     abstract fun eventDao(): EventDao
+    abstract fun profileDao(): ProfileDao
 
     companion object {
         @Volatile

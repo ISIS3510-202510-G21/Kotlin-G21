@@ -2,13 +2,14 @@ package com.isis3510.growhub.local.data
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import androidx.room.Index
 
-@Entity(tableName = "evententity")
+@Entity(tableName = "evententity", indices = [Index(value = ["name", "startDate"], unique = true)])
 data class EventEntity(
-    @PrimaryKey val id: String,
+    @PrimaryKey(autoGenerate = true)
+    val id: Int = 0,
     val name: String,
     val description: String,
-    val locationId: String,
     val locationInfo: String,
     val locationLatitude: Double,
     val locationLongitude: Double,
