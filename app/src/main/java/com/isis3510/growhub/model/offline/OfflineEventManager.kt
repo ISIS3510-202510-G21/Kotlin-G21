@@ -1,22 +1,28 @@
 package com.isis3510.growhub.offline
 
 import android.content.Context
-import android.content.SharedPreferences
 import com.google.firebase.Timestamp
-import com.google.gson.Gson
-import com.google.gson.reflect.TypeToken
 import com.isis3510.growhub.Repository.CreateEventRepository
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
+import org.json.JSONArray
+import org.json.JSONObject
+import java.io.File
 
 class OfflineEventManager(
-    context: Context,
+    private val context: Context,
     private val createEventRepository: CreateEventRepository
 ) {
-    private val prefs: SharedPreferences =
-        context.getSharedPreferences("offline_events_prefs", Context.MODE_PRIVATE)
+    private val offlineEventsFile = File(context.filesDir, "offline_events.json")
 
-    private val gson = Gson()
+    init {
+        // Ensure the file exists
+        if (!offlineEventsFile.exists()) {
+            offlineEventsFile.writeText("[]")
+        }
+    }
 
-    fun saveOfflineEvent(
+    suspend fun saveOfflineEvent(
         name: String,
         cost: Double,
         category: String,
@@ -29,77 +35,40 @@ class OfflineEventManager(
         details: String,
         city: String,
         isUniversity: Boolean,
-        skillIds: List<String>
-    ) {
-        val offlineEvents = getOfflineEvents().toMutableList()
-        offlineEvents.add(
-            OfflineEvent(
-                name = name,
-                cost = cost,
-                category = category,
-                description = description,
-                startDate = startDate,
-                endDate = endDate,
-                locationId = locationId,
-                imageUrl = imageUrl,
-                address = address,
-                details = details,
-                city = city,
-                isUniversity = isUniversity,
-                skillIds = skillIds
-            )
-        )
-        val json = gson.toJson(offlineEvents)
-        prefs.edit().putString("OFFLINE_EVENTS", json).apply()
-    }
+        skillIds: List<String>,
+        latitude: Double? = null,
+        longitude: Double? = null
+    ) = withContext(Dispatchers.IO) {
+        try {
+            val currentEventsContent = offlineEventsFile.readText()
+            val eventsArray = JSONArray(currentEventsContent)
 
-    fun getOfflineEvents(): List<OfflineEvent> {
-        val json = prefs.getString("OFFLINE_EVENTS", null) ?: return emptyList()
-        val type = object : TypeToken<List<OfflineEvent>>() {}.type
-        return gson.fromJson(json, type) ?: emptyList()
-    }
-
-    fun clearOfflineEvents() {
-        prefs.edit().remove("OFFLINE_EVENTS").apply()
-    }
-
-    fun updateOfflineEvents(events: List<OfflineEvent>) {
-        val json = gson.toJson(events)
-        prefs.edit().putString("OFFLINE_EVENTS", json).apply()
-    }
-
-    suspend fun tryUploadAllOfflineEvents(): Int {
-        var uploadedCount = 0
-        val currentList = getOfflineEvents().toMutableList()
-        val iterator = currentList.listIterator()
-
-        while (iterator.hasNext()) {
-            val event = iterator.next()
-            val success = createEventRepository.createEvent(
-                name = event.name,
-                cost = event.cost,
-                category = event.category,
-                description = event.description,
-                startDate = event.startDate,
-                endDate = event.endDate,
-                locationId = event.locationId,
-                imageUrl = event.imageUrl,
-                address = event.address,
-                details = event.details,
-                city = event.city,
-                isUniversity = event.isUniversity,
-                skillIds = event.skillIds
-            )
-            if (success) {
-                uploadedCount++
-                iterator.remove()
+            val newEvent = JSONObject().apply {
+                put("name", name)
+                put("cost", cost)
+                put("category", category)
+                put("description", description)
+                put("startDate", startDate.seconds)
+                put("endDate", endDate.seconds)
+                put("locationId", locationId)
+                put("imageUrl", imageUrl ?: "")
+                put("address", address)
+                put("details", details)
+                put("city", city)
+                put("isUniversity", isUniversity)
+                put("skillIds", JSONArray(skillIds))
+                // Add latitude and longitude if available
+                if (latitude != null) put("latitude", latitude)
+                if (longitude != null) put("longitude", longitude)
             }
-        }
 
-        if (uploadedCount > 0) {
-            updateOfflineEvents(currentList)
+            eventsArray.put(newEvent)
+            offlineEventsFile.writeText(eventsArray.toString())
+            return@withContext true
+        } catch (e: Exception) {
+            // Log error
+            return@withContext false
         }
-        return uploadedCount
     }
 
     suspend fun uploadSingleEvent(
@@ -115,22 +84,77 @@ class OfflineEventManager(
         details: String,
         city: String,
         isUniversity: Boolean,
-        skillIds: List<String>
+        skillIds: List<String>,
+        latitude: Double? = null,
+        longitude: Double? = null
     ): Boolean {
-        return createEventRepository.createEvent(
-            name = name,
-            cost = cost,
-            category = category,
-            description = description,
-            startDate = startDate,
-            endDate = endDate,
-            locationId = locationId,
-            imageUrl = imageUrl,
-            address = address,
-            details = details,
-            city = city,
-            isUniversity = isUniversity,
-            skillIds = skillIds
-        )
+        return try {
+            createEventRepository.createEvent(
+                name, cost, category, description, startDate, endDate,
+                locationId, imageUrl, address, details, city, isUniversity, skillIds,
+                latitude, longitude
+            )
+        } catch (e: Exception) {
+            // Log error
+            false
+        }
+    }
+
+    suspend fun tryUploadAllOfflineEvents(): Int = withContext(Dispatchers.IO) {
+        if (!offlineEventsFile.exists() || !NetworkUtils.isNetworkAvailable(context)) {
+            return@withContext 0
+        }
+
+        try {
+            val currentEventsContent = offlineEventsFile.readText()
+            val eventsArray = JSONArray(currentEventsContent)
+
+            var uploadedCount = 0
+            val remainingEvents = JSONArray()
+
+            for (i in 0 until eventsArray.length()) {
+                val eventObj = eventsArray.getJSONObject(i)
+
+                val uploadSuccess = createEventRepository.createEvent(
+                    name = eventObj.getString("name"),
+                    cost = eventObj.getDouble("cost"),
+                    category = eventObj.getString("category"),
+                    description = eventObj.getString("description"),
+                    startDate = Timestamp(eventObj.getLong("startDate"), 0),
+                    endDate = Timestamp(eventObj.getLong("endDate"), 0),
+                    locationId = eventObj.getString("locationId"),
+                    imageUrl = eventObj.getString("imageUrl"),
+                    address = eventObj.getString("address"),
+                    details = eventObj.getString("details"),
+                    city = eventObj.getString("city"),
+                    isUniversity = eventObj.getBoolean("isUniversity"),
+                    skillIds = parseSkillIds(eventObj.getJSONArray("skillIds")),
+                    latitude = if (eventObj.has("latitude")) eventObj.getDouble("latitude") else null,
+                    longitude = if (eventObj.has("longitude")) eventObj.getDouble("longitude") else null
+                )
+
+                if (uploadSuccess) {
+                    uploadedCount++
+                } else {
+                    remainingEvents.put(eventObj)
+                }
+            }
+
+            // Save back any events that failed to upload
+            offlineEventsFile.writeText(remainingEvents.toString())
+
+            return@withContext uploadedCount
+        } catch (e: Exception) {
+            // Log error
+            return@withContext 0
+        }
+    }
+
+    private fun parseSkillIds(jsonArray: JSONArray): List<String> {
+        val result = mutableListOf<String>()
+        for (i in 0 until jsonArray.length()) {
+            result.add(jsonArray.getString(i))
+        }
+        return result
     }
 }

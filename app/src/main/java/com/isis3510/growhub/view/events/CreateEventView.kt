@@ -77,7 +77,10 @@ fun PreviewCreateEventContent() {
         onImageUpload = {},
         onCreateEvent = {},
         onNavigateBack = {},
-        skillSelectionError = "error de skills selector"
+        skillSelectionError = "error de skills selector",
+        addressValidated = true,
+        validatingAddress = false,
+        onValidateAddress = {}
     )
 }
 
@@ -142,6 +145,83 @@ fun CreateEventView(
 }
 
 @Composable
+fun LabeledAddressField(
+    label: String,
+    value: String,
+    placeholder: String,
+    isError: Boolean,
+    isValidated: Boolean,
+    isValidating: Boolean,
+    onValueChange: (String) -> Unit,
+    onValidateClick: () -> Unit
+) {
+    Text(
+        text = label,
+        fontSize = 14.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color.Black,
+        modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        OutlinedTextField(
+            value = value,
+            onValueChange = onValueChange,
+            placeholder = { Text(placeholder) },
+            isError = isError,
+            modifier = Modifier
+                .weight(1f)
+                .height(50.dp),
+            shape = RoundedCornerShape(10.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedTextColor = Color.Black,
+                unfocusedTextColor = Color.Black,
+                unfocusedContainerColor = if (isValidated) Color(0xFFE0F7E0) else Color.Transparent
+            ),
+            trailingIcon = {
+                if (isValidated) {
+                    Icon(
+                        painter = painterResource(id = R.drawable.ic_check),
+                        contentDescription = "Validated",
+                        tint = Color.Green,
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+            }
+        )
+
+        Button(
+            onClick = onValidateClick,
+            enabled = !isValidating && value.isNotBlank(),
+            modifier = Modifier
+                .height(50.dp)
+                .width(100.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = Color(0xFF5669FF),
+                disabledContainerColor = Color.Gray
+            )
+        ) {
+            if (isValidating) {
+                CircularProgressIndicator(
+                    color = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            } else {
+                Text(
+                    text = "Validate",
+                    color = Color.White,
+                    fontSize = 12.sp
+                )
+            }
+        }
+    }
+}
+
+@Composable
 fun CreateEventContent(
     onNavigateBack: () -> Unit,
     viewModel: CreateEventViewModel,
@@ -173,6 +253,9 @@ fun CreateEventContent(
     var endHourError by remember { mutableStateOf<String?>(null) }
     var addressError by remember { mutableStateOf<String?>(null) }
     var detailsError by remember { mutableStateOf<String?>(null) }
+
+    val addressValidated by viewModel.addressValidated.collectAsState()
+    val validatingAddress by viewModel.validatingAddress.collectAsState()
 
     CreateEventContentInternal(
         name = name,
@@ -309,7 +392,10 @@ fun CreateEventContent(
                 // onNavigateBack()
             }
         },
-        onNavigateBack = onNavigateBack
+        onNavigateBack = onNavigateBack,
+        addressValidated = addressValidated,
+        validatingAddress = validatingAddress,
+        onValidateAddress = { viewModel.validateAddress() }
     )
 }
 
@@ -348,7 +434,10 @@ fun CreateEventContentInternal(
     onDetailsChange: (String) -> Unit,
     onImageUpload: () -> Unit,
     onCreateEvent: () -> Unit,
-    onNavigateBack: () -> Unit
+    onNavigateBack: () -> Unit,
+    addressValidated: Boolean,
+    validatingAddress: Boolean,
+    onValidateAddress: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -553,14 +642,51 @@ fun CreateEventContentInternal(
                 }
             }
 
-            LabeledTextField(
-                label = "Address",
-                value = address,
-                placeholder = "Write the address of your event",
-                isError = (addressError != null),
-                onValueChange = onAddressChange
+            LaunchedEffect(address) {
+                if (address.isNotBlank()) {
+                    onValidateAddress()
+                }
+            }
+
+            Text(
+                text = "Address",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
             )
-            ErrorText(addressError)
+            OutlinedTextField(
+                value = address,
+                onValueChange = {
+                    onAddressChange(it)
+                },
+                placeholder = { Text("Write the address of your event") },
+                isError = (addressError != null),
+                trailingIcon = {
+                    if (addressValidated) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = "Validated",
+                            tint = Color.Green,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else if (validatingAddress) {
+                        CircularProgressIndicator(
+                            color = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    unfocusedContainerColor = if (addressValidated) Color(0xFFE0F7E0) else Color.Transparent
+                )
+            )
 
             Text(
                 text = "City",

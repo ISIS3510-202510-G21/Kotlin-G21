@@ -65,7 +65,7 @@ fun MainView(
     val offlineManager = remember {
         OfflineEventManager(
             context = context,
-            createEventRepository = CreateEventRepository()
+            createEventRepository = CreateEventRepository(context)
         )
     }
 
