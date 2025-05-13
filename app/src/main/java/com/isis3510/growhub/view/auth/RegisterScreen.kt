@@ -232,7 +232,7 @@ fun RegisterScreen(
         Button(
             onClick = {
                 if (!NetworkUtils.isNetworkAvailable(context)) {
-                    Toast.makeText(context, "No internet connection", Toast.LENGTH_LONG).show(); return@Button
+                    Toast.makeText(context, "To signUp check internet connection", Toast.LENGTH_LONG).show(); return@Button
                 }
                 val ok = validate(
                     uiState,
