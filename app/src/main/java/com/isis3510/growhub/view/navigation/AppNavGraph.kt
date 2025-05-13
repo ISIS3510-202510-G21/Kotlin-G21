@@ -118,9 +118,11 @@ fun AppNavGraph(
             RegisterScreen(
                 viewModel = authViewModel,
                 onNavigateToInterests = {
+
                     /*navController.navigate(Destinations.INTERESTS) {
                         popUpTo(Destinations.REGISTER) { inclusive = true }*/
                     navController.navigate(Destinations.HOME) {
+
                         popUpTo(Destinations.REGISTER) { inclusive = true }
                     }
                 },
