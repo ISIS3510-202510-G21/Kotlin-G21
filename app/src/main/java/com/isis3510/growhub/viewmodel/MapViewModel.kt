@@ -17,16 +17,21 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.MarkerData
 import com.isis3510.growhub.utils.ConnectionStatus
+import com.isis3510.growhub.utils.MapClick
+import com.isis3510.growhub.utils.SearchEventClick
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -51,6 +56,9 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private var pollingJob: Job? = null
     private val pollingIntervalMillis = 5000L
     private val logTag = "MapViewModelConn"
+
+    // To keep track of clicks
+    private val clickStats = mutableMapOf<String, Int>()
 
     init {
         // Observar cambios de red
@@ -208,5 +216,47 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         super.onCleared()
         stopPolling()
         Log.d(logTag, "Cleared, polling stopped.")
+    }
+
+    /**
+     * Log button click for analytics with proper error handling and offline support
+     */
+    fun logClick(clickType: String) {
+        viewModelScope.launch {
+            try {
+                // Incrementar conteo local para su uso en la UI o para sincronización posterior
+                val currentCount = clickStats.getOrDefault(clickType, 0)
+                clickStats[clickType] = currentCount + 1
+
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                if (currentUser == null) {
+                    Log.w("ClickLog", "No user authenticated, click not sent to Firebase")
+                    return@launch
+                }
+
+                // Verificar conectividad antes de intentar enviar
+                if (_isOffline.value) {
+                    Log.w("ClickLog", "Device offline, click will be sent later")
+                    // Aquí podría implementar una cola de clicks pendientes
+
+                    return@launch
+                }
+
+                val clickEvent = MapClick(
+                    userId = currentUser.uid,
+                    clickType = clickType
+                )
+                Log.d("UserID", currentUser.uid)
+                Log.d("ClickLog", "Enviando click a Firebase: $clickEvent")
+
+                FirebaseFirestore.getInstance()
+                    .collection("map_clicks")
+                    .add(clickEvent)
+                    .await()
+
+            } catch (e: Exception) {
+                Log.e("ClickLog", "Excepción al procesar click: $clickType", e)
+            }
+        }
     }
 }

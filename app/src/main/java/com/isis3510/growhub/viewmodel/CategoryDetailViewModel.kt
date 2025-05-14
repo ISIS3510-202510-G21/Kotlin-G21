@@ -150,15 +150,6 @@ class CategoryDetailViewModel : ViewModel() {
         selectedSorting.value = EventsSorting.SOONEST_TO_LATEST.name
         applyFilters()
     }
-
-    /**
-     * Log button click for analytics
-     */
-    fun logClick(buttonId: String) {
-        val currentCount = clickStats.getOrDefault(buttonId, 0)
-        clickStats[buttonId] = currentCount + 1
-        Log.d("CategoryViewModel", "Button $buttonId clicked. Total: ${clickStats[buttonId]}")
-    }
 }
 
 /**

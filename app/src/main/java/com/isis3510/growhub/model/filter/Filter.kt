@@ -286,12 +286,14 @@ class Filter(
         val userSnapshot = db.collection("users").document(userId)
             .get()
             .await()
+        Log.d("User ID", userId)
 
         val recommendedEventsIds = userSnapshot.get("recommended_events") as? List<String> ?: emptyList()
-
         // Skip events that have already been shown based on the provided offsetIds
-        val newRecommendedIds = recommendedEventsIds.filterNot { offsetIds.contains(it) }
+        val offsetIdsNotName = offsetIds.mapNotNull { name -> getEventIdByName(name) }.toSet()
 
+        val newRecommendedIds = recommendedEventsIds.filterNot { offsetIdsNotName.contains(it) }
+        Log.d("New Recommended Events", newRecommendedIds.toString())
         var count = 0
         for (eventId in newRecommendedIds) {
             if (count >= limit) break
@@ -306,6 +308,16 @@ class Filter(
         }
 
         return events
+    }
+
+    private suspend fun getEventIdByName(eventName: String): String? {
+        val snapshot = db
+            .collection("events")
+            .whereEqualTo("name", eventName)
+            .get()
+            .await()
+
+        return snapshot.documents.firstOrNull()?.id
     }
 
     suspend fun getCategoriesData(): List<Map<String, Any>> {

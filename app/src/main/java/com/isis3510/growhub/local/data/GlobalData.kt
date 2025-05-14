@@ -10,5 +10,5 @@ object GlobalData {
     var myEventsCreatedByMe: List<Event> = emptyList()
     var searchEvents: List<Event> = emptyList()
     var searchEventsList: List<Event> = emptyList()
-    var allEvents: MutableList<Event> = mutableListOf()
+    var allEvents: MutableSet<Event> = mutableSetOf()
 }

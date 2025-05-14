@@ -276,7 +276,6 @@ fun CategoryFilters(viewModel: CategoryDetailViewModel, firebaseAnalytics: Fireb
                     putString("filter_label", "Clear Filters")
                 }
                 firebaseAnalytics.logEvent("category_events_filter", bundle)
-                viewModel.logClick("clear_click")
             },
             colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF4CAF50)),
             modifier = Modifier
@@ -339,7 +338,6 @@ fun FilterDropdown(
                             putString("filter_label", label)
                         }
                         firebaseAnalytics.logEvent("category_events_filter", bundle)
-                        viewModel.logClick("filter_click")
                     },
                     text = { Text(option.ifBlank { "All" }) }
                 )

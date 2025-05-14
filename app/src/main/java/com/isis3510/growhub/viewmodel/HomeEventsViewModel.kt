@@ -80,13 +80,40 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadInitialUpcomingEvents() {
         isLoadingUpcoming.value = true
 
-        // First load from cache/database to show something immediately
-        loadUpcomingFromCacheOrRoom()
+        // Solo cargamos desde cache/Room si hay datos disponibles o si estamos offline
+        val cached = upcomingCache.get(UPCOMING_KEY)
+        if (!cached.isNullOrEmpty()) {
+            upcomingEvents.value = cached
+            GlobalData.upcomingEvents = cached
+            hasReachedEndUpcoming.value = false
+        }
 
-        // If offline, we already loaded from cache or room, so we're done
-        if (_isOffline.value) return
+        if (_isOffline.value) {
+            // En modo offline, obtenemos datos de Room si no había en caché
+            if (cached.isNullOrEmpty()) {
+                viewModelScope.launch {
+                    try {
+                        val room = eventRepository.getEvents(5, 0).filterUpcoming()
+                        if (room.isNotEmpty()) {
+                            upcomingEvents.value = room
+                            GlobalData.upcomingEvents = room
+                            upcomingCache.put(UPCOMING_KEY, room)
+                        }
+                        hasReachedEndUpcoming.value = room.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading upcoming events from Room: ${e.message}")
+                    } finally {
+                        isLoadingUpcoming.value = false
+                    }
+                }
+            } else {
+                // Ya habíamos cargado de caché, así que terminamos
+                isLoadingUpcoming.value = false
+            }
+            return
+        }
 
-        // Otherwise, fetch fresh data from Firebase
+        // Modo online: cargamos de Firebase
         viewModelScope.launch {
             try {
                 val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
@@ -120,40 +147,59 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 hasReachedEndUpcoming.value = filtered.isEmpty()
             } catch (e: Exception) {
                 Log.e("HomeEventsViewModel", "Error fetching upcoming events: ${e.message}")
-                // If we failed to fetch, at least we already loaded from cache
+                // Si fallamos online, pero aún no tenemos datos, intentamos obtenerlos de Room
+                if (upcomingEvents.value.isEmpty()) {
+                    try {
+                        val room = eventRepository.getEvents(5, 0).filterUpcoming()
+                        if (room.isNotEmpty()) {
+                            upcomingEvents.value = room
+                            GlobalData.upcomingEvents = room
+                            upcomingCache.put(UPCOMING_KEY, room)
+                        }
+                        hasReachedEndUpcoming.value = room.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading upcoming from Room after Firebase failure: ${e.message}")
+                    }
+                }
             } finally {
                 isLoadingUpcoming.value = false
             }
         }
     }
 
-    private fun loadUpcomingFromCacheOrRoom() {
-        val cached = upcomingCache[UPCOMING_KEY]
-        if (!cached.isNullOrEmpty()) {
-            upcomingEvents.value = cached
-            GlobalData.upcomingEvents = cached
-            hasReachedEndUpcoming.value = false
+    fun loadMoreUpcomingEvents() {
+        if (isLoadingMoreUpcoming.value || hasReachedEndUpcoming.value) return
+
+        if (_isOffline.value) {
+            // En modo offline, intentamos cargar más de Room
+            isLoadingMoreUpcoming.value = true
+            viewModelScope.launch {
+                try {
+                    val currentSize = upcomingEvents.value.size
+                    val moreEvents = eventRepository.getEvents(5, currentSize).filterUpcoming()
+
+                    if (moreEvents.isNotEmpty()) {
+                        val existingIds = upcomingEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
+                        val newEvents = moreEvents.filterNot { "${it.name}-${it.startDate}" in existingIds }
+
+                        if (newEvents.isNotEmpty()) {
+                            upcomingEvents.value = upcomingEvents.value + newEvents
+                            GlobalData.upcomingEvents = upcomingEvents.value
+                            upcomingCache.put(UPCOMING_KEY, upcomingEvents.value)
+                        } else {
+                            hasReachedEndUpcoming.value = true
+                        }
+                    } else {
+                        hasReachedEndUpcoming.value = true
+                    }
+                } catch (e: Exception) {
+                    Log.e("HomeEventsViewModel", "Error loading more upcoming events offline: ${e.message}")
+                } finally {
+                    isLoadingMoreUpcoming.value = false
+                }
+            }
             return
         }
-
-        viewModelScope.launch {
-            try {
-                val room = eventRepository.getEvents(10, 0).filterUpcoming()
-                if (room.isNotEmpty()) {
-                    upcomingEvents.value = room
-                    GlobalData.upcomingEvents = room
-                    upcomingCache.put(UPCOMING_KEY, room)
-                }
-                hasReachedEndUpcoming.value = room.isEmpty()
-            } catch (e: Exception) {
-                Log.e("HomeEventsViewModel", "Error loading upcoming events from Room: ${e.message}")
-            }
-        }
-    }
-
-    fun loadMoreUpcomingEvents() {
-        if (_isOffline.value) return
-        if (isLoadingMoreUpcoming.value || hasReachedEndUpcoming.value) return
 
         isLoadingMoreUpcoming.value = true
         viewModelScope.launch {
@@ -201,28 +247,51 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadInitialRecommendedEvents() {
         isLoadingRecommended.value = true
 
-        // First load from cache/database
-        loadRecommendedFromCacheOrRoom()
+        // Primero verificamos la caché
+        val cached = recommendedCache.get(RECOMMENDED_KEY)
+        if (!cached.isNullOrEmpty()) {
+            recommendedEvents.value = cached
+            hasReachedEndRecommended.value = false
+        }
 
-        // If offline, we're done
+        // Si estamos offline, terminamos con lo que teníamos en caché
         if (_isOffline.value) {
-            Log.d("HomeEventsViewModel", "Offline mode, not fetching recommended events")
+            // Si no teníamos nada en caché, tratamos de mostrar algo de la base de datos local
+            if (cached.isNullOrEmpty()) {
+                viewModelScope.launch {
+                    try {
+                        // Como alternativa, mostramos algunos eventos locales
+                        val localEvents = eventRepository.getAllLocalEvents().take(5)
+                        if (localEvents.isNotEmpty()) {
+                            recommendedEvents.value = localEvents
+                            recommendedCache.put(RECOMMENDED_KEY, localEvents)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading recommended events offline: ${e.message}")
+                    } finally {
+                        isLoadingRecommended.value = false
+                    }
+                }
+            } else {
+                isLoadingRecommended.value = false
+            }
             return
         }
 
+        // Modo online: cargamos de Firebase
         viewModelScope.launch {
             try {
                 val (events) = firebaseServicesFacade.fetchHomeRecommendedEvents()
 
                 // Update ids set
-                currentRecommendedIds = events.mapTo(mutableSetOf()) { it.name + "-" + it.startDate }
+                currentRecommendedIds = events.mapTo(mutableSetOf()) { it.name }
 
                 // Update cache
                 recommendedCache.put(RECOMMENDED_KEY, events)
 
                 // Merge with existing data
-                val existingIds = recommendedEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
-                val newEvents = events.filterNot { "${it.name}-${it.startDate}" in existingIds }
+                val existingIds = recommendedEvents.value.map { it.name }.toSet()
+                val newEvents = events.filterNot { it.name in existingIds }
 
                 if (newEvents.isNotEmpty()) {
                     recommendedEvents.value += newEvents
@@ -240,53 +309,49 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 hasReachedEndRecommended.value = events.isEmpty()
             } catch (e: Exception) {
                 Log.e("HomeEventsViewModel", "Error fetching recommended events: ${e.message}")
+                // Si fallamos y no tenemos datos, mostramos algunos eventos locales
+                if (recommendedEvents.value.isEmpty()) {
+                    try {
+                        val localEvents = eventRepository.getAllLocalEvents().take(5)
+                        if (localEvents.isNotEmpty()) {
+                            recommendedEvents.value = localEvents
+                            recommendedCache.put(RECOMMENDED_KEY, localEvents)
+                        }
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading recommended from local after Firebase failure: ${e.message}")
+                    }
+                }
             } finally {
                 isLoadingRecommended.value = false
             }
         }
     }
 
-    private fun loadRecommendedFromCacheOrRoom() {
-        val cached = recommendedCache[RECOMMENDED_KEY]
-        if (!cached.isNullOrEmpty()) {
-            recommendedEvents.value = cached
-            hasReachedEndRecommended.value = false
+    fun loadMoreRecommendedEvents() {
+        if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
+
+        // En modo offline, no cargamos más eventos recomendados
+        if (_isOffline.value) {
+            hasReachedEndRecommended.value = true
             return
         }
-
-        viewModelScope.launch {
-            try {
-                val room = eventRepository.getEvents(10, 0)
-                if (room.isNotEmpty()) {
-                    recommendedEvents.value = room
-                    recommendedCache.put(RECOMMENDED_KEY, room)
-                }
-                hasReachedEndRecommended.value = room.isEmpty()
-            } catch (e: Exception) {
-                Log.e("HomeEventsViewModel", "Error loading recommended events from Room: ${e.message}")
-            }
-        }
-    }
-
-    fun loadMoreRecommendedEvents() {
-        if (_isOffline.value) return
-        if (isLoadingMoreRecommended.value || hasReachedEndRecommended.value) return
 
         isLoadingMoreRecommended.value = true
         viewModelScope.launch {
             try {
+                Log.d("Current Recommended IDs", currentRecommendedIds.toString())
                 val next = firebaseServicesFacade.fetchNextHomeRecommendedEvents(offsetIds = currentRecommendedIds)
 
                 if (next.isNotEmpty()) {
                     // Filter out duplicates
-                    val existingIds = recommendedEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
-                    val newEvents = next.filterNot { "${it.name}-${it.startDate}" in existingIds }
+                    val existingIds = recommendedEvents.value.map { it.name }.toSet()
+                    val newEvents = next.filterNot { it.name in existingIds }
 
                     if (newEvents.isNotEmpty()) {
                         recommendedEvents.value += newEvents
 
                         // Update ids set
-                        currentRecommendedIds.addAll(next.map { it.name + "-" + it.startDate })
+                        currentRecommendedIds.addAll(next.map { it.name })
 
                         // Add to GlobalData.allEvents
                         for (event in newEvents) {
@@ -315,12 +380,48 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
     private fun loadInitialNearbyEvents() {
         isLoadingNearby.value = true
 
-        // First load from cache or database
-        loadNearbyFromCacheOrRoom()
+        // Verificamos primero la caché
+        val cached = nearbyCache.get(NEARBY_KEY)
+        if (!cached.isNullOrEmpty()) {
+            nearbyEvents.value = cached
+            GlobalData.nearbyEvents = cached
+            hasReachedEndNearby.value = false
+        }
 
-        // If offline, we're done
-        if (_isOffline.value) return
+        // Si estamos offline, cargamos solo de Room
+        if (_isOffline.value) {
+            if (cached.isNullOrEmpty()) {
+                viewModelScope.launch {
+                    try {
+                        val local = eventRepository.getAllLocalEvents()
+                        val filtered = withContext(Dispatchers.IO) { filterWithinKm(local) }
 
+                        if (filtered.isNotEmpty()) {
+                            nearbyEvents.value = filtered
+                            GlobalData.nearbyEvents = filtered
+                            nearbyCache.put(NEARBY_KEY, filtered)
+
+                            // Add to allEvents if not already there
+                            for (event in filtered) {
+                                if (!GlobalData.allEvents.contains(event)) {
+                                    GlobalData.allEvents.add(event)
+                                }
+                            }
+                        }
+                        hasReachedEndNearby.value = filtered.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading nearby events from Room: ${e.message}")
+                    } finally {
+                        isLoadingNearby.value = false
+                    }
+                }
+            } else {
+                isLoadingNearby.value = false
+            }
+            return
+        }
+
+        // Modo online: cargamos de Firebase
         viewModelScope.launch {
             try {
                 val (events, snapshot) = firebaseServicesFacade.fetchHomeEvents()
@@ -356,49 +457,62 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 hasReachedEndNearby.value = filtered.isEmpty()
             } catch (e: Exception) {
                 Log.e("HomeEventsViewModel", "Error fetching nearby events: ${e.message}")
+                // Si fallamos y no tenemos datos, intentamos cargar de Room
+                if (nearbyEvents.value.isEmpty()) {
+                    try {
+                        val local = eventRepository.getAllLocalEvents()
+                        val filtered = withContext(Dispatchers.IO) { filterWithinKm(local) }
+
+                        if (filtered.isNotEmpty()) {
+                            nearbyEvents.value = filtered
+                            GlobalData.nearbyEvents = filtered
+                            nearbyCache.put(NEARBY_KEY, filtered)
+                        }
+                        hasReachedEndNearby.value = filtered.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("HomeEventsViewModel", "Error loading nearby from Room after Firebase failure: ${e.message}")
+                    }
+                }
             } finally {
                 isLoadingNearby.value = false
             }
         }
     }
 
-    private fun loadNearbyFromCacheOrRoom() {
-        val cached = nearbyCache[NEARBY_KEY]
-        if (!cached.isNullOrEmpty()) {
-            nearbyEvents.value = cached
-            GlobalData.nearbyEvents = cached
-            hasReachedEndNearby.value = false
+    fun loadMoreNearbyEvents() {
+        if (isLoadingMoreNearby.value || hasReachedEndNearby.value) return
+
+        // En modo offline, tratamos de cargar más de Room
+        if (_isOffline.value) {
+            isLoadingMoreNearby.value = true
+            viewModelScope.launch {
+                try {
+                    val currentSize = nearbyEvents.value.size
+                    val moreEvents = eventRepository.getEvents(5, currentSize)
+                    val filtered = withContext(Dispatchers.IO) { filterWithinKm(moreEvents) }
+
+                    if (filtered.isNotEmpty()) {
+                        val existingIds = nearbyEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
+                        val newEvents = filtered.filterNot { "${it.name}-${it.startDate}" in existingIds }
+
+                        if (newEvents.isNotEmpty()) {
+                            nearbyEvents.value = nearbyEvents.value + newEvents
+                            GlobalData.nearbyEvents = nearbyEvents.value
+                            nearbyCache.put(NEARBY_KEY, nearbyEvents.value)
+                        } else {
+                            hasReachedEndNearby.value = true
+                        }
+                    } else {
+                        hasReachedEndNearby.value = true
+                    }
+                } catch (e: Exception) {
+                    Log.e("HomeEventsViewModel", "Error loading more nearby events offline: ${e.message}")
+                } finally {
+                    isLoadingMoreNearby.value = false
+                }
+            }
             return
         }
-
-        viewModelScope.launch {
-            try {
-                val local = eventRepository.getAllLocalEvents()
-                val filtered = withContext(Dispatchers.IO) { filterWithinKm(local) }
-
-                if (filtered.isNotEmpty()) {
-                    nearbyEvents.value = filtered
-                    GlobalData.nearbyEvents = filtered
-                    nearbyCache.put(NEARBY_KEY, filtered)
-
-                    // Add to allEvents if not already there
-                    for (event in filtered) {
-                        if (!GlobalData.allEvents.contains(event)) {
-                            GlobalData.allEvents.add(event)
-                        }
-                    }
-                }
-
-                hasReachedEndNearby.value = filtered.isEmpty()
-            } catch (e: Exception) {
-                Log.e("HomeEventsViewModel", "Error loading nearby events from Room: ${e.message}")
-            }
-        }
-    }
-
-    fun loadMoreNearbyEvents() {
-        if (_isOffline.value) return
-        if (isLoadingMoreNearby.value || hasReachedEndNearby.value) return
 
         isLoadingMoreNearby.value = true
         viewModelScope.launch {
@@ -456,7 +570,7 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
         val (userLat, userLon) = LocationViewModel(getApplication()).getLastKnownLatLng()
         if (userLat == null || userLon == null) return emptyList()
         return events.filter {
-            haversineKm(userLat, userLon, it.location.latitude, it.location.longitude) <= 7.0
+            haversineKm(userLat, userLon, it.location.latitude, it.location.longitude) <= 5.0
         }
     }
 
