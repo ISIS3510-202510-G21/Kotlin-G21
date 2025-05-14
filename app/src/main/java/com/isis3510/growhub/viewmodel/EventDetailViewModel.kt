@@ -116,8 +116,10 @@ class EventDetailViewModel(application: Application) : AndroidViewModel(applicat
             if (existingEvent == null) {
              eventRepository.storeEvents(listOf(fullEvent)) // Solo si no está ya en Room
             }
-            event.value   = fullEvent
-            loading.value = false
+            withContext(Dispatchers.Main) {
+                event.value = fullEvent
+                loading.value = false
+            }
 
 
             
