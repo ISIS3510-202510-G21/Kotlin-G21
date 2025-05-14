@@ -160,8 +160,10 @@ fun MapView(
                 onRefresh = {
                     if (!isOffline.value) {
                         mapViewModel.refreshNearbyEvents()
+                        mapViewModel.logClick("refresh_online")
                     } else {
                         Toast.makeText(context, "Nearby events cannot be refreshed while you are offline", Toast.LENGTH_SHORT).show()
+                        mapViewModel.logClick("refresh_offline")
                     }
                 },
                 modifier = Modifier.fillMaxSize()
@@ -171,6 +173,7 @@ fun MapView(
                     selectedEventId = selectedEventId,
                     onEventClick = { eventId ->
                         selectedEventId = if (selectedEventId == eventId) null else eventId
+                        mapViewModel.logClick("select_event")
                     }
                 )
             }

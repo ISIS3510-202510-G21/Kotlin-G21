@@ -17,8 +17,12 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.maps.model.LatLng
+import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.local.data.ClickQueueManager
 import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.model.objects.Event
+import com.isis3510.growhub.utils.MapClick
 import com.isis3510.growhub.model.objects.MarkerData
 import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.Job
@@ -27,6 +31,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -47,17 +52,35 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     private val _isOffline = mutableStateOf(false)
     val isOffline: State<Boolean> = _isOffline
 
+    // Cola de clicks offline
+    private val clickQueueManager = ClickQueueManager(application)
+
+    // Job para sincronización
+    private var syncJob: Job? = null
+
     // Polling
     private var pollingJob: Job? = null
     private val pollingIntervalMillis = 5000L
+    private val syncIntervalMillis = 60000L // 1 minuto
     private val logTag = "MapViewModelConn"
+
+    // To keep track of clicks
+    private val clickStats = mutableMapOf<String, Int>()
 
     init {
         // Observar cambios de red
         viewModelScope.launch {
             connectivityViewModel.networkStatus.collectLatest { status ->
+                val wasOffline = _isOffline.value
                 _isOffline.value = status == ConnectionStatus.Unavailable || status == ConnectionStatus.Lost
                 Log.d(logTag, "Network status changed: $status, isOffline=${_isOffline.value}")
+
+                // Si pasamos de offline a online, intenta sincronizar
+                if (wasOffline && !_isOffline.value) {
+                    Log.d(logTag, "Conexión restablecida, intentando sincronización")
+                    synchronizePendingClicks()
+                }
+
                 // Opcional: recargar datos al reconectar
                 if (!_isOffline.value) {
                     loadNearbyEventsToList()
@@ -66,6 +89,21 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
         }
         // Carga inicial
         loadNearbyEventsToList()
+
+        // Iniciar sincronización periódica
+        startPeriodicSync()
+    }
+
+    private fun startPeriodicSync() {
+        syncJob?.cancel()
+        syncJob = viewModelScope.launch {
+            while (isActive) {
+                delay(syncIntervalMillis)
+                if (!_isOffline.value) {
+                    synchronizePendingClicks()
+                }
+            }
+        }
     }
 
     @SuppressLint("MissingPermission")
@@ -207,6 +245,103 @@ class MapViewModel(application: Application) : AndroidViewModel(application) {
     override fun onCleared() {
         super.onCleared()
         stopPolling()
-        Log.d(logTag, "Cleared, polling stopped.")
+        syncJob?.cancel()
+        Log.d(logTag, "Cleared, polling and sync stopped.")
+    }
+
+    /**
+     * Log button click for analytics with soporte offline
+     */
+    fun logClick(clickType: String) {
+        viewModelScope.launch {
+            try {
+                // Incrementar conteo local para su uso en la UI o para sincronización posterior
+                val currentCount = clickStats.getOrDefault(clickType, 0)
+                clickStats[clickType] = currentCount + 1
+
+                val currentUser = FirebaseAuth.getInstance().currentUser
+                if (currentUser == null) {
+                    Log.w("ClickLog", "No user authenticated, click not sent to Firebase")
+                    return@launch
+                }
+
+                // Crear el objeto click
+                val clickEvent = MapClick(
+                    userId = currentUser.uid,
+                    clickType = clickType
+                )
+
+                // Verificar conectividad antes de intentar enviar
+                if (_isOffline.value) {
+                    Log.w("ClickLog", "Dispositivo offline, click será enviado más tarde")
+                    // Agregar a la cola de clicks pendientes
+                    clickQueueManager.enqueueClick(clickEvent)
+                    return@launch
+                }
+
+                // Intentar enviar a Firebase directamente
+                Log.d("ClickLog", "Enviando click a Firebase: $clickEvent")
+                try {
+                    FirebaseFirestore.getInstance()
+                        .collection("map_clicks")
+                        .add(clickEvent)
+                        .await()
+                    Log.d("ClickLog", "Click registrado exitosamente: $clickType")
+                } catch (e: Exception) {
+                    Log.e("ClickLog", "Error al enviar click a Firebase, agregando a cola", e)
+                    clickQueueManager.enqueueClick(clickEvent)
+                }
+
+            } catch (e: Exception) {
+                Log.e("ClickLog", "Excepción al procesar click: $clickType", e)
+            }
+        }
+    }
+
+    /**
+     * Sincroniza los clicks pendientes con Firebase cuando hay conexión
+     */
+    private suspend fun synchronizePendingClicks() {
+        try {
+            if (_isOffline.value) {
+                Log.d("ClickSync", "No se puede sincronizar, offline")
+                return
+            }
+
+            val pendingClicks = clickQueueManager.getPendingClicks()
+            if (pendingClicks.isEmpty()) {
+                Log.d("ClickSync", "No hay clicks pendientes para sincronizar")
+                return
+            }
+
+            Log.d("ClickSync", "Intentando sincronizar ${pendingClicks.size} clicks")
+
+            val db = FirebaseFirestore.getInstance()
+            val batch = db.batch()
+            val processedClicks = mutableListOf<MapClick>()
+
+            // Limitar el tamaño del batch para cumplir con límites de Firestore
+            val clicksToProcess = pendingClicks.take(500)
+
+            clicksToProcess.forEach { click ->
+                val docRef = db.collection("map_clicks").document()
+                batch.set(docRef, click)
+                processedClicks.add(click)
+            }
+
+            try {
+                batch.commit().await()
+                Log.d("ClickSync", "Sincronización exitosa de ${processedClicks.size} clicks")
+
+                // Eliminar clicks sincronizados de la cola
+                clickQueueManager.removeProcessedClicks(processedClicks)
+            } catch (e: Exception) {
+                Log.e("ClickSync", "Error al sincronizar clicks pendientes", e)
+                // No eliminamos nada de la cola, se reintentará en la siguiente sincronización
+            }
+
+        } catch (e: Exception) {
+            Log.e("ClickSync", "Error general en sincronización", e)
+        }
     }
 }
