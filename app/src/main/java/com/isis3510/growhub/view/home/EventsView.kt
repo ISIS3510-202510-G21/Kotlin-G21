@@ -274,7 +274,9 @@ private fun EventCard(event: Event, navController: NavHostController) {
                     navController.navigate("${Destinations.EVENT_DETAIL}/$encoded")
                 } else {
                     Toast
-                        .makeText(context, "Please check your internet connection", Toast.LENGTH_SHORT)
+
+                        .makeText(context, "To see details, please check your internet connection", Toast.LENGTH_SHORT)
+
                         .show()
                 }
             },
