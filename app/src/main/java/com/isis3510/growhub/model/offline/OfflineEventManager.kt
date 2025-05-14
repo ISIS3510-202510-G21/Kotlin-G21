@@ -87,7 +87,7 @@ class OfflineEventManager(
         skillIds: List<String>,
         latitude: Double? = null,
         longitude: Double? = null
-    ): Boolean {
+    ): String? {
         return try {
             createEventRepository.createEvent(
                 name, cost, category, description, startDate, endDate,
@@ -96,7 +96,7 @@ class OfflineEventManager(
             )
         } catch (e: Exception) {
             // Log error
-            false
+            null
         }
     }
 
@@ -133,7 +133,7 @@ class OfflineEventManager(
                     longitude = if (eventObj.has("longitude")) eventObj.getDouble("longitude") else null
                 )
 
-                if (uploadSuccess) {
+                if (uploadSuccess != null) {
                     uploadedCount++
                 } else {
                     remainingEvents.put(eventObj)

@@ -112,12 +112,19 @@ class CreateEventViewModel(
     private val _eventCreated = MutableStateFlow<Boolean?>(null)
     val eventCreated: StateFlow<Boolean?> = _eventCreated
 
+    private val _createdEventName = MutableStateFlow<String?>(null)
+    val createdEventName: StateFlow<String?> = _createdEventName
+
     init {
         fetchSkillsAndCategories()
         syncOfflineEventsIfPossible()
     }
 
-    fun resetEventCreated() { _eventCreated.value = null }
+    fun resetEventCreated() {
+        _eventCreated.value = null
+        _createdEventName.value = null
+    }
+
     fun onNameChange(value: String) { _name.value = value }
     fun onCostChange(value: String) { _cost.value = value }
     fun onCategoryChange(value: String) { _category.value = value }
@@ -306,8 +313,9 @@ class CreateEventViewModel(
                         latitude = _latitude.value,
                         longitude = _longitude.value
                     )
-                    _eventCreated.value = success
-                    if (success) {
+                    _eventCreated.value = success.isNullOrEmpty()
+                    _createdEventName.value = _name.value
+                    if (!success.isNullOrEmpty()) {
                         clearForm()
                     } else {
                         _errorMessage.value = "Could not create event. Please try again."

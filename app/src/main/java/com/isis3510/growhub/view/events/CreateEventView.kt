@@ -87,7 +87,8 @@ fun PreviewCreateEventContent() {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventView(
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onCreatedEvent: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val factory = remember { CreateEventViewModelFactory(context) }
@@ -96,6 +97,8 @@ fun CreateEventView(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val eventCreated by viewModel.eventCreated.collectAsState()
+    val createdEventName by viewModel.createdEventName.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -108,8 +111,8 @@ fun CreateEventView(
     }
 
     LaunchedEffect(eventCreated) {
-        if (eventCreated == true) {
-            onNavigateBack()
+        if (eventCreated == true && !createdEventName.isNullOrBlank()) {
+            onCreatedEvent(createdEventName!!)
             viewModel.resetEventCreated()
         }
     }
@@ -130,6 +133,7 @@ fun CreateEventView(
             } else {
                 CreateEventContent(
                     onNavigateBack = onNavigateBack,
+                    onCreatedEvent = onCreatedEvent,
                     viewModel = viewModel,
                     onImagePickerClick = { imagePickerLauncher.launch("image/*") }
                 )
@@ -145,85 +149,9 @@ fun CreateEventView(
 }
 
 @Composable
-fun LabeledAddressField(
-    label: String,
-    value: String,
-    placeholder: String,
-    isError: Boolean,
-    isValidated: Boolean,
-    isValidating: Boolean,
-    onValueChange: (String) -> Unit,
-    onValidateClick: () -> Unit
-) {
-    Text(
-        text = label,
-        fontSize = 14.sp,
-        fontWeight = FontWeight.Bold,
-        color = Color.Black,
-        modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        OutlinedTextField(
-            value = value,
-            onValueChange = onValueChange,
-            placeholder = { Text(placeholder) },
-            isError = isError,
-            modifier = Modifier
-                .weight(1f)
-                .height(50.dp),
-            shape = RoundedCornerShape(10.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedTextColor = Color.Black,
-                unfocusedTextColor = Color.Black,
-                unfocusedContainerColor = if (isValidated) Color(0xFFE0F7E0) else Color.Transparent
-            ),
-            trailingIcon = {
-                if (isValidated) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_check),
-                        contentDescription = "Validated",
-                        tint = Color.Green,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-        )
-
-        Button(
-            onClick = onValidateClick,
-            enabled = !isValidating && value.isNotBlank(),
-            modifier = Modifier
-                .height(50.dp)
-                .width(100.dp),
-            colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF5669FF),
-                disabledContainerColor = Color.Gray
-            )
-        ) {
-            if (isValidating) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    modifier = Modifier.size(16.dp)
-                )
-            } else {
-                Text(
-                    text = "Validate",
-                    color = Color.White,
-                    fontSize = 12.sp
-                )
-            }
-        }
-    }
-}
-
-@Composable
 fun CreateEventContent(
     onNavigateBack: () -> Unit,
+    onCreatedEvent: (String) -> Unit,
     viewModel: CreateEventViewModel,
     onImagePickerClick: () -> Unit
 ) {
@@ -387,10 +315,10 @@ fun CreateEventContent(
                 hasError = true
             }
 
-            if (!hasError) {
-                viewModel.createEvent()
-                // onNavigateBack()
-            }
+        if (!hasError) {
+            viewModel.createEvent()
+        }
+
         },
         onNavigateBack = onNavigateBack,
         addressValidated = addressValidated,
@@ -433,7 +361,7 @@ fun CreateEventContentInternal(
     onAddressChange: (String) -> Unit,
     onDetailsChange: (String) -> Unit,
     onImageUpload: () -> Unit,
-    onCreateEvent: () -> Unit,
+    onCreateEvent: (String) -> Unit,
     onNavigateBack: () -> Unit,
     addressValidated: Boolean,
     validatingAddress: Boolean,
@@ -745,7 +673,7 @@ fun CreateEventContentInternal(
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = onCreateEvent,
+                onClick = {onCreateEvent(name)},
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)

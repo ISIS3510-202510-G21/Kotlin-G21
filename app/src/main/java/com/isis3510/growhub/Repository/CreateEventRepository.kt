@@ -6,6 +6,7 @@ import android.os.Build
 import android.util.Log
 import androidx.annotation.RequiresApi
 import com.google.firebase.Timestamp
+import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
 import kotlinx.coroutines.Dispatchers
@@ -86,7 +87,7 @@ class CreateEventRepository(private val context: Context) {
         skillIds: List<String>,
         latitude: Double? = null,
         longitude: Double? = null
-    ): Boolean {
+    ): String? {
         Log.d(TAG, "Grow Category received = '$category'")
 
         val categoryQuerySnapshot = firestore.collection("categories")
@@ -98,7 +99,7 @@ class CreateEventRepository(private val context: Context) {
 
         if (categoryQuerySnapshot.isEmpty) {
             Log.e(TAG, "Category NOT found in Firestore.")
-            return false
+            return null
         }
         val categoryRef = categoryQuerySnapshot.documents[0].reference
 
@@ -128,11 +129,14 @@ class CreateEventRepository(private val context: Context) {
         val finalImageUrl = imageUrl
             ?: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKF_YlFFlKS6AQ8no0Qs_xM6AkjvwFwP61og&s"
 
-        val emptyUsersList = arrayListOf<String>()
+        val emptyAttendeesList = arrayListOf<String>()
 
         val skillRefs = skillIds.map { skillId ->
             firestore.collection("skills").document(skillId)
         }
+
+        val uid = FirebaseAuth.getInstance().currentUser?.uid
+        val userRef = firestore.collection("users").document(uid ?: "")
 
         val eventData = hashMapOf(
             "name" to name,
@@ -143,14 +147,16 @@ class CreateEventRepository(private val context: Context) {
             "end_date" to endDate,
             "location_id" to locationRef,
             "image" to finalImageUrl,
-            "users_registered" to emptyUsersList,
-            "skills" to skillRefs
+            "users_registered" to 0,
+            "skills" to skillRefs,
+            "attendees" to emptyAttendeesList,
+            "creator_id" to userRef
         )
 
-        firestore.collection("events")
+        val eventRef = firestore.collection("events")
             .add(eventData)
             .await()
 
-        return true
+        return eventRef.id
     }
 }

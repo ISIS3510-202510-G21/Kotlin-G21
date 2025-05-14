@@ -23,6 +23,7 @@ import com.isis3510.growhub.view.detail.EventDetailView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.events.SearchEventView
+import com.isis3510.growhub.view.events.SuccessfulCreationView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
@@ -43,6 +44,7 @@ object Destinations {
     const val EVENT_DETAIL = "event_detail"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
+    const val SUCCESSFUL_CREATION = "successful_creation"
     const val SEARCH = "search"
 }
 
@@ -218,6 +220,11 @@ fun AppNavGraph(
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
+                },
+                onCreatedEvent = { eventName ->
+                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName") {
+                        popUpTo(Destinations.CREATE) { inclusive = true }
+                    }
                 }
             )
         }
@@ -255,6 +262,21 @@ fun AppNavGraph(
         ) { backStackEntry ->
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
             SuccessfulRegistrationView(eventName = eventName, onMyEvents = {
+                navController.navigate(Destinations.MY_EVENTS) {
+                    popUpTo(0) { inclusive = true } // clears everything
+                    launchSingleTop = true
+                }
+            })
+        }
+
+        composable(
+            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            SuccessfulCreationView(eventName = eventName, onMyEvents = {
                 navController.navigate(Destinations.MY_EVENTS) {
                     popUpTo(0) { inclusive = true } // clears everything
                     launchSingleTop = true
