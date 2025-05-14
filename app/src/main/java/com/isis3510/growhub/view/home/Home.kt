@@ -141,9 +141,8 @@ fun MainView(
                         .fillMaxWidth()
                         .padding(top = 8.dp), // Padding below TopBar overlap area remains
                     onCategoryClick = { category ->
-                        //TODO:Navigation to the Category detail
                         Log.d("HomeView", "Category clicked: ${category.name}")
-                        // navController.navigate(...)
+                        navController.navigate("category_detail/${category.name}")
                     }
                 )
             }
