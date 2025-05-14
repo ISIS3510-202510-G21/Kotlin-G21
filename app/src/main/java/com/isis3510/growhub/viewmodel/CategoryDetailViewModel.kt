@@ -56,10 +56,10 @@ class CategoryDetailViewModel : ViewModel() {
             _isLoading.value = true
 
             try {
-                // Filter all events by the category name
-                val categoryFilteredEvents = GlobalData.allEvents.filter {
-                    it.category == _categoryName.value
-                }
+                // Filter all events by the category name and remove duplicates
+                val categoryFilteredEvents = GlobalData.allEvents
+                    .filter { it.category == _categoryName.value }
+                    .distinctBy { it.name }
 
                 _categoryEvents.value = categoryFilteredEvents
                 currentPage = 0
