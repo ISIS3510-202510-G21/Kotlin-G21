@@ -112,9 +112,15 @@ class EventDetailViewModel(application: Application) : AndroidViewModel(applicat
             }
 
             /* ------------ vuelve al Main (UI) ------------- */
-            eventRepository.storeEvents(listOf(fullEvent))
-            event.value   = fullEvent          // Input/Output + Main-10
+            val existingEvent = eventRepository.getEventById(fullEvent.name)
+            if (existingEvent == null) {
+             eventRepository.storeEvents(listOf(fullEvent)) // Solo si no está ya en Room
+            }
+            event.value   = fullEvent
             loading.value = false
+
+
+            
         }
     }
 
