@@ -87,6 +87,11 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             val filtered = events.filterUpcoming()
             upcomingEvents.value = filtered
             eventRepository.storeEvents(filtered)
+            for (event in filtered) {
+                if (!GlobalData.allEvents.contains(event)) {
+                    GlobalData.allEvents.add(event)
+                }
+            }
             upcomingCache.put(UPCOMING_KEY, filtered.take(5))
             lastHomeUpcomingSnapshot = snapshot
             isLoadingUpcoming.value = false
@@ -182,6 +187,12 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
                 val local = eventRepository.getAllLocalEvents()
                 val filtered = withContext(Dispatchers.IO) { filterWithinKm(local) }
                 GlobalData.nearbyEvents = filtered
+                // Add to allEvents one by one if not already there
+                for (event in filtered) {
+                    if (!GlobalData.allEvents.contains(event)) {
+                        GlobalData.allEvents.add(event)
+                    }
+                }
 
                 nearbyEvents.value = filtered
                 isLoadingNearby.value = false
@@ -194,6 +205,12 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             val filtered = withContext(Dispatchers.IO) { filterWithinKm(events) }
             nearbyEvents.value = filtered
             GlobalData.nearbyEvents = filtered
+            // Add to allEvents one by one if not already there
+            for (event in filtered) {
+                if (!GlobalData.allEvents.contains(event)) {
+                    GlobalData.allEvents.add(event)
+                }
+            }
             eventRepository.storeEvents(filtered)
             lastHomeNearbySnapshot = snapshot
             isLoadingNearby.value = false
@@ -212,6 +229,12 @@ class HomeEventsViewModel(application: Application) : AndroidViewModel(applicati
             if (filtered.isNotEmpty()) {
                 nearbyEvents.value += filtered
                 GlobalData.nearbyEvents = nearbyEvents.value
+                // Add to allEvents one by one if not already there
+                for (event in filtered) {
+                    if (!GlobalData.allEvents.contains(event)) {
+                        GlobalData.allEvents.add(event)
+                    }
+                }
                 lastHomeNearbySnapshot = newSnap
             } else hasReachedEndNearby.value = true
             isLoadingMoreNearby.value = false

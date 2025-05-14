@@ -21,6 +21,7 @@ import com.isis3510.growhub.view.chatbot.ChatbotView
 import com.isis3510.growhub.view.create.CreateEventView
 import com.isis3510.growhub.view.detail.EventDetailView
 import com.isis3510.growhub.view.dummy.PlaceholderScreen
+import com.isis3510.growhub.view.events.CategoryDetailView
 import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.events.SearchEventView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
@@ -31,6 +32,7 @@ import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
 
 object Destinations {
+
     const val LOGIN = "login"
     const val HOME = "home"
     const val REGISTER = "register"
@@ -41,6 +43,7 @@ object Destinations {
     const val CREATE = "create"
     const val INTERESTS = "interestsScreen"
     const val EVENT_DETAIL = "event_detail"
+    const val CATEGORY_DETAIL = "category_detail"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
     const val SEARCH = "search"
@@ -239,6 +242,24 @@ fun AppNavGraph(
                 onBookEvent = {
                     navController.navigate("${Destinations.SUCCESSFUL_REGISTRATION}/$eventName")
                 })
+        }
+
+        composable(
+            route = "${Destinations.CATEGORY_DETAIL}/{categoryName}",
+            arguments = listOf(
+                navArgument("categoryName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val categoryName = backStackEntry.arguments?.getString("categoryName") ?: ""
+            CategoryDetailView(
+                categoryName = categoryName,
+                onNavigateBack = {
+                    navController.navigate(Destinations.HOME) {
+                        popUpTo(Destinations.CATEGORY_DETAIL) { inclusive = true }
+                    }
+                },
+                firebaseAnalytics = FirebaseAnalytics.getInstance(LocalContext.current)
+            )
         }
 
         composable(Destinations.CHATBOT) {
