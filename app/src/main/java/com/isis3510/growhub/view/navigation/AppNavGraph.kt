@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.view.attendees.AttendeesView
 import com.isis3510.growhub.view.auth.InterestsScreen
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
@@ -47,6 +48,7 @@ object Destinations {
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
     const val SEARCH = "search"
+    const val ATTENDEES = "attendees"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -241,6 +243,9 @@ fun AppNavGraph(
                 navController = navController,
                 onBookEvent = {
                     navController.navigate("${Destinations.SUCCESSFUL_REGISTRATION}/$eventName")
+                },
+                onAttendeesClick = {
+                    navController.navigate("${Destinations.ATTENDEES}/$eventName")
                 })
         }
 
@@ -279,12 +284,32 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
-            SuccessfulRegistrationView(eventName = eventName, onMyEvents = {
-                navController.navigate(Destinations.MY_EVENTS) {
-                    popUpTo(0) { inclusive = true } // clears everything
-                    launchSingleTop = true
-                }
-            })
+            SuccessfulRegistrationView(eventName = eventName,
+                onMyEvents = {
+                    navController.navigate(Destinations.MY_EVENTS) {
+                        popUpTo(0) { inclusive = true } // clears everything
+                        launchSingleTop = true
+                    }
+                },
+                onClickAttendees = {
+                    navController.navigate("${Destinations.ATTENDEES}/$eventName")
+                })
+        }
+
+        composable(
+            route = "${Destinations.ATTENDEES}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            AttendeesView(
+                eventName = eventName,
+                onNavigateBack = {
+                    navController.popBackStack()
+                },
+                navController = navController
+            )
         }
 
         composable(Destinations.SEARCH) {

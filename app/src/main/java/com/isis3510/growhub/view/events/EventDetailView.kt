@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ fun EventDetailView(
     eventName: String,
     navController: NavHostController,
     onBookEvent: () -> Unit = {},
+    onAttendeesClick: () -> Unit = {},
     vm: EventDetailViewModel = viewModel()
 ) {
     /* ---- dispara la carga (Main + IO en el VM) ---- */
@@ -137,9 +139,9 @@ fun EventDetailView(
                     )
                 }
 
-                /* ---------- Nombre + chips ---------- */
+                /* ---------- Name + chips ---------- */
                 item {
-                    EventHeaderCard(ev)
+                    EventHeaderCard(ev, onAttendeesClick)
                 }
 
                 /* ---------- Start / End ---------- */
@@ -230,7 +232,7 @@ fun EventDetailView(
 /* ---------- sub-componentes -------------------------------------------- */
 
 @Composable
-private fun EventHeaderCard(ev: Event) {
+private fun EventHeaderCard(ev: Event, onAttendeesClick: () -> Unit = {}) {
     Card(
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = CardBg),
@@ -288,7 +290,16 @@ private fun EventHeaderCard(ev: Event) {
                     InfoChip(
                         label = "Location",
                         value = ev.location.getInfo().ifBlank { "Unknown" },
-                        icon = painterResource(id = R.drawable.ic_pin)
+                        icon = painterResource(id = R.drawable.ic_pin),
+                        modifier = Modifier.weight(1f)
+                    )
+                    VerticalDivider()
+                    InfoChip(
+                        label = "Attendees",
+                        value = ev.attendees.size.toString() + if (ev.attendees.size == 1) " person" else " people",
+                        icon = painterResource(id = R.drawable.ic_email),
+                        modifier = Modifier.weight(1f),
+                        onClick = { onAttendeesClick() }
                     )
                 }
             }
@@ -301,7 +312,8 @@ private fun InfoChip(
     label: String,
     value: String,
     icon: Painter,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null
 ) {
     Row(
         modifier = modifier
@@ -333,7 +345,10 @@ private fun InfoChip(
                 color = Accent,
                 fontWeight = FontWeight.Bold,
                 overflow = TextOverflow.Ellipsis,
-                maxLines = 1
+                maxLines = 1,
+                modifier = if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else Modifier
             )
         }
     }

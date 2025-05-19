@@ -49,6 +49,7 @@ class Filter(
         val result = mapOf(
             "profilePicture" to (profileData["profile_picture"] as? String ?: ""),
             "description" to (profileData["description"] as? String ?: ""),
+            "headline" to (profileData["headline"] as? String ?: ""),
             "interests" to interestsNames,
             "followers" to followersRefs.size,
             "following" to followingRefs.size,
