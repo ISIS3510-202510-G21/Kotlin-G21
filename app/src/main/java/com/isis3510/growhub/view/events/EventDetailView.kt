@@ -234,7 +234,7 @@ private fun EventHeaderCard(ev: Event, onAttendeesClick: () -> Unit = {}) {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    InfoChip("Location", ev.location.getInfo().ifBlank { "Unknown" }, painterResource(id = R.drawable.ic_pin))
+                    InfoChip("Location", ev.location.getInfo().ifBlank { "Unknown" }, painterResource(id = R.drawable.ic_pin), Modifier.weight(1f))
                     VerticalDivider()
                     InfoChip(
                         label = "Attendees",
