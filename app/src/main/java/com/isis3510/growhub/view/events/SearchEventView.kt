@@ -153,7 +153,7 @@ fun SearchEventView(
                         Spacer(modifier = Modifier.height(16.dp))
                     }
 
-                    items(searchEventsViewModel.filteredEvents) { event ->
+                    items(searchEventsViewModel.filteredEvents, key = { it.name }) { event ->
                         EventCard(event)
                     }
 
