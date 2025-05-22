@@ -27,21 +27,21 @@ import com.isis3510.growhub.R
 import com.isis3510.growhub.viewmodel.CreateEventViewModel
 import com.isis3510.growhub.viewmodel.CreateEventViewModelFactory
 import kotlinx.coroutines.launch
-
+import androidx.compose.runtime.saveable.rememberSaveable
 
 @Preview(showBackground = true)
 @Composable
 fun PreviewCreateEventContent() {
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var costError by remember { mutableStateOf<String?>(null) }
-    var categoryError by remember { mutableStateOf<String?>(null) }
-    var descriptionError by remember { mutableStateOf<String?>(null) }
-    var startDateError by remember { mutableStateOf<String?>(null) }
-    var endDateError by remember { mutableStateOf<String?>(null) }
-    var startHourError by remember { mutableStateOf<String?>(null) }
-    var endHourError by remember { mutableStateOf<String?>(null) }
-    var addressError by remember { mutableStateOf<String?>(null) }
-    var detailsError by remember { mutableStateOf<String?>(null) }
+    var nameError by rememberSaveable { mutableStateOf<String?>(null) }
+    var costError by rememberSaveable { mutableStateOf<String?>(null) }
+    var categoryError by rememberSaveable { mutableStateOf<String?>(null) }
+    var descriptionError by rememberSaveable { mutableStateOf<String?>(null) }
+    var startDateError by rememberSaveable { mutableStateOf<String?>(null) }
+    var endDateError by rememberSaveable { mutableStateOf<String?>(null) }
+    var startHourError by rememberSaveable { mutableStateOf<String?>(null) }
+    var endHourError by rememberSaveable { mutableStateOf<String?>(null) }
+    var addressError by rememberSaveable { mutableStateOf<String?>(null) }
+    var detailsError by rememberSaveable { mutableStateOf<String?>(null) }
 
     CreateEventContentInternal(
         name = "Sample Event",
@@ -163,16 +163,16 @@ fun CreateEventContent(
     val selectedSkills by viewModel.selectedSkills.collectAsState()
     val skillSelectionError by viewModel.skillSelectionError.collectAsState()
 
-    var nameError by remember { mutableStateOf<String?>(null) }
-    var costError by remember { mutableStateOf<String?>(null) }
-    var categoryError by remember { mutableStateOf<String?>(null) }
-    var descriptionError by remember { mutableStateOf<String?>(null) }
-    var startDateError by remember { mutableStateOf<String?>(null) }
-    var endDateError by remember { mutableStateOf<String?>(null) }
-    var startHourError by remember { mutableStateOf<String?>(null) }
-    var endHourError by remember { mutableStateOf<String?>(null) }
-    var addressError by remember { mutableStateOf<String?>(null) }
-    var detailsError by remember { mutableStateOf<String?>(null) }
+    var nameError by rememberSaveable { mutableStateOf<String?>(null) }
+    var costError by rememberSaveable { mutableStateOf<String?>(null) }
+    var categoryError by rememberSaveable { mutableStateOf<String?>(null) }
+    var descriptionError by rememberSaveable { mutableStateOf<String?>(null) }
+    var startDateError by rememberSaveable { mutableStateOf<String?>(null) }
+    var endDateError by rememberSaveable { mutableStateOf<String?>(null) }
+    var startHourError by rememberSaveable { mutableStateOf<String?>(null) }
+    var endHourError by rememberSaveable { mutableStateOf<String?>(null) }
+    var addressError by rememberSaveable { mutableStateOf<String?>(null) }
+    var detailsError by rememberSaveable { mutableStateOf<String?>(null) }
 
     CreateEventContentInternal(
         name = name,
