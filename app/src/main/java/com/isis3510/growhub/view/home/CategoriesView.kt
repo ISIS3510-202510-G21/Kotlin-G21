@@ -166,8 +166,7 @@ fun CategoriesView(
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                     contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 8.dp, bottom = 8.dp)
                 ) {
-                    items(categories, key = { category -> category.name }) { category ->
-                        val index = categories.indexOf(category).coerceAtLeast(0)
+                    items(categories.withIndex().toList(), key = { it.value.name }) { (index, category) ->
                         val color = categoryColors[index % categoryColors.size]
                         CategoryButton(category = category, color = color, onClick = { onCategoryClick(category) })
                     }
