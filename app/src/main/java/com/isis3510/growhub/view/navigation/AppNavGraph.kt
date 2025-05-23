@@ -85,16 +85,16 @@ fun AppNavGraph(
                             .get()
                             .addOnSuccessListener { doc ->
                                 val hasSkills = doc.exists() && doc.contains("skills")
-                                /*if (!hasSkills) {
+                                if (!hasSkills) {
                                     // Navegamos a Interests
                                     navController.navigate(Destinations.INTERESTS) {
                                         popUpTo(Destinations.LOGIN) { inclusive = true }
                                     }
-                                } else {*/
+                                } else {
                                 // Navegamos a Home
                                 navController.navigate(Destinations.HOME) {
                                     popUpTo(Destinations.LOGIN) { inclusive = true }
-                                    //}
+                                    }
                                 }
                             }
                             .addOnFailureListener {
@@ -124,11 +124,9 @@ fun AppNavGraph(
                 viewModel = authViewModel,
                 onNavigateToInterests = {
 
-                    /*navController.navigate(Destinations.INTERESTS) {
-                        popUpTo(Destinations.REGISTER) { inclusive = true }*/
-                    navController.navigate(Destinations.HOME) {
-
+                    navController.navigate(Destinations.INTERESTS) {
                         popUpTo(Destinations.REGISTER) { inclusive = true }
+
                     }
                 },
                 onNavigateBack = {
