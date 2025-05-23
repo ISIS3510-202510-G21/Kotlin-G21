@@ -10,10 +10,8 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -44,12 +42,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.navigation.NavController
 import coil.compose.rememberAsyncImagePainter
 import com.isis3510.growhub.R
 import com.isis3510.growhub.model.objects.Profile
 import com.isis3510.growhub.utils.ConnectionStatus
-import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.viewmodel.AttendeesViewModel
 import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 
@@ -58,8 +54,7 @@ fun AttendeesView(
     attendeesViewModel: AttendeesViewModel = viewModel(),
     connectivityViewModel: ConnectivityViewModel = viewModel(),
     eventName: String,
-    onNavigateBack: () -> Unit = {},
-    navController: NavController
+    onNavigateBack: () -> Unit = {}
 ) {
     val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
 
@@ -92,27 +87,36 @@ fun AttendeesView(
         topBar = { AttendeesTopBar(onNavigateBack) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        if (loading) {
-            Box(Modifier.fillMaxSize(), Alignment.Center) {
-                CircularProgressIndicator()
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding),
+            verticalArrangement = Arrangement.spacedBy(24.dp)
+        ) {
+            if (loading) {
+                item {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(16.dp)
+                            .size(32.dp)
+                    )
+                }
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                item {
+                    AttendeesSectionEmptyConnection()
+                }
+            } else if (profiles.isEmpty()) {
+                item {
+                    AttendeesSectionEmpty()
+                }
+            } else {
+                items(profiles) { profile ->
+                    AttendeeCard(profile)
             }
         }
-        else {
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
-            ) {
-                if (profiles.isNotEmpty()) {
-                    items(profiles) { profile ->
-                        AttendeeCard(profile)
-                    }
-                }
 
-                item {
-                    Spacer(modifier = Modifier.height(64.dp))
-                }
+            item {
+                Spacer(modifier = Modifier.height(64.dp))
             }
         }
     }

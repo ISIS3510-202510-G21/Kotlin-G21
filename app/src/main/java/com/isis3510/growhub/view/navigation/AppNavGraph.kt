@@ -305,8 +305,7 @@ fun AppNavGraph(
                 eventName = eventName,
                 onNavigateBack = {
                     navController.popBackStack()
-                },
-                navController = navController
+                }
             )
         }
 
