@@ -12,6 +12,8 @@ import com.isis3510.growhub.model.objects.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
@@ -24,6 +26,12 @@ class AttendeesViewModel : ViewModel() {
     val event = mutableStateOf<Event?>(null)
     val loading = mutableStateOf(true)
     val attendeeProfiles = mutableStateOf<List<Profile>>(emptyList())
+    private val _mostCommonHeadline = MutableStateFlow<String>("")
+    val mostCommonHeadline: StateFlow<String> = _mostCommonHeadline
+
+    private val _mostCommonInterest = MutableStateFlow<String>("")
+    val mostCommonInterest: StateFlow<String> = _mostCommonInterest
+
 
     private val db = FirebaseFirestore.getInstance()
 
@@ -132,7 +140,7 @@ class AttendeesViewModel : ViewModel() {
                             followers = (attendeeProfileData["followers"] as? Long)?.toInt() ?: 0,
                             description = attendeeProfileData["description"].toString(),
                             headline = attendeeProfileData["headline"].toString(),
-                            interests = (attendeeProfileData["interests"] as? List<*>)?.mapNotNull { it.toString() } ?: emptyList(),
+                            interests = attendeeProfileData["interests"] as? List<String> ?: emptyList(),
                             profilePicture = attendeeProfileData["profile_picture"].toString()
                         )
                     } else {
@@ -141,8 +149,62 @@ class AttendeesViewModel : ViewModel() {
                 }
             }
             attendeeProfiles.value = attendees
+
+            val commonHeadline = attendees
+                .map { it.headline }
+                .filter { it.isNotBlank() }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key.orEmpty()
+            _mostCommonHeadline.value = commonHeadline
+
+            loadInterests(attendees)
+
             loading.value = false
         }
     }
 
+    private fun loadInterests(attendees: List<Profile>) {
+        if (loading.value) return
+        loading.value = true
+
+        viewModelScope.launch {
+            // Extract all interest DocumentReferences from attendees
+            val allInterestRefs = attendees.flatMap { profile ->
+                profile.interests.mapNotNull {
+                    // Convert to DocumentReference if possible
+                    it as? DocumentReference
+                }
+            }
+            Log.d("AttendeesViewModel", "All Interest Refs: $allInterestRefs")
+
+            // Concurrently fetch all interest names using async inside coroutineScope
+            val allInterestNames = coroutineScope {
+                allInterestRefs.map { docRef ->
+                    async {
+                        try {
+                            val docSnapshot = docRef.get().await()
+                            docSnapshot.getString("name").orEmpty()
+                        } catch (e: Exception) {
+                            // Handle error or return empty string
+                            ""
+                        }
+                    }
+                }.map { it.await() }
+            }
+
+            // Count occurrences of interest names and find the most common
+            val mostCommonInterest = allInterestNames
+                .filter { it.isNotBlank() }
+                .groupingBy { it }
+                .eachCount()
+                .maxByOrNull { it.value }
+                ?.key
+                ?: ""
+
+            _mostCommonInterest.value = mostCommonInterest
+            loading.value = false
+        }
+    }
 }

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
@@ -61,6 +62,8 @@ fun AttendeesView(
     val event by attendeesViewModel.event
     val loading by attendeesViewModel.loading
     val profiles by attendeesViewModel.attendeeProfiles
+    val mostCommonHeadline by attendeesViewModel.mostCommonHeadline.collectAsState()
+    val mostCommonInterest by attendeesViewModel.mostCommonInterest.collectAsState()
 
     val currentStatus by connectivityViewModel.networkStatus.collectAsState()
     val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
@@ -87,36 +90,54 @@ fun AttendeesView(
         topBar = { AttendeesTopBar(onNavigateBack) },
         containerColor = MaterialTheme.colorScheme.background
     ) { innerPadding ->
-        LazyColumn(
+        Box(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding),
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+                .padding(innerPadding)
         ) {
-            if (loading) {
-                item {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .size(32.dp)
-                    )
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(bottom = 120.dp),
+                verticalArrangement = Arrangement.spacedBy(24.dp)
+            ) {
+                if (loading) {
+                    item {
+                        CircularProgressIndicator(
+                            modifier = Modifier
+                                .padding(16.dp)
+                                .size(32.dp)
+                        )
+                    }
+                } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                    item {
+                        AttendeesSectionEmptyConnection()
+                    }
+                } else if (profiles.isEmpty()) {
+                    item {
+                        AttendeesSectionEmpty()
+                    }
+                } else {
+                    items(profiles) { profile ->
+                        AttendeeCard(profile)
+                    }
                 }
-            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
-                item {
-                    AttendeesSectionEmptyConnection()
-                }
-            } else if (profiles.isEmpty()) {
-                item {
-                    AttendeesSectionEmpty()
-                }
-            } else {
-                items(profiles) { profile ->
-                    AttendeeCard(profile)
-            }
-        }
 
-            item {
-                Spacer(modifier = Modifier.height(64.dp))
+                item {
+                    Spacer(modifier = Modifier.height(64.dp))
+                }
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .offset(y = 50.dp),
+                contentAlignment = Alignment.BottomCenter
+            ) {
+                StatsCard(
+                    totalAttendees = profiles.size,
+                    mostCommonHeadline = mostCommonHeadline,
+                    mostCommonInterest = mostCommonInterest
+                )
             }
         }
     }
@@ -256,6 +277,95 @@ fun AttendeesSectionEmptyConnection() {
                     text = "No Internet Connection",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun StatsCard(
+    totalAttendees: Int,
+    mostCommonHeadline: String,
+    mostCommonInterest: String,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        shape = RoundedCornerShape(16.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(16.dp)
+            .background(MaterialTheme.colorScheme.surface)
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Text(
+                text = "Attendee Statistics",
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.Bold,
+                fontSize = 18.sp
+            )
+
+            Spacer(modifier = Modifier.height(12.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Total Attendees: ",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "$totalAttendees",
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Most Common Headline: ",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = mostCommonHeadline,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 16.sp
+                )
+            }
+
+            Spacer(modifier = Modifier.height(4.dp))
+
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "Most Popular Interest: ",
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 16.sp
+                )
+            }
+            Spacer(modifier = Modifier.height(10.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = mostCommonInterest,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.primary,
+                    fontSize = 16.sp
                 )
             }
         }
