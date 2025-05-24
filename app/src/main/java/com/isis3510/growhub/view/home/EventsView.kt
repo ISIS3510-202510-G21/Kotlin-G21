@@ -46,7 +46,6 @@ import kotlinx.coroutines.flow.filter
 fun EventsView(
     modifier: Modifier = Modifier,
     eventsViewModel: HomeEventsViewModel = viewModel(),
-    connectivityViewModel: ConnectivityViewModel = viewModel(),
     navController: NavHostController
 ) {
     val upcomingEvents by eventsViewModel.upcomingEvents
@@ -60,11 +59,19 @@ fun EventsView(
     val isLoadingMoreNearby by eventsViewModel.isLoadingMoreNearby
     val isLoadingMoreRecommended by eventsViewModel.isLoadingMoreRecommended
 
+    val hasReachedEndUpcoming by eventsViewModel.hasReachedEndUpcoming
+    val hasReachedEndNearby by eventsViewModel.hasReachedEndNearby
+    val hasReachedEndRecommended by eventsViewModel.hasReachedEndRecommended
+
+    val connectivityViewModel: ConnectivityViewModel = viewModel()
+    val isOffline by eventsViewModel.isOffline
+
     val listStateUpcoming = rememberLazyListState()
     val listStateNearby = rememberLazyListState()
     val listStateRecommended = rememberLazyListState()
 
-    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+    val networkStatus by connectivityViewModel.networkStatus.collectAsState()
+    val context = LocalContext.current
 
     // Effects for pagination
     LaunchedEffect(listStateUpcoming, upcomingEvents, isLoadingMoreUpcoming) {
@@ -73,11 +80,21 @@ fun EventsView(
             .filter { it }
             .collect {
                 Log.d("EventsView", "Upcoming Events - Scrolled near end detected")
-                if (!isLoadingMoreUpcoming && upcomingEvents.isNotEmpty() && !eventsViewModel.hasReachedEndUpcoming.value) {
-                    Log.d("EventsView", "Upcoming Events - Loading more events")
-                    eventsViewModel.loadMoreUpcomingEvents()
+                if (!isLoadingMoreUpcoming && upcomingEvents.isNotEmpty()) {
+                    if (hasReachedEndUpcoming) {
+                        if (isOffline) {
+                            Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "No more events found", Toast.LENGTH_SHORT).show()
+                        }
+                    } else if (!NetworkUtils.isNetworkAvailable(context)) {
+                        Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("EventsView", "Upcoming Events - Loading more events")
+                        eventsViewModel.loadMoreUpcomingEvents()
+                    }
                 } else {
-                    Log.d("EventsView", "Upcoming Events - Not loading more events: isLoadingMoreUpcoming=$isLoadingMoreUpcoming, isEmpty=${upcomingEvents.isEmpty()}, hasReachedEndUpcoming=${eventsViewModel.hasReachedEndUpcoming.value}")
+                    Log.d("EventsView", "Upcoming Events - Not loading more events: isLoadingMoreUpcoming=$isLoadingMoreUpcoming, isEmpty=${upcomingEvents.isEmpty()}, hasReachedEndUpcoming=$hasReachedEndUpcoming")
                 }
             }
     }
@@ -88,11 +105,21 @@ fun EventsView(
             .filter { it }
             .collect {
                 Log.d("EventsView", "Nearby Events - Scrolled near end detected")
-                if (!isLoadingMoreNearby && nearbyEvents.isNotEmpty() && !eventsViewModel.hasReachedEndNearby.value) {
-                    Log.d("EventsView", "Nearby Events - Loading more events")
-                    eventsViewModel.loadMoreNearbyEvents()
+                if (!isLoadingMoreNearby && nearbyEvents.isNotEmpty()) {
+                    if (hasReachedEndNearby) {
+                        if (isOffline) {
+                            Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "No more events found", Toast.LENGTH_SHORT).show()
+                        }
+                    } else if (!NetworkUtils.isNetworkAvailable(context)) {
+                        Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("EventsView", "Nearby Events - Loading more events")
+                        eventsViewModel.loadMoreNearbyEvents()
+                    }
                 } else {
-                    Log.d("EventsView", "Nearby Events - Not loading more events: isLoadingMoreNearby=$isLoadingMoreNearby, isEmpty=${nearbyEvents.isEmpty()}, hasReachedEndNearby=${eventsViewModel.hasReachedEndNearby.value}")
+                    Log.d("EventsView", "Nearby Events - Not loading more events: isLoadingMoreNearby=$isLoadingMoreNearby, isEmpty=${nearbyEvents.isEmpty()}, hasReachedEndNearby=$hasReachedEndNearby")
                 }
             }
     }
@@ -103,15 +130,24 @@ fun EventsView(
             .filter { it }
             .collect {
                 Log.d("EventsView", "Recommended Events - Scrolled near end detected")
-                if (!isLoadingMoreRecommended && recommendedEvents.isNotEmpty() && !eventsViewModel.hasReachedEndRecommended.value) {
-                    Log.d("EventsView", "Recommended Events - Loading more events")
-                    eventsViewModel.loadMoreRecommendedEvents()
+                if (!isLoadingMoreRecommended && recommendedEvents.isNotEmpty()) {
+                    if (hasReachedEndRecommended) {
+                        if (isOffline) {
+                            Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                        } else {
+                            Toast.makeText(context, "No more events found", Toast.LENGTH_SHORT).show()
+                        }
+                    } else if (!NetworkUtils.isNetworkAvailable(context)) {
+                        Toast.makeText(context, "Please check your connection", Toast.LENGTH_SHORT).show()
+                    } else {
+                        Log.d("EventsView", "Recommended Events - Loading more events")
+                        eventsViewModel.loadMoreRecommendedEvents()
+                    }
                 } else {
-                    Log.d("EventsView", "Recommended Events - Not loading more events: isLoadingMoreRecommended=$isLoadingMoreRecommended, isEmpty=${recommendedEvents.isEmpty()}, hasReachedEndRecommended=${eventsViewModel.hasReachedEndRecommended.value}")
+                    Log.d("EventsView", "Recommended Events - Not loading more events: isLoadingMoreRecommended=$isLoadingMoreRecommended, isEmpty=${recommendedEvents.isEmpty()}, hasReachedEndRecommended=$hasReachedEndRecommended")
                 }
             }
     }
-
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -119,7 +155,7 @@ fun EventsView(
     ) {
         // --- Upcoming Events Section ---
         if (isLoadingUpcoming) {
-            EventSectionPlaceholder()
+            EventSectionPlaceholder(title = "Upcoming Events")
         } else if (upcomingEvents.isNotEmpty()) {
             EventSection(
                 title = "Upcoming Events",
@@ -128,13 +164,13 @@ fun EventsView(
                 listState = listStateUpcoming,
                 isLoadingMore = isLoadingMoreUpcoming
             )
-        } else if (isNetworkAvailable != ConnectionStatus.Available) {
+        } else {
             EventSectionEmpty(title = "Upcoming Events")
         }
 
         // --- Nearby Events Section ---
         if (isLoadingNearby) {
-            EventSectionPlaceholder()
+            EventSectionPlaceholder(title = "Nearby Events")
         } else if (nearbyEvents.isNotEmpty()){
             EventSection(
                 title = "Nearby Events",
@@ -143,13 +179,13 @@ fun EventsView(
                 listState = listStateNearby,
                 isLoadingMore = isLoadingMoreNearby
             )
-        } else if (isNetworkAvailable != ConnectionStatus.Available){
+        } else {
             EventSectionEmpty(title = "Nearby Events")
         }
 
         // --- Recommended Events Section ---
         if (isLoadingRecommended) {
-            EventSectionPlaceholder()
+            EventSectionPlaceholder(title = "You may like")
         } else if (recommendedEvents.isNotEmpty()) {
             EventSection(
                 title = "You may like",
@@ -158,7 +194,7 @@ fun EventsView(
                 listState = listStateRecommended,
                 isLoadingMore = isLoadingMoreRecommended
             )
-        } else if (isNetworkAvailable != ConnectionStatus.Available) {
+        } else {
             EventSectionEmpty(title = "You may like")
         }
     }
@@ -199,7 +235,7 @@ fun EventSectionEmpty(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 Text(
-                    text = "No Events Found",
+                    text = "No events available",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -274,7 +310,7 @@ private fun EventCard(event: Event, navController: NavHostController) {
                     navController.navigate("${Destinations.EVENT_DETAIL}/$encoded")
                 } else {
                     Toast
-                        .makeText(context, "Please check your internet connection", Toast.LENGTH_SHORT)
+                        .makeText(context, "To see details, please check your internet connection", Toast.LENGTH_SHORT)
                         .show()
                 }
             },
@@ -348,9 +384,8 @@ private fun EventCard(event: Event, navController: NavHostController) {
     }
 }
 
-
 @Composable
-private fun EventSectionPlaceholder() {
+private fun EventSectionPlaceholder(title: String) {
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier
@@ -359,12 +394,11 @@ private fun EventSectionPlaceholder() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Placeholder for Title
-            Box(
-                modifier = Modifier
-                    .height(24.dp) // Approx titleLarge height
-                    .fillMaxWidth(0.4f) // Adjust width as needed
-                    .background(Color.LightGray.copy(alpha = 0.4f), RoundedCornerShape(4.dp))
+            // Show actual title even in placeholder
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
             )
         }
         Row(
