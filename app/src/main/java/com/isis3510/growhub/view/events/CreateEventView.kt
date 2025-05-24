@@ -77,14 +77,18 @@ fun PreviewCreateEventContent() {
         onImageUpload = {},
         onCreateEvent = {},
         onNavigateBack = {},
-        skillSelectionError = "error de skills selector"
+        skillSelectionError = "error de skills selector",
+        addressValidated = true,
+        validatingAddress = false,
+        onValidateAddress = {}
     )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CreateEventView(
-    onNavigateBack: () -> Unit = {}
+    onNavigateBack: () -> Unit = {},
+    onCreatedEvent: (String) -> Unit = {}
 ) {
     val context = LocalContext.current
     val factory = remember { CreateEventViewModelFactory(context) }
@@ -93,6 +97,8 @@ fun CreateEventView(
     val isLoading by viewModel.isLoading.collectAsState()
     val errorMessage by viewModel.errorMessage.collectAsState()
     val eventCreated by viewModel.eventCreated.collectAsState()
+    val createdEventName by viewModel.createdEventName.collectAsState()
+
     val snackbarHostState = remember { SnackbarHostState() }
     val scope = rememberCoroutineScope()
 
@@ -105,8 +111,8 @@ fun CreateEventView(
     }
 
     LaunchedEffect(eventCreated) {
-        if (eventCreated == true) {
-            onNavigateBack()
+        if (eventCreated == true && !createdEventName.isNullOrBlank()) {
+            onCreatedEvent(createdEventName!!)
             viewModel.resetEventCreated()
         }
     }
@@ -127,6 +133,7 @@ fun CreateEventView(
             } else {
                 CreateEventContent(
                     onNavigateBack = onNavigateBack,
+                    onCreatedEvent = onCreatedEvent,
                     viewModel = viewModel,
                     onImagePickerClick = { imagePickerLauncher.launch("image/*") }
                 )
@@ -144,6 +151,7 @@ fun CreateEventView(
 @Composable
 fun CreateEventContent(
     onNavigateBack: () -> Unit,
+    onCreatedEvent: (String) -> Unit,
     viewModel: CreateEventViewModel,
     onImagePickerClick: () -> Unit
 ) {
@@ -173,6 +181,9 @@ fun CreateEventContent(
     var endHourError by rememberSaveable { mutableStateOf<String?>(null) }
     var addressError by rememberSaveable { mutableStateOf<String?>(null) }
     var detailsError by rememberSaveable { mutableStateOf<String?>(null) }
+
+    val addressValidated by viewModel.addressValidated.collectAsState()
+    val validatingAddress by viewModel.validatingAddress.collectAsState()
 
     CreateEventContentInternal(
         name = name,
@@ -304,12 +315,15 @@ fun CreateEventContent(
                 hasError = true
             }
 
-            if (!hasError) {
-                viewModel.createEvent()
-                // onNavigateBack()
-            }
+        if (!hasError) {
+            viewModel.createEvent()
+        }
+
         },
-        onNavigateBack = onNavigateBack
+        onNavigateBack = onNavigateBack,
+        addressValidated = addressValidated,
+        validatingAddress = validatingAddress,
+        onValidateAddress = { viewModel.validateAddress() }
     )
 }
 
@@ -347,8 +361,11 @@ fun CreateEventContentInternal(
     onAddressChange: (String) -> Unit,
     onDetailsChange: (String) -> Unit,
     onImageUpload: () -> Unit,
-    onCreateEvent: () -> Unit,
-    onNavigateBack: () -> Unit
+    onCreateEvent: (String) -> Unit,
+    onNavigateBack: () -> Unit,
+    addressValidated: Boolean,
+    validatingAddress: Boolean,
+    onValidateAddress: () -> Unit
 ) {
     Column(
         modifier = Modifier
@@ -553,14 +570,51 @@ fun CreateEventContentInternal(
                 }
             }
 
-            LabeledTextField(
-                label = "Address",
-                value = address,
-                placeholder = "Write the address of your event",
-                isError = (addressError != null),
-                onValueChange = onAddressChange
+            LaunchedEffect(address) {
+                if (address.isNotBlank()) {
+                    onValidateAddress()
+                }
+            }
+
+            Text(
+                text = "Address",
+                fontSize = 14.sp,
+                color = Color.Black,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(top = 5.dp, bottom = 1.dp)
             )
-            ErrorText(addressError)
+            OutlinedTextField(
+                value = address,
+                onValueChange = {
+                    onAddressChange(it)
+                },
+                placeholder = { Text("Write the address of your event") },
+                isError = (addressError != null),
+                trailingIcon = {
+                    if (addressValidated) {
+                        Icon(
+                            painter = painterResource(id = R.drawable.ic_check),
+                            contentDescription = "Validated",
+                            tint = Color.Green,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    } else if (validatingAddress) {
+                        CircularProgressIndicator(
+                            color = Color.Gray,
+                            modifier = Modifier.size(16.dp)
+                        )
+                    }
+                },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(50.dp),
+                shape = RoundedCornerShape(10.dp),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = Color.Black,
+                    unfocusedTextColor = Color.Black,
+                    unfocusedContainerColor = if (addressValidated) Color(0xFFE0F7E0) else Color.Transparent
+                )
+            )
 
             Text(
                 text = "City",
@@ -619,7 +673,7 @@ fun CreateEventContentInternal(
 
             Spacer(modifier = Modifier.height(24.dp))
             Button(
-                onClick = onCreateEvent,
+                onClick = {onCreateEvent(name)},
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(50.dp)
