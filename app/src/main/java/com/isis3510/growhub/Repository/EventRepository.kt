@@ -50,5 +50,14 @@ class EventRepository(
         val entities = events.map { it.toEntity() }
         eventDao.insertEvents(entities)
     }
+
+    suspend fun storeEvent(event: Event) {
+        val entity = event.toEntity()
+        eventDao.insertEvent(entity)
+    }
+
+    suspend fun getEventByName(name: String): Event {
+        return eventDao.getEventByName(name).toModel()
+    }
 }
 

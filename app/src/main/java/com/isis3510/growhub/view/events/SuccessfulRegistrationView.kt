@@ -5,6 +5,7 @@ import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -61,6 +62,7 @@ import java.util.Locale
 fun SuccessfulRegistrationView(
     eventName: String,
     onMyEvents: () -> Unit = {},
+    onClickAttendees: () -> Unit = {},
     viewModel: SuccessfulRegistrationViewModel = viewModel()
 ) {
     LaunchedEffect(eventName) {
@@ -95,7 +97,8 @@ fun SuccessfulRegistrationView(
                         name = event!!.name,
                         creator = event!!.creator,
                         cost = event!!.cost,
-                        attendees = event!!.attendees
+                        attendees = event!!.attendees,
+                        onClickAttendees = { onClickAttendees() }
                     )
 
                     val address = event!!.location.address
@@ -203,7 +206,7 @@ fun EventRegistrationDetailsTitle() {
 }
 
 @Composable
-fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>) {
+fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>, onClickAttendees: () -> Unit = {}) {
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
         shape = RoundedCornerShape(12.dp),
@@ -231,7 +234,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>)
 
             Column(
                 verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.Start, // Important!
+                horizontalAlignment = Alignment.Start,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Text(
@@ -313,7 +316,8 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>)
                             Text(
                                 text = attendees.size.toString() +" people",
                                 fontSize = 14.sp,
-                                color = Color(0xFF1E88E5)
+                                color = Color(0xFF1E88E5),
+                                modifier = Modifier.clickable { onClickAttendees() }
                             )
                         }
                     }

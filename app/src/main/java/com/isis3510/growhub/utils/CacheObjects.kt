@@ -19,3 +19,22 @@ object ProfileCache {
         cache.evictAll()
     }
 }
+
+object AttendeeStatsCache {
+    private const val MAX_ENTRIES = 10
+
+    private val headlineCache = object : LruCache<String, String>(MAX_ENTRIES) {}
+    private val interestCache = object : LruCache<String, String>(MAX_ENTRIES) {}
+
+    fun getHeadline(key: String): String? = headlineCache.get(key)
+    fun getInterest(key: String): String? = interestCache.get(key)
+
+    fun putHeadline(key: String, value: String) {
+        headlineCache.put(key, value)
+    }
+
+    fun putInterest(key: String, value: String) {
+        interestCache.put(key, value)
+    }
+}
+

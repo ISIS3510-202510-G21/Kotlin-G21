@@ -4,6 +4,7 @@ import android.os.Build
 import androidx.annotation.RequiresApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -74,6 +75,7 @@ fun EventDetailView(
     eventName: String,
     navController: NavHostController,
     onBookEvent: () -> Unit = {},
+    onAttendeesClick: () -> Unit = {},
     vm: EventDetailViewModel = viewModel()
 ) {
     val inPreview = LocalInspectionMode.current
@@ -134,7 +136,11 @@ fun EventDetailView(
                         alignment = Alignment.Center
                     )
                 }
-                item { EventHeaderCard(ev) }
+
+                item {
+                    EventHeaderCard(ev, onAttendeesClick)
+                }
+
                 item {
                     Row(
                         Modifier
@@ -196,7 +202,7 @@ fun EventDetailView(
 }
 
 @Composable
-private fun EventHeaderCard(ev: Event) {
+private fun EventHeaderCard(ev: Event, onAttendeesClick: () -> Unit = {}) {
     Card(
         shape = CardShape,
         colors = CardDefaults.cardColors(containerColor = ChipBg),
@@ -228,7 +234,15 @@ private fun EventHeaderCard(ev: Event) {
                     horizontalArrangement = Arrangement.Center,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    InfoChip("Location", ev.location.getInfo().ifBlank { "Unknown" }, painterResource(id = R.drawable.ic_pin))
+                    InfoChip("Location", ev.location.getInfo().ifBlank { "Unknown" }, painterResource(id = R.drawable.ic_pin), Modifier.weight(1f))
+                    VerticalDivider()
+                    InfoChip(
+                        label = "Attendees",
+                        value = ev.attendees.size.toString() + if (ev.attendees.size == 1) " person" else " people",
+                        icon = painterResource(id = R.drawable.ic_email),
+                        modifier = Modifier.weight(1f),
+                        onClick = { onAttendeesClick() }
+                    )
                 }
             }
         }
@@ -236,7 +250,7 @@ private fun EventHeaderCard(ev: Event) {
 }
 
 @Composable
-private fun InfoChip(label: String, value: String, icon: Painter, modifier: Modifier = Modifier) {
+private fun InfoChip(label: String, value: String, icon: Painter, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
     Row(
         modifier = modifier
             .background(ChipBg, CardShape)
@@ -252,8 +266,23 @@ private fun InfoChip(label: String, value: String, icon: Painter, modifier: Modi
                 .size(20.dp)
         )
         Column {
-            Text(label, fontSize = 14.sp, color = ChipLabel, fontWeight = FontWeight.SemiBold)
-            Text(value, fontSize = 12.sp, color = Accent, fontWeight = FontWeight.Bold, overflow = TextOverflow.Ellipsis, maxLines = 1)
+            Text(
+                text = label,
+                fontSize = 14.sp,
+                color = ChipLabel,
+                fontWeight = FontWeight.SemiBold
+            )
+            Text(
+                text = value,
+                fontSize = 12.sp,
+                color = Accent,
+                fontWeight = FontWeight.Bold,
+                overflow = TextOverflow.Ellipsis,
+                maxLines = 1,
+                modifier = if (onClick != null) {
+                    Modifier.clickable { onClick() }
+                } else Modifier
+            )
         }
     }
 }

@@ -11,6 +11,9 @@ interface EventDao {
     @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun insertEvents(events: List<EventEntity>)
 
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertEvent(event: EventEntity)
+
     @Query("SELECT COUNT(*) FROM evententity")
     suspend fun getCount(): Int
 
@@ -31,6 +34,9 @@ interface EventDao {
 
     @Query("SELECT * FROM evententity")
     suspend fun getAllLocalEvents(): List<EventEntity>
+
+    @Query("SELECT * FROM evententity WHERE name = :name")
+    suspend fun getEventByName(name: String): EventEntity
 }
 
 
