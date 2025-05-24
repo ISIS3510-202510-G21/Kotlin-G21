@@ -1,14 +1,19 @@
 package com.isis3510.growhub.viewmodel
 
-import android.util.Log
+import android.app.Application
 import androidx.compose.runtime.mutableStateOf
-import androidx.lifecycle.ViewModel
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.Repository.EventRepository
+import com.isis3510.growhub.Repository.ProfileRepository
+import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.Location
 import com.isis3510.growhub.model.objects.Profile
+import com.isis3510.growhub.utils.AttendeeStatsCache
+import com.isis3510.growhub.utils.ConnectionStatus
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
@@ -23,7 +28,7 @@ import kotlinx.coroutines.withContext
  * Created by: Juan Manuel Jáuregui
  */
 
-class AttendeesViewModel : ViewModel() {
+class AttendeesViewModel(application: Application) : AndroidViewModel(application) {
     val event = mutableStateOf<Event?>(null)
     val loading = mutableStateOf(true)
     val attendeeProfiles = mutableStateOf<List<Profile>>(emptyList())
@@ -33,8 +38,11 @@ class AttendeesViewModel : ViewModel() {
     private val _mostCommonInterest = MutableStateFlow<String>("")
     val mostCommonInterest: StateFlow<String> = _mostCommonInterest
 
-
-    private val db = FirebaseFirestore.getInstance()
+    private val db: FirebaseFirestore = FirebaseFirestore.getInstance()
+    private val appLocalDatabase = AppLocalDatabase.getDatabase(application)
+    private val eventRepository = EventRepository(appLocalDatabase)
+    private val profileRepository = ProfileRepository(appLocalDatabase)
+    private val connectivityViewModel = ConnectivityViewModel(application)
 
     fun loadEvent(name: String) {
         if (!loading.value) loading.value = true
@@ -106,7 +114,12 @@ class AttendeesViewModel : ViewModel() {
             }
 
             event.value = fullEvent
-            Log.d("AttendeesViewModel", "Event: $fullEvent")
+            eventRepository.storeEvents(listOf(fullEvent))
+            eventRepository.deleteDuplicates()
+            if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                val localEvent = eventRepository.getEventByName(name)
+                event.value = localEvent
+            }
             loading.value = false
         }
     }
@@ -115,6 +128,18 @@ class AttendeesViewModel : ViewModel() {
         if (!loading.value) loading.value = true
 
         viewModelScope.launch {
+            val cachedHeadline = AttendeeStatsCache.getHeadline(event.name)
+            val cachedInterest = AttendeeStatsCache.getInterest(event.name)
+
+            if (cachedHeadline != null && cachedInterest != null) {
+                _mostCommonHeadline.value = cachedHeadline
+                _mostCommonInterest.value = cachedInterest
+
+                val cachedProfiles = profileRepository.getProfilesByName(event.attendees)
+                attendeeProfiles.value = cachedProfiles
+                loading.value = false
+                return@launch
+            }
             val attendees = withContext(Dispatchers.IO) {
                 coroutineScope {
                     event.attendees.map { attendeeName ->
@@ -158,6 +183,12 @@ class AttendeesViewModel : ViewModel() {
             }
 
             attendeeProfiles.value = attendees
+            profileRepository.storeProfiles(attendees)
+            profileRepository.deleteDuplicates()
+            if (connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
+                val localAttendees = profileRepository.getProfilesByName(event.attendees)
+                attendeeProfiles.value = localAttendees
+            }
 
             val commonHeadline = attendees
                 .map { it.headline }
@@ -167,13 +198,17 @@ class AttendeesViewModel : ViewModel() {
                 .maxByOrNull { it.value }
                 ?.key.orEmpty()
             _mostCommonHeadline.value = commonHeadline
+            AttendeeStatsCache.putHeadline(event.name, commonHeadline)
 
             val commonInterest = attendees
                 .flatMap { it.interests }
                 .filter { it.isNotBlank() }
                 .groupingBy { it }
                 .eachCount()
-            _mostCommonInterest.value = commonInterest.maxByOrNull { it.value }?.key.orEmpty()
+                .maxByOrNull { it.value }
+                ?.key.orEmpty()
+            _mostCommonInterest.value = commonInterest
+            AttendeeStatsCache.putInterest(event.name, commonInterest)
 
             loading.value = false
         }
