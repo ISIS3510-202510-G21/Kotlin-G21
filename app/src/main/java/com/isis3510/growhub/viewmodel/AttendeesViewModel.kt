@@ -11,6 +11,7 @@ import com.isis3510.growhub.model.objects.Location
 import com.isis3510.growhub.model.objects.Profile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -115,39 +116,47 @@ class AttendeesViewModel : ViewModel() {
 
         viewModelScope.launch {
             val attendees = withContext(Dispatchers.IO) {
-                event.attendees.mapNotNull { attendeeName ->
-                    val attendeeDoc = db.collection("users")
-                        .whereEqualTo("name", attendeeName)
-                        .limit(1)
+                coroutineScope {
+                    event.attendees.map { attendeeName ->
+                        async<Profile?> {
+                            try {
+                                val attendeeSnap = db.collection("users")
+                                    .whereEqualTo("name", attendeeName)
+                                    .limit(1)
+                                    .get()
+                                    .await()
 
-                    val attendeeSnap = attendeeDoc.get().await()
-                    val attendeeData = attendeeSnap.documents.firstOrNull()
-                    val attendeeRef = attendeeData?.reference
-                    val attendeeId = attendeeRef?.id
-                    Log.d("AttendeesViewModel", "Attendee ID: $attendeeId")
+                                val attendeeData = attendeeSnap.documents.firstOrNull()
+                                val attendeeRef = attendeeData?.reference
+                                val attendeeId = attendeeRef?.id
 
-                    val attendeeProfileDoc = db.collection("profiles")
-                        .whereEqualTo("user_ref",
-                            attendeeId?.let { db.collection("users").document(it) })
+                                val profileSnap = db.collection("profiles")
+                                    .whereEqualTo("user_ref", attendeeId?.let { db.collection("users").document(it) })
+                                    .get()
+                                    .await()
 
-                    val attendeeProfileSnap = attendeeProfileDoc.get().await()
-                    val attendeeProfileData = attendeeProfileSnap.documents.firstOrNull()?.data
-                    Log.d("AttendeesViewModel", "Attendee Profile Data: $attendeeProfileData")
-                    if (attendeeProfileData != null) {
-                        Profile(
-                            name = attendeeName,
-                            following = (attendeeProfileData["following"] as? Long)?.toInt() ?: 0,
-                            followers = (attendeeProfileData["followers"] as? Long)?.toInt() ?: 0,
-                            description = attendeeProfileData["description"].toString(),
-                            headline = attendeeProfileData["headline"].toString(),
-                            interests = attendeeProfileData["interests"] as? List<String> ?: emptyList(),
-                            profilePicture = attendeeProfileData["profile_picture"].toString()
-                        )
-                    } else {
-                        null
-                    }
+                                val profileData = profileSnap.documents.firstOrNull()?.data ?: return@async null
+
+                                val interestRefs = profileData["interests"] as? List<DocumentReference> ?: emptyList()
+                                val interests = interestRefs.mapNotNull { it.get().await().getString("name") }
+
+                                Profile(
+                                    name = attendeeName,
+                                    following = (profileData["following"] as? Long)?.toInt() ?: 0,
+                                    followers = (profileData["followers"] as? Long)?.toInt() ?: 0,
+                                    description = profileData["description"].toString(),
+                                    headline = profileData["headline"].toString(),
+                                    interests = interests,
+                                    profilePicture = profileData["profile_picture"].toString()
+                                )
+                            } catch (e: Exception) {
+                                null
+                            }
+                        }
+                    }.awaitAll().filterNotNull()
                 }
             }
+
             attendeeProfiles.value = attendees
 
             val commonHeadline = attendees
@@ -159,52 +168,15 @@ class AttendeesViewModel : ViewModel() {
                 ?.key.orEmpty()
             _mostCommonHeadline.value = commonHeadline
 
-            loadInterests(attendees)
-
-            loading.value = false
-        }
-    }
-
-    private fun loadInterests(attendees: List<Profile>) {
-        if (loading.value) return
-        loading.value = true
-
-        viewModelScope.launch {
-            // Extract all interest DocumentReferences from attendees
-            val allInterestRefs = attendees.flatMap { profile ->
-                profile.interests.mapNotNull {
-                    // Convert to DocumentReference if possible
-                    it as? DocumentReference
-                }
-            }
-            Log.d("AttendeesViewModel", "All Interest Refs: $allInterestRefs")
-
-            // Concurrently fetch all interest names using async inside coroutineScope
-            val allInterestNames = coroutineScope {
-                allInterestRefs.map { docRef ->
-                    async {
-                        try {
-                            val docSnapshot = docRef.get().await()
-                            docSnapshot.getString("name").orEmpty()
-                        } catch (e: Exception) {
-                            // Handle error or return empty string
-                            ""
-                        }
-                    }
-                }.map { it.await() }
-            }
-
-            // Count occurrences of interest names and find the most common
-            val mostCommonInterest = allInterestNames
+            val commonInterest = attendees
+                .flatMap { it.interests }
                 .filter { it.isNotBlank() }
                 .groupingBy { it }
                 .eachCount()
-                .maxByOrNull { it.value }
-                ?.key
-                ?: ""
+            _mostCommonInterest.value = commonInterest.maxByOrNull { it.value }?.key.orEmpty()
 
-            _mostCommonInterest.value = mostCommonInterest
             loading.value = false
         }
     }
+
 }

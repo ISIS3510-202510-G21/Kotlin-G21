@@ -99,15 +99,18 @@ fun AttendeesView(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(bottom = 120.dp),
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
                 if (loading) {
                     item {
-                        CircularProgressIndicator(
+                        Box(
                             modifier = Modifier
-                                .padding(16.dp)
-                                .size(32.dp)
-                        )
+                                .fillMaxSize()
+                                .padding(innerPadding),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            CircularProgressIndicator()
+                        }
                     }
                 } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
                     item {
@@ -124,7 +127,7 @@ fun AttendeesView(
                 }
 
                 item {
-                    Spacer(modifier = Modifier.height(64.dp))
+                    Spacer(modifier = Modifier.height(72.dp))
                 }
             }
             Box(
@@ -133,11 +136,13 @@ fun AttendeesView(
                     .offset(y = 50.dp),
                 contentAlignment = Alignment.BottomCenter
             ) {
-                StatsCard(
-                    totalAttendees = profiles.size,
-                    mostCommonHeadline = mostCommonHeadline,
-                    mostCommonInterest = mostCommonInterest
-                )
+                if (!loading) {
+                    StatsCard(
+                        totalAttendees = profiles.size,
+                        mostCommonHeadline = mostCommonHeadline,
+                        mostCommonInterest = mostCommonInterest
+                    )
+                }
             }
         }
     }
@@ -176,11 +181,11 @@ fun AttendeeCard(profile: Profile, modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(horizontal = 16.dp, vertical = 8.dp),
         shape = RoundedCornerShape(16.dp),
-        elevation = CardDefaults.cardElevation(defaultElevation = 4.dp)
+        elevation = CardDefaults.cardElevation(defaultElevation = 6.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
             modifier = Modifier
-                .background(Color.White)
                 .padding(16.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
@@ -295,8 +300,8 @@ fun StatsCard(
         elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
         modifier = modifier
             .fillMaxWidth()
-            .padding(16.dp)
-            .background(MaterialTheme.colorScheme.surface)
+            .padding(16.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White)
     ) {
         Column(
             modifier = Modifier
@@ -322,14 +327,14 @@ fun StatsCard(
             Spacer(modifier = Modifier.height(10.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "$totalAttendees",
+                    text = "$totalAttendees Attendees",
                     style = MaterialTheme.typography.bodyLarge,
                     color = MaterialTheme.colorScheme.primary,
                     fontSize = 16.sp
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -349,7 +354,7 @@ fun StatsCard(
                 )
             }
 
-            Spacer(modifier = Modifier.height(4.dp))
+            Spacer(modifier = Modifier.height(10.dp))
 
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
