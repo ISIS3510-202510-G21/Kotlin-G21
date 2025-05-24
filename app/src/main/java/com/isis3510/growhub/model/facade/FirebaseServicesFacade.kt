@@ -29,6 +29,7 @@ class FirebaseServicesFacade(private val filter: Filter = Filter()) {
             Profile(
                 profilePicture = data?.get("profilePicture") as? String ?: "",
                 description = data?.get("description") as? String ?: "",
+                headline = data?.get("headline") as? String ?: "",
                 interests = data?.get("interests") as? List<String> ?: emptyList(),
                 followers = data?.get("followers") as? Int ?: 0,
                 following = data?.get("following") as? Int ?: 0,

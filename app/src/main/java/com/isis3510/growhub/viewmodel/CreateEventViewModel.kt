@@ -9,6 +9,7 @@ import com.isis3510.growhub.Repository.CreateEventRepository
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.offline.OfflineEventManager
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
@@ -18,7 +19,7 @@ import java.util.Date
 import java.util.Locale
 
 class CreateEventViewModel(
-    private val createEventRepository: CreateEventRepository = CreateEventRepository(),
+    private val createEventRepository: CreateEventRepository,
     private val context: Context
 ) : ViewModel() {
 
@@ -50,6 +51,27 @@ class CreateEventViewModel(
 
     private val _address = MutableStateFlow("")
     val address: StateFlow<String> = _address
+
+    // New state variables for address validation
+    private val _addressValidated = MutableStateFlow(false)
+    val addressValidated: StateFlow<Boolean> = _addressValidated
+
+    private val _addressError = MutableStateFlow<String?>(null)
+    val addressError: StateFlow<String?> = _addressError
+
+    private val _formattedAddress = MutableStateFlow<String?>(null)
+    val formattedAddress: StateFlow<String?> = _formattedAddress
+
+    // Geographic coordinates for the validated address
+    private val _latitude = MutableStateFlow<Double?>(null)
+    val latitude: StateFlow<Double?> = _latitude
+
+    private val _longitude = MutableStateFlow<Double?>(null)
+    val longitude: StateFlow<Double?> = _longitude
+
+    // Address validation in progress indicator
+    private val _validatingAddress = MutableStateFlow(false)
+    val validatingAddress: StateFlow<Boolean> = _validatingAddress
 
     private val _details = MutableStateFlow("")
     val details: StateFlow<String> = _details
@@ -90,12 +112,19 @@ class CreateEventViewModel(
     private val _eventCreated = MutableStateFlow<Boolean?>(null)
     val eventCreated: StateFlow<Boolean?> = _eventCreated
 
+    private val _createdEventName = MutableStateFlow<String?>(null)
+    val createdEventName: StateFlow<String?> = _createdEventName
+
     init {
         fetchSkillsAndCategories()
         syncOfflineEventsIfPossible()
     }
 
-    fun resetEventCreated() { _eventCreated.value = null }
+    fun resetEventCreated() {
+        _eventCreated.value = null
+        _createdEventName.value = null
+    }
+
     fun onNameChange(value: String) { _name.value = value }
     fun onCostChange(value: String) { _cost.value = value }
     fun onCategoryChange(value: String) { _category.value = value }
@@ -104,12 +133,62 @@ class CreateEventViewModel(
     fun onEndDateChange(value: String) { _endDate.value = value }
     fun onStartHourChange(value: String) { _startHour.value = value }
     fun onEndHourChange(value: String) { _endHour.value = value }
-    fun onAddressChange(value: String) { _address.value = value }
+
+    // Updated address change function to reset validation
+    fun onAddressChange(value: String) {
+        _address.value = value
+        _addressValidated.value = false
+        _formattedAddress.value = null
+        _latitude.value = null
+        _longitude.value = null
+        _addressError.value = null
+    }
+
     fun onDetailsChange(value: String) { _details.value = value }
     fun onImageUrlChange(value: String) { _imageUrl.value = value }
     fun onLocationIdChange(value: String) { _locationId.value = value }
     fun onCityChange(value: String) { _city.value = value }
     fun onIsUniversityChange(value: Boolean) { _isUniversity.value = value }
+
+    // New function to validate address with Google Maps API
+    fun validateAddress() {
+        if (_address.value.isBlank()) {
+            _addressError.value = "Please enter an address."
+            return
+        }
+
+        viewModelScope.launch {
+            delay(500)
+
+            _validatingAddress.value = true
+            _addressError.value = null
+
+            try {
+                val result = createEventRepository.validateAndGeocodeAddress(_address.value)
+
+                if (result.isValid) {
+                    _addressValidated.value = true
+                    _formattedAddress.value = result.formattedAddress
+                    _latitude.value = result.latitude
+                    _longitude.value = result.longitude
+
+                    // Auto-update the address field with the formatted version
+                    _address.value = result.formattedAddress ?: _address.value
+                } else {
+                    _addressValidated.value = false
+                    _formattedAddress.value = null
+                    _latitude.value = null
+                    _longitude.value = null
+                    _addressError.value = result.errorMessage ?: "Invalid address"
+                }
+            } catch (e: Exception) {
+                _addressValidated.value = false
+                _addressError.value = "Error validating address: ${e.message}"
+            } finally {
+                _validatingAddress.value = false
+            }
+        }
+    }
 
     fun toggleSkill(skillName: String) {
         if (_selectedSkills.value.contains(skillName)) {
@@ -188,7 +267,7 @@ class CreateEventViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val eventCost = _cost.value.toDoubleOrNull() ?: 0.0
+                val eventCost = _cost.value.toIntOrNull() ?: 0
                 val startTimestamp = parseStartDateTime()
                 val endTimestamp = parseEndDateTime()
 
@@ -210,7 +289,9 @@ class CreateEventViewModel(
                         details = _details.value,
                         city = _city.value,
                         isUniversity = _isUniversity.value,
-                        skillIds = selectedSkillIds
+                        skillIds = selectedSkillIds,
+                        latitude = _latitude.value,
+                        longitude = _longitude.value
                     )
                     _eventCreated.value = true
                     _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
@@ -228,10 +309,13 @@ class CreateEventViewModel(
                         details = _details.value,
                         city = _city.value,
                         isUniversity = _isUniversity.value,
-                        skillIds = selectedSkillIds
+                        skillIds = selectedSkillIds,
+                        latitude = _latitude.value,
+                        longitude = _longitude.value
                     )
-                    _eventCreated.value = success
-                    if (success) {
+                    _eventCreated.value = success.isNullOrEmpty()
+                    _createdEventName.value = _name.value
+                    if (!success.isNullOrEmpty()) {
                         clearForm()
                     } else {
                         _errorMessage.value = "Could not create event. Please try again."
@@ -273,5 +357,10 @@ class CreateEventViewModel(
         _isUniversity.value = false
         _selectedSkills.value = emptyList()
         _skillSelectionError.value = null
+        _addressValidated.value = false
+        _addressError.value = null
+        _formattedAddress.value = null
+        _latitude.value = null
+        _longitude.value = null
     }
 }

@@ -11,6 +11,7 @@ data class ProfileEntity (
     val following: Int = 0,
     val followers: Int = 0,
     val description: String,
+    val headline: String,
     val interests: List<String> = emptyList(),
     val profilePicture: String
 )

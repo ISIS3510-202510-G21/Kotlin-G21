@@ -5,6 +5,7 @@ import android.os.Build
 import android.os.Bundle
 import android.util.Log
 import androidx.annotation.RequiresApi
+import androidx.collection.LruCache
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -22,7 +23,7 @@ import com.isis3510.growhub.model.objects.Category
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.utils.SearchEventClick
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -55,92 +56,175 @@ class SearchEventViewModel(application: Application) : AndroidViewModel(applicat
 
     private val connectivityViewModel = ConnectivityViewModel(application)
 
+    private val _isOffline = mutableStateOf(false)
+    val isOffline = _isOffline
+
+    private val searchCache = LruCache<String, List<Event>>(5)
+
+    private val SEARCH_KEY = "search_events"
+
     init {
-        loadInitialEvents()
+        viewModelScope.launch {
+            connectivityViewModel.networkStatus.collectLatest { status ->
+                _isOffline.value = status == ConnectionStatus.Unavailable || status == ConnectionStatus.Lost
+                loadInitialEvents()
+                logSearchOpenedEvent()
+                loadCategoriesSkillsLocations()
+                Log.d("SearchEventsViewModel", "Network status: $status, isOffline=${_isOffline.value}")
+            }
+        }
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    fun loadInitialEvents() {
-        Log.d("SearchEventViewModel", "loadInitialEvents: Start")
-        logSearchOpenedEvent()
+    private fun loadInitialEvents() {
         loadInitialSearchEvents()
-        loadCategoriesSkillsLocations()
-        Log.d("SearchEventViewModel", "loadInitialEvents: End")
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
     private fun loadInitialSearchEvents() {
-        Log.d("SearchEventViewModel", "loadInitialSearchEvents: Start")
         isLoading.value = true
-        viewModelScope.launch {
-            Log.d("SearchEventViewModel", "loadInitialSearchEvents: Calling firebaseServicesFacade.fetchSearchEvents")
-            val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
-            GlobalData.searchEventsList = events
-            eventRepository.storeEvents(events)
-            eventRepository.deleteDuplicates()
-            if (events.isEmpty() || connectivityViewModel.networkStatus.value == ConnectionStatus.Unavailable) {
-                Log.d("SearchEventViewModel", "loadInitialSearchEvents: No events found, calling loadInitialSearchEventsLocal")
+
+        val cached = searchCache[SEARCH_KEY]
+        if (!cached.isNullOrEmpty()) {
+            searchEvents.value = cached
+            GlobalData.searchEvents = cached
+            hasReachedEnd.value = false
+        }
+
+        if (_isOffline.value) {
+            if (cached.isNullOrEmpty()) {
+                viewModelScope.launch {
+                    try {
+                        val room = eventRepository.getEvents(5, 0)
+                        if (room.isNotEmpty()) {
+                            searchEvents.value = room
+                            GlobalData.searchEvents = room
+                            searchCache.put(SEARCH_KEY, room)
+                        }
+                        hasReachedEnd.value = room.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("SearchEventsViewModel", "Error loading search events from Room: ${e.message}")
+                    } finally {
+                        isLoading.value = false
+                    }
+                }
+            } else {
                 isLoading.value = false
-                hasReachedEnd.value = true
-                loadInitialSearchEventsLocal()
-                return@launch
             }
-            else {
-                Log.d("SearchEventViewModel", "loadInitialSearchEvents: Received ${events.size} search events from Facade")
-                searchEvents.value = events
+            return
+        }
+
+        viewModelScope.launch {
+            try {
+                val (events, snapshot) = firebaseServicesFacade.fetchSearchEvents()
+                eventRepository.storeEvents(events)
+                for (event in events) {
+                    if (!GlobalData.allEvents.contains(event)) {
+                        GlobalData.allEvents.add(event)
+                    }
+                }
+
+                searchCache.put(SEARCH_KEY, events)
+
+                val existingIds = searchEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
+                val newEvents = events.filterNot { "${it.name}-${it.startDate}" in existingIds }
+
+                if (newEvents.isNotEmpty()) {
+                    searchEvents.value += newEvents
+                } else if (searchEvents.value.isEmpty()) {
+                    searchEvents.value = events
+                }
+
+                GlobalData.searchEvents = searchEvents.value
                 lastSearchSnapshot = snapshot
-                isLoading.value = false
                 hasReachedEnd.value = events.isEmpty()
-                Log.d("SearchEventViewModel", "loadInitialSearchEvents: hasReachedEnd = $hasReachedEnd")
+            } catch (e: Exception) {
+                Log.e("SearchEventsViewModel", "Error fetching search events: ${e.message}")
+                if (searchEvents.value.isEmpty()) {
+                    try {
+                        val room = eventRepository.getEvents(5, 0)
+                        if (room.isNotEmpty()) {
+                            searchEvents.value = room
+                            GlobalData.searchEvents = room
+                            searchCache.put(SEARCH_KEY, room)
+                        }
+                        hasReachedEnd.value = room.isEmpty()
+                    } catch (e: Exception) {
+                        Log.e("SearchEventsViewModel", "Error loading search events from Room after Firebase failure: ${e.message}")
+                    }
+                }
+            } finally {
+                isLoading.value = false
             }
         }
-        Log.d("SearchEventsViewModel", "loadInitialSearchEvents: End")
     }
 
-    @RequiresApi(Build.VERSION_CODES.O)
-    private fun loadInitialSearchEventsLocal() {
-        Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Start")
-        isLoading.value = true
-        viewModelScope.launch {
-            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Calling eventRepository.getEvents")
-            val events = eventRepository.getEvents(5, 0)
-            GlobalData.searchEventsList = events
-            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: Received ${events.size} search events from local storage")
-            searchEvents.value = events
-            isLoading.value = false
-            hasReachedEnd.value = events.isEmpty()
-            Log.d("SearchEventViewModel", "loadInitialSearchEventsLocal: hasReachedEnd = $hasReachedEnd")
-        }
-    }
-
-    @RequiresApi(Build.VERSION_CODES.O)
     fun loadMoreSearchEvents() {
-        Log.d("SearchEventsViewModel", "loadMoreSearchEvents: Start - isLoadingMore = ${isLoadingMore.value}, hasReachedEnd = ${hasReachedEnd.value}")
         if (isLoadingMore.value || hasReachedEnd.value) return
+
+        if (_isOffline.value) {
+            isLoadingMore.value = true
+            viewModelScope.launch {
+                try {
+                    val currentSize = searchEvents.value.size
+                    val moreEvents = eventRepository.getEvents(5, currentSize)
+
+                    if (moreEvents.isNotEmpty()) {
+                        val existingIds = searchEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
+                        val newEvents = moreEvents.filterNot { "${it.name}-${it.startDate}" in existingIds }
+
+                        if (newEvents.isNotEmpty()) {
+                            searchEvents.value += newEvents
+                            GlobalData.searchEvents = searchEvents.value
+                            searchCache.put(SEARCH_KEY, searchEvents.value)
+                        } else {
+                            hasReachedEnd.value = true
+                        }
+                    } else {
+                        hasReachedEnd.value = true
+                    }
+                } catch (e: Exception) {
+                    Log.e("SearchEventsViewModel", "Error loading more search events offline: ${e.message}")
+                } finally {
+                    isLoadingMore.value = false
+                }
+            }
+            return
+        }
 
         isLoadingMore.value = true
         viewModelScope.launch {
             try {
-                Log.d("SearchEventsViewModel", "Calling firebaseServicesFacade.fetchNextSearchEvents with lastSnapshot = $lastSearchSnapshot")
-                val (nextEvents, newLastSnapshot) = firebaseServicesFacade.fetchNextSearchEvents(lastSnapshot = lastSearchSnapshot)
-                Log.d("SearchEventsViewModel", "Received ${nextEvents.size} new events")
+                val (next, newSnap) = firebaseServicesFacade.fetchNextSearchEvents(lastSnapshot = lastSearchSnapshot)
 
-                if (nextEvents.isNotEmpty()) {
-                    searchEvents.value += nextEvents
-                    lastSearchSnapshot = newLastSnapshot
+                if (next.isNotEmpty()) {
+                    val existingIds = searchEvents.value.map { "${it.name}-${it.startDate}" }.toSet()
+                    val newEvents = next.filterNot { "${it.name}-${it.startDate}" in existingIds }
+
+                    if (newEvents.isNotEmpty()) {
+                        searchEvents.value += newEvents
+                        GlobalData.searchEvents = searchEvents.value
+
+                        for (event in newEvents) {
+                            if (!GlobalData.allEvents.contains(event)) {
+                                GlobalData.allEvents.add(event)
+                            }
+                        }
+
+                        eventRepository.storeEvents(newEvents)
+
+                        searchCache.put(SEARCH_KEY, searchEvents.value)
+                        lastSearchSnapshot = newSnap
+                    } else {
+                        hasReachedEnd.value = true
+                    }
                 } else {
                     hasReachedEnd.value = true
-                    Log.d("SearchEventsViewModel", "No more search events, hasReachedEnd set to true")
                 }
-
             } catch (e: Exception) {
-                Log.e("SearchEventsViewModel", "Error loading more search events", e)
+                Log.e("SearchEventsViewModel", "Error loading more search events: ${e.message}")
             } finally {
                 isLoadingMore.value = false
-                Log.d("SearchEventsViewModel", "loadMoreSearchEvents: isLoadingMore set to false")
             }
         }
-        Log.d("SearchEventsViewModel", "loadMoreSearchEvents: End")
     }
 
     private fun loadCategoriesSkillsLocations() {

@@ -2,8 +2,8 @@ package com.isis3510.growhub.Repository
 
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.objects.Profile
-import com.isis3510.growhub.model.objects.toModel
 import com.isis3510.growhub.model.objects.toEntity
+import com.isis3510.growhub.model.objects.toModel
 
 class ProfileRepository(
     db: AppLocalDatabase
@@ -15,9 +15,19 @@ class ProfileRepository(
         return entity?.toModel()
     }
 
+    suspend fun getProfilesByName(names: List<String>): List<Profile> {
+        val entities = profileDao.getProfilesByName(names)
+        return entities.map { it.toModel() }
+    }
+
     suspend fun storeProfile(profile: Profile) {
         val entity = profile.toEntity()
-        profileDao.insertProfiles(entity)
+        profileDao.insertProfile(entity)
+    }
+
+    suspend fun storeProfiles(profiles: List<Profile>) {
+        val entities = profiles.map { it.toEntity() }
+        profileDao.insertProfiles(entities)
     }
 
     suspend fun deleteDuplicates() {

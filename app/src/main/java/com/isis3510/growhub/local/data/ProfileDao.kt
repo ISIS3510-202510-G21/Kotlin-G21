@@ -10,8 +10,14 @@ interface ProfileDao {
     @Query("SELECT * FROM profileentity")
     suspend fun getProfile(): ProfileEntity?
 
+    @Query("SELECT * FROM profileentity WHERE name IN (:names)")
+    suspend fun getProfilesByName(names: List<String>): List<ProfileEntity>
+
     @Insert(onConflict = OnConflictStrategy.REPLACE)
-    suspend fun insertProfiles(profiles: ProfileEntity)
+    suspend fun insertProfile(profiles: ProfileEntity)
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun insertProfiles(profiles: List<ProfileEntity>)
 
     @Query("DELETE FROM profileentity WHERE id NOT IN (SELECT MIN(id) FROM profileentity GROUP BY name)")
     suspend fun deleteDuplicates()

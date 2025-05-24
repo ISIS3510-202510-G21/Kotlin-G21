@@ -14,6 +14,7 @@ import androidx.navigation.navArgument
 import com.google.firebase.analytics.FirebaseAnalytics
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.view.attendees.AttendeesView
 import com.isis3510.growhub.view.auth.InterestsScreen
 import com.isis3510.growhub.view.auth.LoginScreen
 import com.isis3510.growhub.view.auth.RegisterScreen
@@ -24,6 +25,7 @@ import com.isis3510.growhub.view.dummy.PlaceholderScreen
 import com.isis3510.growhub.view.events.CategoryDetailView
 import com.isis3510.growhub.view.events.MyEventsView
 import com.isis3510.growhub.view.events.SearchEventView
+import com.isis3510.growhub.view.events.SuccessfulCreationView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
@@ -46,7 +48,9 @@ object Destinations {
     const val CATEGORY_DETAIL = "category_detail"
     const val CHATBOT = "chatbot"
     const val SUCCESSFUL_REGISTRATION = "successful_registration"
+    const val SUCCESSFUL_CREATION = "successful_creation"
     const val SEARCH = "search"
+    const val ATTENDEES = "attendees"
 }
 
 @RequiresApi(Build.VERSION_CODES.O)
@@ -83,16 +87,16 @@ fun AppNavGraph(
                             .get()
                             .addOnSuccessListener { doc ->
                                 val hasSkills = doc.exists() && doc.contains("skills")
-                                /*if (!hasSkills) {
+                                if (!hasSkills) {
                                     // Navegamos a Interests
                                     navController.navigate(Destinations.INTERESTS) {
                                         popUpTo(Destinations.LOGIN) { inclusive = true }
                                     }
-                                } else {*/
+                                } else {
                                 // Navegamos a Home
                                 navController.navigate(Destinations.HOME) {
                                     popUpTo(Destinations.LOGIN) { inclusive = true }
-                                    //}
+                                    }
                                 }
                             }
                             .addOnFailureListener {
@@ -122,11 +126,9 @@ fun AppNavGraph(
                 viewModel = authViewModel,
                 onNavigateToInterests = {
 
-                    /*navController.navigate(Destinations.INTERESTS) {
-                        popUpTo(Destinations.REGISTER) { inclusive = true }*/
-                    navController.navigate(Destinations.HOME) {
-
+                    navController.navigate(Destinations.INTERESTS) {
                         popUpTo(Destinations.REGISTER) { inclusive = true }
+
                     }
                 },
                 onNavigateBack = {
@@ -225,6 +227,11 @@ fun AppNavGraph(
                     navController.navigate(Destinations.HOME) {
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
+                },
+                onCreatedEvent = { eventName ->
+                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName") {
+                        popUpTo(Destinations.CREATE) { inclusive = true }
+                    }
                 }
             )
         }
@@ -241,6 +248,9 @@ fun AppNavGraph(
                 navController = navController,
                 onBookEvent = {
                     navController.navigate("${Destinations.SUCCESSFUL_REGISTRATION}/$eventName")
+                },
+                onAttendeesClick = {
+                    navController.navigate("${Destinations.ATTENDEES}/$eventName")
                 })
         }
 
@@ -279,7 +289,41 @@ fun AppNavGraph(
             )
         ) { backStackEntry ->
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
-            SuccessfulRegistrationView(eventName = eventName, onMyEvents = {
+            SuccessfulRegistrationView(eventName = eventName,
+                onMyEvents = {
+                    navController.navigate(Destinations.MY_EVENTS) {
+                        popUpTo(0) { inclusive = true } // clears everything
+                        launchSingleTop = true
+                    }
+                },
+                onClickAttendees = {
+                    navController.navigate("${Destinations.ATTENDEES}/$eventName")
+                })
+        }
+
+        composable(
+            route = "${Destinations.ATTENDEES}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            AttendeesView(
+                eventName = eventName,
+                onNavigateBack = {
+                    navController.popBackStack()
+                }
+            )
+        }
+
+        composable(
+            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}",
+            arguments = listOf(
+                navArgument("eventName") { type = NavType.StringType }
+            )
+        ) { backStackEntry ->
+            val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
+            SuccessfulCreationView(eventName = eventName, onMyEvents = {
                 navController.navigate(Destinations.MY_EVENTS) {
                     popUpTo(0) { inclusive = true } // clears everything
                     launchSingleTop = true

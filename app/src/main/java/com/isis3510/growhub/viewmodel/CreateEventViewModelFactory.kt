@@ -7,7 +7,7 @@ import com.isis3510.growhub.Repository.CreateEventRepository
 
 class CreateEventViewModelFactory(
     private val appContext: Context,
-    private val createEventRepository: CreateEventRepository = CreateEventRepository()
+    private val createEventRepository: CreateEventRepository = CreateEventRepository(appContext)
 ) : ViewModelProvider.Factory {
     @Suppress("UNCHECKED_CAST")
     override fun <T : ViewModel> create(modelClass: Class<T>): T {

@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -84,23 +85,23 @@ fun ProfileView(
             if (isLoading) {
                 ProfilePlaceholder()
             } else if (profile != null){
-                Column(
+                LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
+                    contentPadding = PaddingValues(top = 32.dp, bottom = 80.dp) // leave space for nav bar
                 ) {
-                    Spacer(modifier = Modifier.height(32.dp))
-                    ProfileImage(profile.profilePicture)
-                    Spacer(modifier = Modifier.height(32.dp))
-                    ProfileName(profile.name)
-                    Spacer(modifier = Modifier.height(32.dp))
-                    ProfileStats(profile.following, profile.followers)
-                    Spacer(modifier = Modifier.height(32.dp))
-                    EditProfileButton(onNavigateToEditProfile)
-                    Spacer(modifier = Modifier.height(32.dp))
-                    ProfileAbout(profile.description)
-                    Spacer(modifier = Modifier.height(16.dp))
-                    ProfileInterestsSection(profile.interests, onNavigateToEditProfile)
+                    item { ProfileImage(profile.profilePicture) }
+                    item { Spacer(Modifier.height(32.dp)) }
+                    item { ProfileName(profile.name) }
+                    item { Spacer(Modifier.height(32.dp)) }
+                    item { ProfileStats(profile.following, profile.followers) }
+                    item { Spacer(Modifier.height(32.dp)) }
+                    item { EditProfileButton(onNavigateToEditProfile) }
+                    item { Spacer(Modifier.height(32.dp)) }
+                    item { ProfileAbout(profile.description) }
+                    item { Spacer(Modifier.height(16.dp)) }
+                    item { ProfileInterestsSection(profile.interests, onNavigateToEditProfile) }
                 }
             } else if (isNetworkAvailable != ConnectionStatus.Available) {
                 ProfileEmpty()

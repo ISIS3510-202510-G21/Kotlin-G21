@@ -104,7 +104,6 @@ fun MyEventsView(
     val initialNetworkAvailable = remember { mutableStateOf<Boolean?>(null) }
 
     LaunchedEffect(Unit) {
-
         if (initialNetworkAvailable.value == null) {
             initialNetworkAvailable.value = currentStatus == ConnectionStatus.Available
         }
@@ -184,9 +183,15 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            }
-
-            else if (upcomingEvents.isNotEmpty()) {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (upcomingEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            } else {
                 items(upcomingEvents) { event ->
                     MyEventsCard(event, onDelete = {
                         eventIdToDelete = event.name
@@ -204,20 +209,6 @@ fun MyEventsView(
                     }
                 }
             }
-            else if (upcomingEvents.isEmpty()) {
-                item {
-                    MyEventsSectionEmpty()
-                }
-            }
-            else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
-                item {
-                    MyEventsSectionEmptyConnection()
-                }
-            } else if (initialNetworkAvailable.value == false) {
-                item {
-                    MyEventsSectionEmptyConnection()
-                }
-            }
 
             // --- PREVIOUS EVENTS SECTION ---
             item {
@@ -228,8 +219,15 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            }
-            else if (previousEvents.isNotEmpty()) {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (previousEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            } else {
                 items(previousEvents) { event ->
                     MyEventsCard(event, onDelete = {
                         eventIdToDelete = event.name
@@ -247,20 +245,6 @@ fun MyEventsView(
                     }
                 }
             }
-            else if (previousEvents.isEmpty()) {
-                item {
-                    MyEventsSectionEmpty()
-                }
-            }
-            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
-                item {
-                    MyEventsSectionEmptyConnection()
-                }
-            } else if (initialNetworkAvailable.value == false) {
-                item {
-                    MyEventsSectionEmptyConnection()
-                }
-            }
 
             // --- CREATED BY ME EVENTS SECTION ---
             item {
@@ -271,7 +255,15 @@ fun MyEventsView(
                 item {
                     MyEventsCardPlaceholder()
                 }
-            } else if (createdByMeEvents.isNotEmpty()) {
+            } else if (isNetworkAvailable == ConnectionStatus.Unavailable) {
+                item {
+                    MyEventsSectionEmptyConnection()
+                }
+            } else if (createdByMeEvents.isEmpty()) {
+                item {
+                    MyEventsSectionEmpty()
+                }
+            } else {
                 items(createdByMeEvents) { event ->
                     MyEventsCard(event, onDelete = {
                         eventIdToDelete = event.name
@@ -287,20 +279,6 @@ fun MyEventsView(
                                 .size(32.dp)
                         )
                     }
-                }
-            }
-            else if (createdByMeEvents.isEmpty()) {
-                item {
-                    MyEventsSectionEmpty()
-                }
-            }
-            else if (isNetworkAvailable == ConnectionStatus.Unavailable){
-                item {
-                    MyEventsSectionEmptyConnection()
-                }
-            } else if (initialNetworkAvailable.value == false) {
-                item {
-                    MyEventsSectionEmptyConnection()
                 }
             }
 
@@ -392,6 +370,8 @@ fun MyEventsSectionTitle(title: String) {
 
 @Composable
 fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
+    val imagePainter = rememberAsyncImagePainter(event.imageUrl)
+
     Card(
         shape = RoundedCornerShape(16.dp),
         elevation = CardDefaults.cardElevation(4.dp),
@@ -400,19 +380,41 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
             .fillMaxWidth()
             .padding(8.dp)
     ) {
-        Box(modifier = Modifier.padding(8.dp)) {
-            Row(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(modifier = Modifier.weight(1f)) {
                 Column(horizontalAlignment = Alignment.Start) {
                     Image(
-                        painter = rememberAsyncImagePainter(event.imageUrl),
+                        painter = imagePainter,
                         contentDescription = event.name,
                         modifier = Modifier
                             .size(80.dp)
-                            .background(MaterialTheme.colorScheme.onSurfaceVariant, shape = RoundedCornerShape(8.dp))
-                            .fillMaxSize(),
+                            .background(
+                                MaterialTheme.colorScheme.onSurfaceVariant,
+                                shape = RoundedCornerShape(8.dp)
+                            ),
                         contentScale = ContentScale.Crop
                     )
-                    Spacer(modifier = Modifier.height(8.dp))
+                }
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
+                    Text(
+                        text = event.startDate,
+                        fontSize = 18.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = event.name,
+                        fontSize = 18.sp,
+                        fontWeight = FontWeight.Normal,
+                        textAlign = TextAlign.Start,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     if (event.cost > 0.0) {
                         Icon(
                             painter = painterResource(id = R.drawable.payments),
@@ -422,25 +424,14 @@ fun MyEventsCard(event: Event, onDelete: () -> Unit = {}) {
                         )
                     }
                 }
-                Spacer(modifier = Modifier.width(12.dp))
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(text = event.startDate, fontSize = 18.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(
-                        text = event.name,
-                        fontSize = 18.sp,
-                        fontWeight = FontWeight.Normal,
-                        textAlign = TextAlign.Center,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
             }
-            Row(modifier = Modifier.align(Alignment.BottomEnd)) {
-                IconButton(onClick = { onDelete() }) {
-                    Icon(Icons.Default.Delete, contentDescription = "Delete", tint = Color(
-                        0xFFBE2927
-                    )
-                    )
-                }
+
+            IconButton(onClick = { onDelete() }) {
+                Icon(
+                    Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = Color(0xFFBE2927)
+                )
             }
         }
     }
