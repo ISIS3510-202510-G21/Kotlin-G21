@@ -267,7 +267,7 @@ class CreateEventViewModel(
             _isLoading.value = true
             _errorMessage.value = null
             try {
-                val eventCost = _cost.value.toDoubleOrNull() ?: 0.0
+                val eventCost = _cost.value.toIntOrNull() ?: 0
                 val startTimestamp = parseStartDateTime()
                 val endTimestamp = parseEndDateTime()
 

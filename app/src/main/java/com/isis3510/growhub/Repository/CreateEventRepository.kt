@@ -73,7 +73,7 @@ class CreateEventRepository(private val context: Context) {
 
     suspend fun createEvent(
         name: String,
-        cost: Double,
+        cost: Int,
         category: String,
         description: String,
         startDate: Timestamp,

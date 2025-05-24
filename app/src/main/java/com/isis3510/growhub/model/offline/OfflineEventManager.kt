@@ -24,7 +24,7 @@ class OfflineEventManager(
 
     suspend fun saveOfflineEvent(
         name: String,
-        cost: Double,
+        cost: Int,
         category: String,
         description: String,
         startDate: Timestamp,
@@ -73,7 +73,7 @@ class OfflineEventManager(
 
     suspend fun uploadSingleEvent(
         name: String,
-        cost: Double,
+        cost: Int,
         category: String,
         description: String,
         startDate: Timestamp,
@@ -117,7 +117,7 @@ class OfflineEventManager(
 
                 val uploadSuccess = createEventRepository.createEvent(
                     name = eventObj.getString("name"),
-                    cost = eventObj.getDouble("cost"),
+                    cost = eventObj.getInt("cost"),
                     category = eventObj.getString("category"),
                     description = eventObj.getString("description"),
                     startDate = Timestamp(eventObj.getLong("startDate"), 0),
