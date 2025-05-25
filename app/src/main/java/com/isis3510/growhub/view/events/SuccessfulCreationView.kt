@@ -61,11 +61,10 @@ fun SuccessfulCreationView(
                     .padding(horizontal = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 CreationSuccessBanner()
-                EventCreationDetailsTitle()
 
                 EventCard(
                     name = event!!.name,
@@ -88,10 +87,8 @@ fun SuccessfulCreationView(
                     location = address
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
                 BackToHomeButton(onBackToHome = onMyEvents)
 
-                Spacer(modifier = Modifier.height(64.dp))
             }
         } else {
             Box(
@@ -162,15 +159,6 @@ fun CreationSuccessBanner() {
     }
 }
 
-@Composable
-fun EventCreationDetailsTitle() {
-    Text(
-        text = "Event Creation Details",
-        modifier = Modifier.padding(vertical = 8.dp),
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp
-    )
-}
 
 @Composable
 fun BackToHomeButton(onBackToHome: () -> Unit = {}) {
@@ -184,6 +172,6 @@ fun BackToHomeButton(onBackToHome: () -> Unit = {}) {
     ) {
         Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.White)
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Back to Home", color = Color.White)
+        Text("My Events", color = Color.White)
     }
 }

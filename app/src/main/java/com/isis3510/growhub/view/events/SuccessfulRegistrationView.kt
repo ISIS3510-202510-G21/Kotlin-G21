@@ -87,11 +87,10 @@ fun SuccessfulRegistrationView(
                         .padding(horizontal = 16.dp)
                         .fillMaxSize()
                         .verticalScroll(scrollState),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
                     SuccessBanner()
-                    EventRegistrationDetailsTitle()
 
                     EventCard(
                         name = event!!.name,
@@ -120,10 +119,7 @@ fun SuccessfulRegistrationView(
                         location = address
                     )
 
-                    Spacer(modifier = Modifier.height(16.dp))
                     MyEventsButton(onMyEvents = onMyEvents)
-
-                    Spacer(modifier = Modifier.height(64.dp))
                 }
             } else {
                 Box(
@@ -196,16 +192,6 @@ fun SuccessBanner() {
 }
 
 @Composable
-fun EventRegistrationDetailsTitle() {
-    Text(
-        text = "Event Registration Details",
-        modifier = Modifier.padding(vertical = 8.dp),
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp
-    )
-}
-
-@Composable
 fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>, onClickAttendees: () -> Unit = {}) {
     Card(
         elevation = CardDefaults.cardElevation(4.dp),
@@ -230,7 +216,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>,
                 colorFilter = ColorFilter.tint(color = Color(0xFF5669FF))
             )
 
-            Spacer(modifier = Modifier.width(12.dp))
+            Spacer(modifier = Modifier.width(30.dp))
 
             Column(
                 verticalArrangement = Arrangement.Center,
@@ -258,16 +244,16 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>,
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.ShoppingCart,
-                            contentDescription = "Cost",
-                            tint = Color.Gray,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .padding(end = 6.dp)
-                        )
-                        Spacer(modifier = Modifier.width(30.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.ShoppingCart,
+                                contentDescription = "Cost",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .padding(end = 6.dp)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = "Cost",
                                 fontSize = 14.sp,
@@ -282,31 +268,31 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>,
                         }
                     }
 
-                    Spacer(modifier = Modifier.width(36.dp))
+                    Spacer(modifier = Modifier.width(60.dp))
 
                     VerticalDivider(
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier
-                            .height(32.dp)
+                            .height(80.dp)
                             .width(1.dp)
                     )
 
-                    Spacer(modifier = Modifier.width(48.dp))
+                    Spacer(modifier = Modifier.width(60.dp))
 
                     // Attendees
                     Row(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Person,
-                            contentDescription = "Attendees",
-                            tint = Color.Gray,
-                            modifier = Modifier
-                                .size(30.dp)
-                                .padding(end = 6.dp)
-                        )
-                        Spacer(modifier = Modifier.width(30.dp))
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(
+                                imageVector = Icons.Default.Person,
+                                contentDescription = "Attendees",
+                                tint = Color.Gray,
+                                modifier = Modifier
+                                    .size(30.dp)
+                                    .padding(end = 6.dp)
+                            )
+                            Spacer(modifier = Modifier.height(10.dp))
                             Text(
                                 text = "Attendees",
                                 fontSize = 14.sp,
@@ -326,8 +312,6 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>,
         }
     }
 }
-
-
 
 @Composable
 fun InfoSection(startDate: String, startTime: String, category: String, skills: List<String>, location: String) {

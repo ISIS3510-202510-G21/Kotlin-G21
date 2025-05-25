@@ -294,9 +294,10 @@ class CreateEventViewModel(
                         longitude = _longitude.value
                     )
                     _eventCreated.value = true
+                    _createdEventName.value = _name.value
                     _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
                 } else {
-                    val success = offlineManager.uploadSingleEvent(
+                    val eventId = offlineManager.uploadSingleEvent(
                         name = _name.value,
                         cost = eventCost,
                         category = _category.value,
@@ -313,11 +314,12 @@ class CreateEventViewModel(
                         latitude = _latitude.value,
                         longitude = _longitude.value
                     )
-                    _eventCreated.value = success.isNullOrEmpty()
-                    _createdEventName.value = _name.value
-                    if (!success.isNullOrEmpty()) {
+                    if (!eventId.isNullOrBlank()) {
+                        _createdEventName.value = _name.value
+                        _eventCreated.value = true
                         clearForm()
                     } else {
+                        _eventCreated.value = false
                         _errorMessage.value = "Could not create event. Please try again."
                     }
                 }
