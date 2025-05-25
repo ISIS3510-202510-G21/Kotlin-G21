@@ -6,6 +6,7 @@ import androidx.lifecycle.viewModelScope
 import com.google.firebase.Timestamp
 import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.Repository.CreateEventRepository
+import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.offline.OfflineEventManager
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +115,9 @@ class CreateEventViewModel(
 
     private val _createdEventName = MutableStateFlow<String?>(null)
     val createdEventName: StateFlow<String?> = _createdEventName
+
+    private val _offlineQueued = MutableStateFlow(false)
+    val offlineQueued: StateFlow<Boolean> = _offlineQueued
 
     init {
         fetchSkillsAndCategories()
@@ -293,8 +297,9 @@ class CreateEventViewModel(
                         latitude = _latitude.value,
                         longitude = _longitude.value
                     )
-                    _eventCreated.value = true
                     _createdEventName.value = _name.value
+                    _eventCreated.value = true
+                    _offlineQueued.value = true
                     _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
                 } else {
                     val eventId = offlineManager.uploadSingleEvent(
@@ -314,6 +319,7 @@ class CreateEventViewModel(
                         latitude = _latitude.value,
                         longitude = _longitude.value
                     )
+                    _offlineQueued.value = false
                     if (!eventId.isNullOrBlank()) {
                         _createdEventName.value = _name.value
                         _eventCreated.value = true

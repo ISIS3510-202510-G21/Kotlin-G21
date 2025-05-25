@@ -228,8 +228,8 @@ fun AppNavGraph(
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
                 },
-                onCreatedEvent = { eventName ->
-                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName") {
+                onCreatedEvent = { eventName, queued ->
+                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName?queued=$queued") {
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
                 }
@@ -317,13 +317,15 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}",
+            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}?queued={queued}",
             arguments = listOf(
-                navArgument("eventName") { type = NavType.StringType }
+                navArgument("eventName") { type = NavType.StringType },
+                navArgument("queued") { type = NavType.BoolType; defaultValue = false }
             )
         ) { backStackEntry ->
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
-            SuccessfulCreationView(eventName = eventName, onMyEvents = {
+            val queued = backStackEntry.arguments?.getBoolean("queued") ?: false
+            SuccessfulCreationView(eventName = eventName, isQueued = queued, onMyEvents = {
                 navController.navigate(Destinations.MY_EVENTS) {
                     popUpTo(0) { inclusive = true } // clears everything
                     launchSingleTop = true

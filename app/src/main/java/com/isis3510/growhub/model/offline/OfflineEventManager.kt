@@ -3,6 +3,7 @@ package com.isis3510.growhub.offline
 import android.content.Context
 import com.google.firebase.Timestamp
 import com.isis3510.growhub.Repository.CreateEventRepository
+import com.isis3510.growhub.local.data.GlobalData
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONArray
@@ -63,6 +64,7 @@ class OfflineEventManager(
             }
 
             eventsArray.put(newEvent)
+            GlobalData.createdEvent.add(newEvent)
             offlineEventsFile.writeText(eventsArray.toString())
             return@withContext true
         } catch (e: Exception) {

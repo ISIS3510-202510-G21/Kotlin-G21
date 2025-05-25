@@ -230,7 +230,7 @@ fun EventCard(name: String, creator: String, cost: Int, attendees: List<String>,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
                 Text(
-                    text = "By $creator",
+                    text = if (creator == "Current User") "By You" else "By $creator",
                     fontSize = 14.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -326,7 +326,7 @@ fun InfoSection(startDate: String, startTime: String, category: String, skills: 
             InfoRow(label = "Time", value = startTime)
             InfoRow(label = "Date", value = startDate)
             InfoRow(label = "Category", value = category)
-            InfoRow(label = "Skills", value = skills.joinToString(", "))
+            if (skills.isNotEmpty()) {InfoRow(label = "Skills", value = skills.joinToString(", "))}
             InfoRow(
                 label = "Location",
                 value = location
