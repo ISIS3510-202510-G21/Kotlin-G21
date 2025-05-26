@@ -21,9 +21,10 @@ fun FollowingScreen(
 ) {
     val ctx = LocalContext.current
     val vm: FollowViewModel = viewModel()
-    val following by vm.followingItems.collectAsState()
-    val online by vm.isOnline.collectAsState()
+    val following  by vm.followingItems.collectAsState()
+    val suggestions by vm.suggestionsItems.collectAsState()
 
+    // Errores en Toast
     LaunchedEffect(Unit) {
         vm.error.collect { msg ->
             Toast.makeText(ctx, msg, Toast.LENGTH_SHORT).show()
@@ -42,20 +43,45 @@ fun FollowingScreen(
             )
         }
     ) { innerPadding ->
-        Box(Modifier
-            .fillMaxSize()
-            .padding(innerPadding)
+        Column(
+            Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
         ) {
-            LazyColumn(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+            // 1) Tu lista de following
+            LazyColumn(
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp)
+            ) {
                 items(following) { item ->
-                    // En esta pantalla todos son isFollowing = true
                     FollowRow(
                         item = item,
                         isFollowing = true,
-                        onToggle = { shouldFollow ->
-                            vm.toggleFollow(item.userId, shouldFollow)
-                        }
+                        onToggle = { vm.toggleFollow(item.userId, it) }
                     )
+                }
+            }
+            // 2) Sección de sugerencias
+            if (suggestions.isNotEmpty()) {
+                HorizontalDivider()
+                Text(
+                    "Suggestions",
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.padding(16.dp)
+                )
+                LazyColumn(
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp)
+                ) {
+                    items(suggestions) { item ->
+                        FollowRow(
+                            item = item,
+                            isFollowing = false,
+                            onToggle = { vm.toggleFollow(item.userId, it) }
+                        )
+                    }
                 }
             }
         }

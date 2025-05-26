@@ -22,8 +22,7 @@ fun FollowersScreen(
     val ctx = LocalContext.current
     val vm: FollowViewModel = viewModel()
     val followers by vm.followersItems.collectAsState()
-    val following by vm.followingItems.collectAsState()    // para saber a quiénes seguimos
-    val online by vm.isOnline.collectAsState()
+    val following by vm.followingItems.collectAsState()
 
     LaunchedEffect(Unit) {
         vm.error.collect { msg ->

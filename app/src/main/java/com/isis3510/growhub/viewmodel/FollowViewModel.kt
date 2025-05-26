@@ -9,6 +9,9 @@ import com.isis3510.growhub.Repository.FollowItemRepository
 import com.isis3510.growhub.local.database.FollowLocalStore
 import com.isis3510.growhub.model.objects.FollowItem
 import com.isis3510.growhub.utils.ConnectionStatus
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
@@ -43,6 +46,11 @@ class FollowViewModel(application: Application) : AndroidViewModel(application) 
     // Followers list
     private val _followersItems = MutableStateFlow<List<FollowItem>>(emptyList())
     val followersItems: StateFlow<List<FollowItem>> = _followersItems
+
+    // Suggestions
+    private val _suggestionsItems = MutableStateFlow<List<FollowItem>>(emptyList())
+    val suggestionsItems: StateFlow<List<FollowItem>> = _suggestionsItems
+
 
     init {
         viewModelScope.launch {
@@ -124,10 +132,51 @@ class FollowViewModel(application: Application) : AndroidViewModel(application) 
                     // Emitir a UI
                     _followingItems.value = followingList
                     _followersItems.value  = followersList
+
+                    val excluded = followingList.map { it.userId }.toSet() + meUid
+                    val allUserDocs = firestore.collection("users").get().await().documents
+                    val candidates = allUserDocs
+                        .mapNotNull { doc -> doc.id.takeUnless { it in excluded } }
+                        .shuffled()
+                        .take(5)
+
+                    // 4) Construir sugerencias en paralelo
+                    val suggestions = coroutineScope {
+                        candidates.map { uid ->
+                            async {
+                                val uRef = firestore.collection("users").document(uid)
+                                buildItem(uRef)
+                            }
+                        }.awaitAll().filterNotNull()
+                    }
+
+                    _suggestionsItems.value = suggestions
                 }
             } catch (e: Exception) {
-                _error.emit("Failed to load follow data: ${e.message}")
+                _error.emit("Failed to load data: ${e.message}")
             }
+        }
+    }
+
+    /** Helper para construir un FollowItem dado su userRef */
+    private suspend fun buildItem(userRef: com.google.firebase.firestore.DocumentReference): FollowItem? {
+        return try {
+            val usr = userRef.get().await()
+            val name = usr.getString("name") ?: return null
+
+            val profSnap = firestore.collection("profiles")
+                .whereEqualTo("user_ref", userRef)
+                .limit(1).get().await()
+                .documents.firstOrNull()
+
+            FollowItem(
+                userId = userRef.id,
+                name = name,
+                headline = profSnap?.getString("headline") ?: "",
+                profilePicture = profSnap?.getString("profile_picture") ?: ""
+            )
+        } catch (_: Exception) {
+            null
         }
     }
 
