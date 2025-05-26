@@ -29,6 +29,8 @@ import com.isis3510.growhub.view.events.SuccessfulCreationView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
+import com.isis3510.growhub.view.profile.FollowersScreen
+import com.isis3510.growhub.view.profile.FollowingScreen
 import com.isis3510.growhub.view.profile.ProfileView
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
@@ -41,6 +43,8 @@ object Destinations {
     const val MAP = "map"
     const val MY_EVENTS = "my_events"
     const val PROFILE = "profile"
+    const val FOLLOWERS = "followers"
+    const val FOLLOWING = "following"
     const val EDIT_PROFILE = "edit_profile"
     const val CREATE = "create"
     const val INTERESTS = "interestsScreen"
@@ -210,6 +214,26 @@ fun AppNavGraph(
                 onNavigateToEditProfile = {
                     navController.navigate(Destinations.EDIT_PROFILE) {
                         popUpTo(Destinations.EDIT_PROFILE) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Destinations.FOLLOWERS) {
+            FollowersScreen(
+                onNavigateBack = {
+                    navController.navigate(Destinations.PROFILE) {
+                        popUpTo(Destinations.FOLLOWERS) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Destinations.FOLLOWING) {
+            FollowingScreen(
+                onNavigateBack = {
+                    navController.navigate(Destinations.PROFILE) {
+                        popUpTo(Destinations.FOLLOWING) { inclusive = true }
                     }
                 }
             )
