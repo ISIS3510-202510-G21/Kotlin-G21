@@ -88,7 +88,7 @@ fun PreviewCreateEventContent() {
 @Composable
 fun CreateEventView(
     onNavigateBack: () -> Unit = {},
-    onCreatedEvent: (String) -> Unit = {}
+    onCreatedEvent: (String, Boolean) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
     val factory = remember { CreateEventViewModelFactory(context) }
@@ -112,7 +112,7 @@ fun CreateEventView(
 
     LaunchedEffect(eventCreated) {
         if (eventCreated == true && !createdEventName.isNullOrBlank()) {
-            onCreatedEvent(createdEventName!!)
+            onCreatedEvent(createdEventName!!, viewModel.offlineQueued.value)
             viewModel.resetEventCreated()
         }
     }
@@ -151,7 +151,7 @@ fun CreateEventView(
 @Composable
 fun CreateEventContent(
     onNavigateBack: () -> Unit,
-    onCreatedEvent: (String) -> Unit,
+    onCreatedEvent: (String, Boolean) -> Unit,
     viewModel: CreateEventViewModel,
     onImagePickerClick: () -> Unit
 ) {

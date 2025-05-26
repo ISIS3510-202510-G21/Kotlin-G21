@@ -23,6 +23,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.viewbinding.BuildConfig
 import com.isis3510.growhub.viewmodel.AuthViewModel
 // Import the LocationViewModel and its state
 import com.isis3510.growhub.viewmodel.LocationViewModel
@@ -49,10 +50,33 @@ fun TopBarView(
                 "success" -> {
                     val city = jsonObject.optString("city", "") // Default to empty if missing
                     val country = jsonObject.optString("country", "")
+
+                    // Handle casos especiales para ubicaciones GPS
+                    val finalCity = when {
+                        city.isEmpty() || city == "Unknown City" -> "Current Location"
+                        else -> city
+                    }
+
+                    val finalCountry = when {
+                        country.isEmpty() || country == "Unknown Country" -> ""
+                        else -> country
+                    }
+
                     // Construct the display string, handling cases where one might be missing
-                    listOfNotNull(city.takeIf { it.isNotEmpty() }, country.takeIf { it.isNotEmpty() })
-                        .joinToString(", ")
-                        .ifEmpty { "Location Data Missing" } // If both are empty
+                    listOfNotNull(
+                        finalCity.takeIf { it.isNotEmpty() },
+                        finalCountry.takeIf { it.isNotEmpty() }
+                    ).joinToString(", ")
+                        .ifEmpty {
+                            // Si ambos están vacíos, mostrar coordenadas si están disponibles
+                            val lat = jsonObject.optDouble("lat", Double.NaN)
+                            val lon = jsonObject.optDouble("lon", Double.NaN)
+                            if (!lat.isNaN() && !lon.isNaN()) {
+                                "GPS Location"
+                            } else {
+                                "Location Data Missing"
+                            }
+                        }
                 }
                 "fail" -> {
                     // API specifically returned a failure status
@@ -96,7 +120,12 @@ fun TopBarView(
                 // Location Display Column
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
-                    modifier = Modifier.weight(2f) // Give location text more horizontal space
+                    modifier = Modifier
+                        .weight(2f) // Give location text more horizontal space
+                        .clickable {
+                            // Permitir refrescar la ubicación tocando el área
+                            locationViewModel.refreshLocation()
+                        }
                 ) {
                     Text(
                         text = "Current Location",
@@ -107,11 +136,22 @@ fun TopBarView(
                     // Display Location based on the SimpleLocationUiState
                     when (locationState) {
                         is SimpleLocationUiState.Loading -> {
-                            CircularProgressIndicator(
-                                modifier = Modifier.size(16.dp).padding(top = 2.dp), // Added padding
-                                color = Color.White,
-                                strokeWidth = 2.dp
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(14.dp),
+                                    color = Color.White,
+                                    strokeWidth = 2.dp
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Getting location...",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 10.sp
+                                )
+                            }
                         }
                         is SimpleLocationUiState.Success -> {
                             // Parse the raw string before displaying
@@ -127,13 +167,20 @@ fun TopBarView(
                             )
                         }
                         is SimpleLocationUiState.Error -> {
-                            // Display a user-friendly error message
-                            Text(
-                                text = "Location unavailable",
-                                // Consider showing details from: (locationState as SimpleLocationUiState.Error).message on tap/debug
-                                color = Color.White.copy(alpha = 0.7f),
-                                fontSize = 11.sp
-                            )
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally
+                            ) {
+                                Text(
+                                    text = "Location unavailable",
+                                    color = Color.White.copy(alpha = 0.7f),
+                                    fontSize = 11.sp
+                                )
+                                Text(
+                                    text = "Tap to retry",
+                                    color = Color.White.copy(alpha = 0.5f),
+                                    fontSize = 9.sp
+                                )
+                            }
                         }
                         is SimpleLocationUiState.Idle -> {
                             // Initial state before loading begins

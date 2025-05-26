@@ -1,30 +1,38 @@
 package com.isis3510.growhub.view.events
 
-import android.os.Build
-import androidx.annotation.RequiresApi
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.Image
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DateRange
-import androidx.compose.material.icons.filled.Person
-import androidx.compose.material.icons.filled.ShoppingCart
-import androidx.compose.material3.*
+import androidx.compose.material.icons.filled.MailOutline
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -33,16 +41,16 @@ import com.isis3510.growhub.viewmodel.SuccessfulCreationViewModel
 import java.text.SimpleDateFormat
 import java.util.Locale
 
-@RequiresApi(Build.VERSION_CODES.O)
 @Composable
 fun SuccessfulCreationView(
     eventName: String,
+    isQueued: Boolean,
     onMyEvents: () -> Unit = {},
     viewModel: SuccessfulCreationViewModel = viewModel()
 ) {
 
-    LaunchedEffect(eventName) {
-        viewModel.loadEvent(eventName)
+    LaunchedEffect(eventName, isQueued) {
+        viewModel.loadEvent(eventName, isQueued)
     }
 
     val event by viewModel.event
@@ -61,11 +69,10 @@ fun SuccessfulCreationView(
                     .padding(horizontal = 16.dp)
                     .fillMaxSize()
                     .verticalScroll(scrollState),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                CreationSuccessBanner()
-                EventCreationDetailsTitle()
+                CreationSuccessBanner(queued = isQueued)
 
                 EventCard(
                     name = event!!.name,
@@ -88,10 +95,8 @@ fun SuccessfulCreationView(
                     location = address
                 )
 
-                Spacer(modifier = Modifier.height(16.dp))
                 BackToHomeButton(onBackToHome = onMyEvents)
 
-                Spacer(modifier = Modifier.height(64.dp))
             }
         } else {
             Box(
@@ -127,12 +132,14 @@ fun CreationTopBar() {
 }
 
 @Composable
-fun CreationSuccessBanner() {
+fun CreationSuccessBanner(queued: Boolean) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 8.dp),
-        colors = CardDefaults.cardColors(containerColor = Color(0xFF2ECC71)),
+        colors = if (queued) { CardDefaults.cardColors(containerColor = Color(0xFFFFC107))} else {
+            CardDefaults.cardColors(containerColor = Color(0xFF2ECC71))
+        },
         shape = RoundedCornerShape(12.dp),
     ) {
         Box(
@@ -146,13 +153,15 @@ fun CreationSuccessBanner() {
                 horizontalArrangement = Arrangement.Center
             ) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = if (queued) Icons.Default.MailOutline else Icons.Default.CheckCircle,
                     contentDescription = null,
                     tint = Color.White
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
-                    text = "Event Created Successfully",
+                    text = if (!queued) {"Event Created Successfully"} else {
+                        "You are Offline: Event scheduled for creation"
+                    },
                     color = Color.White,
                     fontWeight = FontWeight.Bold,
                     fontSize = 16.sp,
@@ -162,15 +171,6 @@ fun CreationSuccessBanner() {
     }
 }
 
-@Composable
-fun EventCreationDetailsTitle() {
-    Text(
-        text = "Event Creation Details",
-        modifier = Modifier.padding(vertical = 8.dp),
-        fontWeight = FontWeight.Bold,
-        fontSize = 16.sp
-    )
-}
 
 @Composable
 fun BackToHomeButton(onBackToHome: () -> Unit = {}) {
@@ -184,6 +184,6 @@ fun BackToHomeButton(onBackToHome: () -> Unit = {}) {
     ) {
         Icon(Icons.Default.DateRange, contentDescription = null, tint = Color.White)
         Spacer(modifier = Modifier.width(8.dp))
-        Text("Back to Home", color = Color.White)
+        Text("My Events", color = Color.White)
     }
 }

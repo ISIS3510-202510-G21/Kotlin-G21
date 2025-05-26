@@ -4,8 +4,10 @@ import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import androidx.compose.runtime.mutableStateOf
+import com.google.firebase.Timestamp
 import com.google.firebase.firestore.DocumentReference
 import com.google.firebase.firestore.FirebaseFirestore
+import com.isis3510.growhub.local.data.GlobalData
 import com.isis3510.growhub.model.objects.Event
 import com.isis3510.growhub.model.objects.Location
 import kotlinx.coroutines.Dispatchers
@@ -21,11 +23,41 @@ class SuccessfulCreationViewModel : ViewModel() {
 
     private val db = FirebaseFirestore.getInstance()
 
-    fun loadEvent(name: String) {
+    fun loadEvent(name: String, isQueued: Boolean = false) {
         if (!loading.value) loading.value = true
 
         viewModelScope.launch {
-
+            if (isQueued) {
+                try {
+                    val json = GlobalData.createdEvent.last()
+                    val queuedEvent = Event(
+                        name = json.getString("name"),
+                        description = json.getString("description"),
+                        location = Location(
+                            address = json.getString("address"),
+                            city = json.getString("city"),
+                            latitude = 0.0,
+                            longitude = 0.0,
+                            university = json.getBoolean("isUniversity")
+                        ),
+                        startDate = Timestamp(json.getLong("startDate"), 0).toDate().toString(),
+                        endDate = Timestamp(json.getLong("endDate"), 0).toDate().toString(),
+                        category = json.getString("category"),
+                        imageUrl = json.getString("imageUrl"),
+                        cost = json.getInt("cost"),
+                        attendees = emptyList(),
+                        skills = emptyList(),
+                        // El creador se obtiene de la sesión actual
+                        creator = "Current User"
+                    )
+                    event.value = queuedEvent
+                } catch (e: Exception) {
+                    Log.e("SuccessfulCreationViewModel", "Error parsing queued JSON")
+                }
+                loading.value = false
+                return@launch
+            }
+            // Online proceeds with Firestore search as usual
             val doc = withContext(Dispatchers.IO) {
                 db.collection("events")
                     .whereEqualTo("name", name)

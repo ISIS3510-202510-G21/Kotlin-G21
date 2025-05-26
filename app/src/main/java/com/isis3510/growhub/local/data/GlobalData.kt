@@ -1,6 +1,7 @@
 package com.isis3510.growhub.local.data
 
 import com.isis3510.growhub.model.objects.Event
+import org.json.JSONObject
 
 object GlobalData {
     var upcomingEvents: List<Event> = emptyList()
@@ -11,4 +12,5 @@ object GlobalData {
     var searchEvents: List<Event> = emptyList()
     var searchEventsList: List<Event> = emptyList()
     var allEvents: MutableSet<Event> = mutableSetOf()
+    var createdEvent: MutableList<JSONObject> = mutableListOf()
 }

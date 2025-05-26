@@ -1,9 +1,12 @@
 package com.isis3510.growhub.view.profile
 
+import android.app.Application
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -34,6 +37,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
@@ -41,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -55,10 +60,6 @@ import com.isis3510.growhub.viewmodel.ConnectivityViewModel
 import com.isis3510.growhub.utils.ConnectionStatus
 import com.isis3510.growhub.viewmodel.ProfileViewModel
 
-/**
- * Created by: Juan Manuel Jáuregui
- */
-
 @Composable
 fun ProfileView(
     viewModel: ProfileViewModel = viewModel(),
@@ -67,11 +68,11 @@ fun ProfileView(
     onNavigateToEditProfile: () -> Unit = {},
     navController: NavController
 ) {
-
-    val profileList = viewModel.profile
-    val profile = profileList.firstOrNull()
-    val isLoading = viewModel.isLoading.value
-    val isNetworkAvailable by connectivityViewModel.networkStatus.collectAsState()
+    val profile = viewModel.profile.firstOrNull()
+    val isLoading by viewModel.isLoading
+    val netStatus by connectivityViewModel.networkStatus.collectAsState()
+    val isNetworkAvailable = netStatus == ConnectionStatus.Available
+    val ctx = LocalContext.current
 
     Scaffold(
         topBar = { ProfileTopBar(onNavigateBack) },
@@ -84,18 +85,25 @@ fun ProfileView(
         ) {
             if (isLoading) {
                 ProfilePlaceholder()
-            } else if (profile != null){
+            } else if (profile != null) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 16.dp),
-                    contentPadding = PaddingValues(top = 32.dp, bottom = 80.dp) // leave space for nav bar
+                    contentPadding = PaddingValues(top = 32.dp, bottom = 80.dp)
                 ) {
                     item { ProfileImage(profile.profilePicture) }
                     item { Spacer(Modifier.height(32.dp)) }
                     item { ProfileName(profile.name) }
                     item { Spacer(Modifier.height(32.dp)) }
-                    item { ProfileStats(profile.following, profile.followers) }
+                    item {
+                        ProfileStats(
+                            followingCount = profile.following,
+                            followersCount = profile.followers,
+                            onFollowingClick = { navController.navigate("following") },
+                            onFollowersClick = { navController.navigate("followers") }
+                        )
+                    }
                     item { Spacer(Modifier.height(32.dp)) }
                     item { EditProfileButton(onNavigateToEditProfile) }
                     item { Spacer(Modifier.height(32.dp)) }
@@ -103,7 +111,7 @@ fun ProfileView(
                     item { Spacer(Modifier.height(16.dp)) }
                     item { ProfileInterestsSection(profile.interests, onNavigateToEditProfile) }
                 }
-            } else if (isNetworkAvailable != ConnectionStatus.Available) {
+            } else if (!isNetworkAvailable) {
                 ProfileEmpty()
             }
         }
@@ -178,36 +186,59 @@ fun ProfileImage(profilePictureUrl: String) {
 @Composable
 fun ProfileName(name: String) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
-        Text(text = name.ifEmpty { "Loading..." },
+        Text(
+            text = name.ifEmpty { "Loading..." },
             fontSize = 30.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.onSurfaceVariant)
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
 @Composable
-fun ProfileStats(following: Int, followers: Int) {
+fun ProfileStats(
+    followingCount: Int,
+    followersCount: Int,
+    onFollowingClick: () -> Unit,
+    onFollowersClick: () -> Unit
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceEvenly
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$following",
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable(onClick = onFollowingClick)
+        ) {
+            Text(
+                text = "$followingCount",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = "Following",
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Following",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
         VerticalDivider(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.height(32.dp).width(1.dp)
+            modifier = Modifier
+                .height(32.dp)
+                .width(1.dp)
         )
-        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(text = "$followers",
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            modifier = Modifier.clickable(onClick = onFollowersClick)
+        ) {
+            Text(
+                text = "$followersCount",
                 fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Text(text = "Followers",
-                color = MaterialTheme.colorScheme.onSurfaceVariant)
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "Followers",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
         }
     }
 }
@@ -217,49 +248,56 @@ fun EditProfileButton(onNavigateToEditProfile: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
         OutlinedButton(
             onClick = onNavigateToEditProfile,
-            modifier = Modifier.fillMaxWidth(0.5f).height(48.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.5f)
+                .height(48.dp),
             shape = RoundedCornerShape(16.dp),
             border = BorderStroke(2.dp, Color(0xFF5669FF)),
             colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurfaceVariant)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(
-                    painter = painterResource(id = R.drawable.ic_edit),
-                    contentDescription = "Edit Profile",
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(text = "Edit Profile", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 16.sp)
-            }
+            Icon(
+                painter = painterResource(id = R.drawable.ic_edit),
+                contentDescription = "Edit Profile",
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Text(
+                text = "Edit Profile",
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                fontSize = 16.sp
+            )
         }
     }
 }
 
 @Composable
 fun ProfileAbout(aboutMe: String) {
-    Text(text = "About Me",
+    Text(
+        text = "About Me",
         fontWeight = FontWeight.Bold,
         fontSize = 20.sp,
         textAlign = TextAlign.Left,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
     Spacer(modifier = Modifier.height(8.dp))
-    Text(text = aboutMe,
+    Text(
+        text = aboutMe,
         textAlign = TextAlign.Justify,
-        color = MaterialTheme.colorScheme.onSurfaceVariant)
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: () -> Unit) {
     val colors = listOf(
-        Color(0xFF6B7AED),  // Violet
-        Color(0xFFEE544A),  // Red
-        Color(0xFFFF8D5D),  // Orange
-        Color(0xFF7D67EE),  // Purple
-        Color(0xFF29D697),  // Green
-        Color(0xFF39D1F2)   // Blue
+        Color(0xFF6B7AED),
+        Color(0xFFEE544A),
+        Color(0xFFFF8D5D),
+        Color(0xFF7D67EE),
+        Color(0xFF29D697),
+        Color(0xFF39D1F2)
     )
-
     Column(modifier = Modifier.fillMaxWidth()) {
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -270,50 +308,39 @@ fun ProfileInterestsSection(interests: List<String>, onNavigateToEditProfile: ()
                 text = "Interests",
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
-                textAlign = TextAlign.Left,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
-
             OutlinedButton(
-                onClick = { onNavigateToEditProfile() },
+                onClick = onNavigateToEditProfile,
                 shape = RoundedCornerShape(50),
                 modifier = Modifier
                     .height(30.dp)
                     .width(80.dp),
                 contentPadding = PaddingValues(0.dp),
-                border = null,
                 colors = ButtonDefaults.outlinedButtonColors(
                     containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.1f),
                     contentColor = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             ) {
-                Row(modifier = Modifier.align(Alignment.CenterVertically)) {
-                    Icon(
-                        painter = painterResource(id = R.drawable.ic_edit),
-                        contentDescription = "Edit",
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    Spacer(modifier = Modifier.width(4.dp))
-
-                    Text(text = "Change", fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                }
+                Icon(
+                    painter = painterResource(id = R.drawable.ic_edit),
+                    contentDescription = "Edit",
+                    modifier = Modifier.size(16.dp),
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(text = "Change", fontSize = 14.sp, fontWeight = FontWeight.Medium)
             }
         }
-
         Spacer(modifier = Modifier.height(20.dp))
-
         FlowRow(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Start,
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             interests.forEachIndexed { index, interest ->
-                val color = colors[index % colors.size] // Assign colors cyclically
-
+                val color = colors[index % colors.size]
                 ProfileInterestChip(text = interest, backgroundColor = color)
-
                 Spacer(modifier = Modifier.width(8.dp))
             }
         }
@@ -328,7 +355,6 @@ fun ProfileInterestChip(text: String, backgroundColor: Color) {
             .background(backgroundColor)
             .padding(horizontal = 12.dp, vertical = 6.dp)
     ) {
-
         Text(text = text, color = Color.White, fontSize = 14.sp)
     }
 }
@@ -348,18 +374,14 @@ fun ProfileEmpty() {
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         )
-
         Spacer(modifier = Modifier.height(24.dp))
-
         Text(
             text = "You're offline",
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-
         Spacer(modifier = Modifier.height(8.dp))
-
         Text(
             text = "Please check your internet connection and try again.",
             fontSize = 16.sp,
@@ -380,18 +402,13 @@ fun ProfilePlaceholder() {
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Placeholder for Profile Image
         Box(
             modifier = Modifier
                 .size(120.dp)
                 .clip(CircleShape)
                 .background(Color.Gray.copy(alpha = 0.3f))
         )
-
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Placeholder for Name
         Box(
             modifier = Modifier
                 .height(24.dp)
@@ -399,10 +416,7 @@ fun ProfilePlaceholder() {
                 .clip(RoundedCornerShape(12.dp))
                 .background(Color.Gray.copy(alpha = 0.3f))
         )
-
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Placeholder for Stats
         Row(
             horizontalArrangement = Arrangement.SpaceEvenly,
             modifier = Modifier.fillMaxWidth()
@@ -427,10 +441,7 @@ fun ProfilePlaceholder() {
                 }
             }
         }
-
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Placeholder for Button
         Box(
             modifier = Modifier
                 .height(48.dp)
@@ -438,10 +449,7 @@ fun ProfilePlaceholder() {
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color.Gray.copy(alpha = 0.3f))
         )
-
         Spacer(modifier = Modifier.height(32.dp))
-
-        // Placeholder for About Me
         Box(
             modifier = Modifier
                 .height(20.dp)
@@ -460,10 +468,7 @@ fun ProfilePlaceholder() {
             )
             Spacer(modifier = Modifier.height(8.dp))
         }
-
         Spacer(modifier = Modifier.height(16.dp))
-
-        // Placeholder for Interests
         FlowRow(
             horizontalArrangement = Arrangement.spacedBy(8.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
@@ -480,4 +485,3 @@ fun ProfilePlaceholder() {
         }
     }
 }
-
