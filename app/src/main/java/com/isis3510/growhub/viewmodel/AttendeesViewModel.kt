@@ -210,6 +210,15 @@ class AttendeesViewModel(application: Application) : AndroidViewModel(applicatio
             _mostCommonInterest.value = commonInterest
             AttendeeStatsCache.putInterest(event.name, commonInterest)
 
+            viewModelScope.launch(Dispatchers.IO) {
+                profileRepository.saveEventStats(
+                    eventName = event.name,
+                    numberOfAttendees = attendees.size,
+                    commonHeadline = commonHeadline,
+                    commonInterest = _mostCommonInterest.value
+                )
+            }
+
             loading.value = false
         }
     }
