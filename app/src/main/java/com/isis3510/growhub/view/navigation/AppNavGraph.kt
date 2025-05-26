@@ -29,6 +29,8 @@ import com.isis3510.growhub.view.events.SuccessfulCreationView
 import com.isis3510.growhub.view.events.SuccessfulRegistrationView
 import com.isis3510.growhub.view.home.MainView
 import com.isis3510.growhub.view.map.MapView
+import com.isis3510.growhub.view.profile.FollowersScreen
+import com.isis3510.growhub.view.profile.FollowingScreen
 import com.isis3510.growhub.view.profile.ProfileView
 import com.isis3510.growhub.viewmodel.AuthViewModel
 import com.isis3510.growhub.viewmodel.SuccessfulRegistrationViewModel
@@ -41,6 +43,8 @@ object Destinations {
     const val MAP = "map"
     const val MY_EVENTS = "my_events"
     const val PROFILE = "profile"
+    const val FOLLOWERS = "followers"
+    const val FOLLOWING = "following"
     const val EDIT_PROFILE = "edit_profile"
     const val CREATE = "create"
     const val INTERESTS = "interestsScreen"
@@ -215,6 +219,26 @@ fun AppNavGraph(
             )
         }
 
+        composable(Destinations.FOLLOWERS) {
+            FollowersScreen(
+                onNavigateBack = {
+                    navController.navigate(Destinations.PROFILE) {
+                        popUpTo(Destinations.FOLLOWERS) { inclusive = true }
+                    }
+                }
+            )
+        }
+
+        composable(Destinations.FOLLOWING) {
+            FollowingScreen(
+                onNavigateBack = {
+                    navController.navigate(Destinations.PROFILE) {
+                        popUpTo(Destinations.FOLLOWING) { inclusive = true }
+                    }
+                }
+            )
+        }
+
         // EDIT_PROFILE
         composable(Destinations.EDIT_PROFILE) {
             PlaceholderScreen()
@@ -228,8 +252,8 @@ fun AppNavGraph(
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
                 },
-                onCreatedEvent = { eventName ->
-                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName") {
+                onCreatedEvent = { eventName, queued ->
+                    navController.navigate("${Destinations.SUCCESSFUL_CREATION}/$eventName?queued=$queued") {
                         popUpTo(Destinations.CREATE) { inclusive = true }
                     }
                 }
@@ -317,13 +341,15 @@ fun AppNavGraph(
         }
 
         composable(
-            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}",
+            route = "${Destinations.SUCCESSFUL_CREATION}/{eventName}?queued={queued}",
             arguments = listOf(
-                navArgument("eventName") { type = NavType.StringType }
+                navArgument("eventName") { type = NavType.StringType },
+                navArgument("queued") { type = NavType.BoolType; defaultValue = false }
             )
         ) { backStackEntry ->
             val eventName = backStackEntry.arguments?.getString("eventName") ?: ""
-            SuccessfulCreationView(eventName = eventName, onMyEvents = {
+            val queued = backStackEntry.arguments?.getBoolean("queued") ?: false
+            SuccessfulCreationView(eventName = eventName, isQueued = queued, onMyEvents = {
                 navController.navigate(Destinations.MY_EVENTS) {
                     popUpTo(0) { inclusive = true } // clears everything
                     launchSingleTop = true

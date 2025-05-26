@@ -55,11 +55,11 @@ class CreateEventRepository(private val context: Context) {
                         formattedAddress = null,
                         latitude = null,
                         longitude = null,
-                        errorMessage = "No se encontró la dirección"
+                        errorMessage = "Address not found"
                     )
                 }
             } catch (e: IOException) {
-                Log.e(TAG, "Error al geocodificar dirección", e)
+                Log.e(TAG, "Error when geocoding the address", e)
                 GeocodingResult(
                     isValid = false,
                     formattedAddress = null,

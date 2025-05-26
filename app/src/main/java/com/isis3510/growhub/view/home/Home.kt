@@ -40,6 +40,7 @@ import com.isis3510.growhub.R
 import com.isis3510.growhub.Repository.CreateEventRepository
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.offline.OfflineEventManager
+import com.isis3510.growhub.utils.LocationPermissionHandler
 import com.isis3510.growhub.view.navigation.BottomNavigationBar
 import com.isis3510.growhub.view.theme.GrowhubTheme
 import com.isis3510.growhub.viewmodel.AuthViewModel
@@ -94,6 +95,8 @@ fun MainView(
             darkIcons = false // false = iconos en blanco; true = iconos oscuros
         )
     }
+
+    LocationPermissionHandler(locationViewModel = locationViewModel)
 
     Scaffold(
         topBar = {
