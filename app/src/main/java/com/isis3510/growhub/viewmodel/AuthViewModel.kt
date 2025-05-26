@@ -3,6 +3,7 @@ package com.isis3510.growhub.viewmodel
 import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.android.gms.tasks.Tasks
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.model.AuthPreferences
@@ -10,10 +11,11 @@ import com.isis3510.growhub.model.objects.AuthUiState
 import com.isis3510.growhub.model.objects.Skill
 import com.isis3510.growhub.offline.NetworkUtils
 import com.isis3510.growhub.cache.RegistrationCache
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-
+import kotlinx.coroutines.withContext
 
 class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
@@ -26,7 +28,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     init {
         RegistrationCache.get<AuthUiState>("draft")?.let { _uiState.value = it }
-        // Recuperar credenciales si "remember me" estaba encendido
         val savedEmail = authPrefs.getSavedEmail()
         val savedPass = authPrefs.getSavedPassword()
         if (!savedEmail.isNullOrBlank() && !savedPass.isNullOrBlank()) {
@@ -38,7 +39,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    // Funciones para actualizar la UI state
     fun onEmailChange(newEmail: String) {
         _uiState.value = _uiState.value.copy(email = newEmail)
     }
@@ -61,15 +61,11 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
     fun onRememberMeChange(checked: Boolean) {
         _uiState.value = _uiState.value.copy(rememberMe = checked)
-        if (!checked) {
-            authPrefs.clearCredentials()
-        }
+        if (!checked) authPrefs.clearCredentials()
     }
 
     fun isUserLoggedIn(): Boolean {
-        val firebaseLoggedIn = firebaseAuth.currentUser != null
-        val localLoggedIn = authPrefs.isUserLoggedIn()
-        return firebaseLoggedIn && localLoggedIn
+        return firebaseAuth.currentUser != null && authPrefs.isUserLoggedIn()
     }
 
     fun registerUser(onRegisterAuthSuccess: (String) -> Unit) {
@@ -99,44 +95,48 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         val state = _uiState.value
         val context = getApplication<Application>().applicationContext
 
-        // Verificamos internet
         if (!NetworkUtils.isNetworkAvailable(context)) {
             _uiState.value = state.copy(errorMessage = "Please check your internet connection.")
             return
         }
 
         _uiState.value = state.copy(isLoading = true, errorMessage = null)
+
         viewModelScope.launch {
-            firebaseAuth.signInWithEmailAndPassword(
-                state.email.trim(),
-                state.password.trim()
-            ).addOnCompleteListener { task ->
-                if (task.isSuccessful) {
-                    _uiState.value = _uiState.value.copy(isLoading = false)
-                    authPrefs.setUserLoggedIn(true)
-                    if (_uiState.value.rememberMe) {
-                        authPrefs.saveCredentials(state.email.trim(), state.password.trim())
-                    }
-                    onLoginSuccess()
-                } else {
-                    _uiState.value = _uiState.value.copy(
-                        isLoading = false,
-                        errorMessage = task.exception?.message ?: "Unknown error"
+            try {
+                withContext(Dispatchers.IO) {
+                    Tasks.await(
+                        firebaseAuth.signInWithEmailAndPassword(
+                            state.email.trim(),
+                            state.password.trim()
+                        )
                     )
                 }
+
+                authPrefs.setUserLoggedIn(true)
+                if (_uiState.value.rememberMe) {
+                    authPrefs.saveCredentials(state.email.trim(), state.password.trim())
+                }
+
+                _uiState.value = _uiState.value.copy(isLoading = false)
+                onLoginSuccess()
+
+            } catch (e: Exception) {
+                _uiState.value = _uiState.value.copy(
+                    isLoading = false,
+                    errorMessage = e.message ?: "Unknown error"
+                )
             }
         }
     }
 
     fun fetchSkillsList() {
         val context = getApplication<Application>().applicationContext
-        if (!NetworkUtils.isNetworkAvailable(context)) {
-            return
-        }
+        if (!NetworkUtils.isNetworkAvailable(context)) return
+
         firestore.collection("skills").get().addOnSuccessListener { result ->
             val skills = result.documents.mapNotNull { doc ->
-                val name = doc.getString("name") ?: return@mapNotNull null
-                Skill(id = doc.id, name = name)
+                doc.getString("name")?.let { Skill(id = doc.id, name = it) }
             }
             _uiState.value = _uiState.value.copy(availableSkills = skills)
         }.addOnFailureListener { e ->
@@ -144,24 +144,19 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    /**
-     * Aquí se realiza el registro real en FirebaseAuth (createUserWithEmailAndPassword)
-     * y se crea el documento en Firestore para el usuario.
-     */
     fun finalizeUserRegistration(
         selectedSkills: List<String>,
         onSuccess: () -> Unit,
         onError: (String) -> Unit
     ) {
-        // Recuperamos borrador de la caché si está presente
         val draftState = RegistrationCache.get<AuthUiState>("draft") ?: _uiState.value
         val context = getApplication<Application>().applicationContext
 
-        // Validaciones de red y contraseñas (igual que antes) ...
         if (!NetworkUtils.isNetworkAvailable(context)) {
             onError("Please check your internet connection.")
             return
         }
+
         if (draftState.password != draftState.confirmPassword) {
             onError("Passwords do not match.")
             return
@@ -169,13 +164,15 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.value = draftState.copy(isLoading = true, errorMessage = null)
 
-        // Create user in FirebaseAuth
-        firebaseAuth.createUserWithEmailAndPassword(
-            draftState.email.trim(),
-            draftState.password.trim()
-        ).addOnCompleteListener { task ->
-            if (task.isSuccessful) {
-                val newUserId = task.result?.user?.uid.orEmpty()
+        viewModelScope.launch(Dispatchers.IO) {
+            try {
+                val authResult = Tasks.await(
+                    firebaseAuth.createUserWithEmailAndPassword(
+                        draftState.email.trim(),
+                        draftState.password.trim()
+                    )
+                )
+                val newUserId = authResult.user?.uid.orEmpty()
                 val userData = hashMapOf(
                     "email" to draftState.email.trim(),
                     "name" to draftState.name.trim(),
@@ -183,37 +180,50 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
                     "skills" to selectedSkills
                 )
 
-                firestore.collection("users").document(newUserId)
-                    .set(userData)
-                    .addOnSuccessListener {
-                        // Persistencia local (igual que antes) ...
-                        if (draftState.rememberMe) {
-                            authPrefs.saveCredentials(draftState.email.trim(), draftState.password.trim())
-                            authPrefs.setUserLoggedIn(true)
-                        } else {
-                            authPrefs.clearCredentials()
-                            authPrefs.setUserLoggedIn(false)
-                        }
-                        authPrefs.saveUserData(newUserId, draftState.name.trim(), draftState.email.trim())
+                launch {
+                    try {
+                        Tasks.await(firestore.collection("users").document(newUserId).set(userData))
 
-                        _uiState.value = _uiState.value.copy(
-                            userId = newUserId,
-                            isLoading = false,
-                            errorMessage = null
-                        )
-                        RegistrationCache.clear()   // 🧹 Limpiamos la caché
-                        onSuccess()
+                        launch {
+                            try {
+                                if (draftState.rememberMe) {
+                                    authPrefs.saveCredentials(draftState.email.trim(), draftState.password.trim())
+                                    authPrefs.setUserLoggedIn(true)
+                                } else {
+                                    authPrefs.clearCredentials()
+                                    authPrefs.setUserLoggedIn(false)
+                                }
+                                authPrefs.saveUserData(newUserId, draftState.name.trim(), draftState.email.trim())
+
+                                withContext(Dispatchers.Main) {
+                                    _uiState.value = _uiState.value.copy(
+                                        userId = newUserId,
+                                        isLoading = false,
+                                        errorMessage = null
+                                    )
+                                    RegistrationCache.clear()
+                                    onSuccess()
+                                }
+
+                            } catch (e: Exception) {
+                                withContext(Dispatchers.Main) {
+                                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
+                                    onError(e.message ?: "Unknown error (prefs)")
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        withContext(Dispatchers.Main) {
+                            _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
+                            onError(e.message ?: "Unknown error (firestore)")
+                        }
                     }
-                    .addOnFailureListener { e ->
-                        _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
-                        onError(e.message ?: "Unknown error")
-                    }
-            } else {
-                _uiState.value = _uiState.value.copy(
-                    isLoading = false,
-                    errorMessage = task.exception?.message ?: "Unknown error"
-                )
-                onError(task.exception?.message ?: "Unknown error")
+                }
+            } catch (e: Exception) {
+                withContext(Dispatchers.Main) {
+                    _uiState.value = _uiState.value.copy(isLoading = false, errorMessage = e.message)
+                    onError(e.message ?: "Unknown error (auth)")
+                }
             }
         }
     }
@@ -226,9 +236,6 @@ class AuthViewModel(application: Application) : AndroidViewModel(application) {
         _uiState.value = AuthUiState()
     }
 
-    /**
-     * Permite asignar un userId manualmente si fuera necesario en alguna lógica anterior.
-     */
     fun setUserId(id: String) {
         _uiState.value = _uiState.value.copy(userId = id)
     }
