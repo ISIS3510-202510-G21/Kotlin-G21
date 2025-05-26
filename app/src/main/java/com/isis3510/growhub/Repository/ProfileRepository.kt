@@ -1,5 +1,8 @@
 package com.isis3510.growhub.Repository
 
+import android.util.Log
+import com.google.firebase.firestore.FieldValue
+import com.google.firebase.firestore.FirebaseFirestore
 import com.isis3510.growhub.local.database.AppLocalDatabase
 import com.isis3510.growhub.model.objects.Profile
 import com.isis3510.growhub.model.objects.toEntity
@@ -33,4 +36,23 @@ class ProfileRepository(
     suspend fun deleteDuplicates() {
         profileDao.deleteDuplicates()
     }
+
+    suspend fun saveEventStats(eventName: String, numberOfAttendees: Int, commonHeadline: String, commonInterest: String) {
+        val stats = mapOf(
+            "event_name" to eventName,
+            "timestamp" to FieldValue.serverTimestamp(),
+            "number_of_attendees" to numberOfAttendees,
+            "most_common_headline" to commonHeadline,
+            "most_common_interest" to commonInterest
+        )
+
+        try {
+            FirebaseFirestore.getInstance()
+                .collection("event_stats")
+                .add(stats)
+        } catch (e: Exception) {
+            Log.e("Firestore", "Error saving event stats", e)
+        }
+    }
+
 }
