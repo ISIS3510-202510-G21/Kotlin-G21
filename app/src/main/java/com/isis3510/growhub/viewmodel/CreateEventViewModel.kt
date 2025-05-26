@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.coroutines.withContext
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -132,7 +133,6 @@ class CreateEventViewModel(
             _isLoading.value = true
             val db = FirebaseFirestore.getInstance()
 
-            /* skills -------------------------------------------------------- */
             val skillDocs = db.collection("skills").get().await()
             val skillsTmp = mutableListOf<String>()
             for (doc in skillDocs.documents) {
@@ -142,7 +142,6 @@ class CreateEventViewModel(
             }
             _allSkills.value = skillsTmp
 
-            /* categories ---------------------------------------------------- */
             val catDocs = db.collection("categories").get().await()
             val catTmp  = mutableListOf<String>()
             for (doc in catDocs.documents) {
@@ -184,63 +183,69 @@ class CreateEventViewModel(
     }
 
     fun createEvent() {
-        viewModelScope.launch {
+        viewModelScope.launch(Dispatchers.IO) {
             _isLoading.value = true
             _errorMessage.value = null
             try {
                 val eventCost = _cost.value.toDoubleOrNull() ?: 0.0
                 val startTimestamp = parseStartDateTime()
                 val endTimestamp = parseEndDateTime()
-
                 val selectedSkillIds = _selectedSkills.value.mapNotNull { skillNameToId[it] }
-
                 val hasInternet = NetworkUtils.isNetworkAvailable(context)
-                if (!hasInternet) {
-                    // Guardar offline
-                    offlineManager.saveOfflineEvent(
-                        name = _name.value,
-                        cost = eventCost,
-                        category = _category.value,
-                        description = _description.value,
-                        startDate = startTimestamp,
-                        endDate = endTimestamp,
-                        locationId = _locationId.value,
-                        imageUrl = _imageUrl.value,
-                        address = _address.value,
-                        details = _details.value,
-                        city = _city.value,
-                        isUniversity = _isUniversity.value,
-                        skillIds = selectedSkillIds
-                    )
-                    _eventCreated.value = true
-                    _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
-                } else {
-                    val success = offlineManager.uploadSingleEvent(
-                        name = _name.value,
-                        cost = eventCost,
-                        category = _category.value,
-                        description = _description.value,
-                        startDate = startTimestamp,
-                        endDate = endTimestamp,
-                        locationId = _locationId.value,
-                        imageUrl = _imageUrl.value,
-                        address = _address.value,
-                        details = _details.value,
-                        city = _city.value,
-                        isUniversity = _isUniversity.value,
-                        skillIds = selectedSkillIds
-                    )
-                    _eventCreated.value = success
-                    if (success) {
-                        clearForm()
+
+                launch(Dispatchers.IO) {
+                    if (!hasInternet) {
+                        offlineManager.saveOfflineEvent(
+                            name = _name.value,
+                            cost = eventCost,
+                            category = _category.value,
+                            description = _description.value,
+                            startDate = startTimestamp,
+                            endDate = endTimestamp,
+                            locationId = _locationId.value,
+                            imageUrl = _imageUrl.value,
+                            address = _address.value,
+                            details = _details.value,
+                            city = _city.value,
+                            isUniversity = _isUniversity.value,
+                            skillIds = selectedSkillIds
+                        )
+                        withContext(Dispatchers.Main) {
+                            _eventCreated.value = true
+                            _errorMessage.value = "No internet connection. Your event will be uploaded automatically once you're back online."
+                        }
                     } else {
-                        _errorMessage.value = "Could not create event. Please try again."
+                        val success = offlineManager.uploadSingleEvent(
+                            name = _name.value,
+                            cost = eventCost,
+                            category = _category.value,
+                            description = _description.value,
+                            startDate = startTimestamp,
+                            endDate = endTimestamp,
+                            locationId = _locationId.value,
+                            imageUrl = _imageUrl.value,
+                            address = _address.value,
+                            details = _details.value,
+                            city = _city.value,
+                            isUniversity = _isUniversity.value,
+                            skillIds = selectedSkillIds
+                        )
+                        withContext(Dispatchers.Main) {
+                            _eventCreated.value = success
+                            if (success) clearForm()
+                            else _errorMessage.value = "Could not create event. Please try again."
+                        }
                     }
                 }
+
             } catch (e: Exception) {
-                _errorMessage.value = e.message
+                withContext(Dispatchers.Main) {
+                    _errorMessage.value = e.message
+                }
             } finally {
-                _isLoading.value = false
+                withContext(Dispatchers.Main) {
+                    _isLoading.value = false
+                }
             }
         }
     }
